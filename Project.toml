@@ -1,0 +1,13 @@
+name = "Kokkos"
+uuid = "3296cea9-b0de-4b57-aba0-ce554b517c3b"
+authors = ["Keluaa <34173752+Keluaa@users.noreply.github.com> and contributors"]
+version = "1.0.0-DEV"
+
+[compat]
+julia = "1.7"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
