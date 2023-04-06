@@ -1,3 +1,6 @@
+
+push!(LOAD_PATH, joinpath(@__DIR__, "../"))
+
 using Kokkos
 using Documenter
 
@@ -15,5 +18,9 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "Execution & Memory Spaces" => "spaces.md",
+        "Views" => "views.md",
+        "Compilation" => "compilation.md",
+        "Configuration options" => "config_options.md"
     ],
 )

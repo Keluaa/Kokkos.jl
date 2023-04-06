@@ -1,0 +1,135 @@
+
+#include "kokkos_wrapper.h"
+
+#include <sstream>
+
+
+void kokkos_init(const Kokkos::InitializationSettings& settings)
+{
+    if (!Kokkos::is_initialized()) {
+        Kokkos::initialize(settings);
+    } else {
+        jl_error("Kokkos is already initialized");
+    }
+}
+
+
+void kokkos_finalize()
+{
+    if (!Kokkos::is_initialized()) {
+        jl_error("Kokkos is not initialized");
+    } else if (Kokkos::is_finalized()) {
+        jl_error("Kokkos is already finalized initialized");
+    } else {
+        Kokkos::finalize();
+    }
+}
+
+
+jl_value_t* kokkos_version()
+{
+    auto* version_number_t = (jl_function_t*) jl_get_global(jl_base_module, jl_symbol("VersionNumber"));
+
+    jl_value_t** versions;
+    JL_GC_PUSHARGS(versions, 3);
+    versions[0] = jl_box_int64(KOKKOS_VERSION_MAJOR);
+    versions[1] = jl_box_int64(KOKKOS_VERSION_MINOR);
+    versions[2] = jl_box_int64(KOKKOS_VERSION_PATCH);
+    jl_value_t* version = jl_call(version_number_t, versions, 3);
+    JL_GC_POP();
+
+    return version;
+}
+
+
+void define_initialization_settings(jlcxx::Module& mod)
+{
+    auto settings_t = mod.add_type<Kokkos::InitializationSettings>("InitializationSettings")
+        .constructor<>()
+        .method("num_threads!", &Kokkos::InitializationSettings::set_num_threads)
+        .method("device_id!", &Kokkos::InitializationSettings::set_device_id)
+        .method("disable_warnings!", &Kokkos::InitializationSettings::set_disable_warnings)
+        .method("print_configuration!", &Kokkos::InitializationSettings::set_print_configuration)
+        .method("tune_internals!", &Kokkos::InitializationSettings::set_tune_internals)
+        .method("tools_libs!", &Kokkos::InitializationSettings::set_tools_libs)
+        .method("tools_args!", &Kokkos::InitializationSettings::set_tools_args)
+        .method("map_device_id_by!", [](Kokkos::InitializationSettings& settings, jl_value_t* val)
+        {
+            if (!jl_is_symbol(val)) {
+                jl_type_error("map_device_id_by!", (jl_value_t*) jl_symbol_type, val);
+            }
+            auto* sym = (jl_sym_t*) val;
+            if (sym == jl_symbol("mpi_rank")) {
+                settings.set_map_device_id_by("mpi_rank");
+            } else if (sym == jl_symbol("random")) {
+                settings.set_map_device_id_by("random");
+            } else {
+                jl_errorf("expected `:mpi_rank` or `:random`, got: `:%s`", jl_symbol_name(sym));
+            }
+            return settings;
+        });
+
+    // Getters must account for std::optional. We return `nothing` when the value is not set
+#define SETTINGS_GETTER(name)                                                                        \
+        settings_t.method(#name, [](const Kokkos::InitializationSettings& settings)                  \
+        {                                                                                            \
+            if (settings.has_##name())                                                               \
+                return jlcxx::box<decltype(settings.get_##name())>(settings.get_##name());           \
+            return jl_nothing;                                                                       \
+        })
+
+    SETTINGS_GETTER(device_id);
+    SETTINGS_GETTER(num_threads);
+    SETTINGS_GETTER(disable_warnings);
+    SETTINGS_GETTER(print_configuration);
+    SETTINGS_GETTER(tune_internals);
+#undef SETTINGS_GETTER
+
+    settings_t.method("map_device_id_by", [](const Kokkos::InitializationSettings& settings) {
+        if (settings.has_map_device_id_by())
+            return (jl_value_t*) jl_symbol(settings.get_map_device_id_by().c_str());
+        return jl_nothing;
+    });
+
+    settings_t.method("tools_libs", [](const Kokkos::InitializationSettings& settings) {
+        if (settings.has_tools_libs())
+            return jl_cstr_to_string(settings.get_tools_libs().c_str());
+        return jl_nothing;
+    });
+
+    settings_t.method("tools_args", [](const Kokkos::InitializationSettings& settings) {
+        if (settings.has_tools_args())
+            return jl_cstr_to_string(settings.get_tools_args().c_str());
+        return jl_nothing;
+    });
+}
+
+
+void print_configuration(jl_value_t* io, bool verbose)
+{
+    jl_value_t* IO_t = jl_get_global(jl_core_module, jl_symbol("IO"));
+    if (!jl_isa(io, IO_t))
+        jl_type_error("print_configuration", IO_t, io);
+
+    std::ostringstream oss;
+    Kokkos::print_configuration(oss, verbose);
+    const std::string config_str = oss.str();
+
+    jl_function_t* println = jl_get_function(jl_base_module, "println");
+    jl_call1(println, jl_cstr_to_string(config_str.c_str()));
+}
+
+
+JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
+{
+    define_initialization_settings(mod);
+    mod.method("print_configuration", &print_configuration);
+
+    mod.method("initialize", &kokkos_init);
+    mod.method("finalize", &kokkos_finalize);
+
+    mod.method("is_initialized",  (bool (*)()) &Kokkos::is_initialized);
+    mod.method("is_finalized", (bool (*)()) &Kokkos::is_finalized);
+
+    mod.method("kokkos_version", &kokkos_version);
+}

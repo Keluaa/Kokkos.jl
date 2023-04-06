@@ -6,9 +6,15 @@ CurrentModule = Kokkos
 
 Documentation for [Kokkos](https://github.com/Keluaa/Kokkos.jl).
 
-```@index
+```@docs
+initialize
+require
+set_omp_vars
+versioninfo
 ```
 
-```@autodocs
-Modules = [Kokkos]
+## Constants
+
+```@docs
+KOKKOS_VERSION
 ```
