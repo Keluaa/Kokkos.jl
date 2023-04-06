@@ -25,14 +25,14 @@ void post_register_space(jlcxx::Module& mod)
     // Important: instead of returning `jlcxx::julia_type<Space>` directly, we return its super-super-type (the main
     // type, defined in Julia independently of Kokkos flags) : this way we make sure that the original 'main types'
     // defined on the Julia side are returned, and not the one of the types defined internally by JlCxx.
-    if constexpr (Kokkos::is_memory_space_v<Space>) {
+    if constexpr (Kokkos::is_memory_space<Space>::value) {
         mod.method("execution_space", [=](jlcxx::SingletonType<SpaceInfo<Space>>) {
             return jlcxx::julia_type<typename Space::execution_space>()->super->super;
         });
         mod.method("accessible", [](jlcxx::SingletonType<SpaceInfo<Space>>) {
             return (bool) Kokkos::SpaceAccessibility<Kokkos::DefaultHostExecutionSpace, Space>::accessible;
         });
-    } else if constexpr (Kokkos::is_execution_space_v<Space>) {
+    } else if constexpr (Kokkos::is_execution_space<Space>::value) {
         mod.method("memory_space", [=](jlcxx::SingletonType<SpaceInfo<Space>>) {
             return jlcxx::julia_type<typename Space::memory_space>()->super->super;
         });
@@ -86,16 +86,26 @@ void define_memory_spaces_functions(jlcxx::Module& mod)
         return jlcxx::julia_type<Kokkos::DefaultHostExecutionSpace::memory_space>()->super->super;
     });
     mod.method("shared_memory_space", [](){
+#ifdef KOKKOS_VERSION_GREATER_EQUAL
+#if KOKKOS_VERSION_GREATER_EQUAL(4, 0, 0)
         if constexpr (Kokkos::has_shared_space) {
             return jlcxx::julia_type<Kokkos::SharedSpace>()->super->super;
-        } else {
+        } else
+#endif //  KOKKOS_VERSION_GREATER_EQUAL(4, 0, 0)
+#endif // KOKKOS_VERSION_GREATER_EQUAL
+        {
             return jl_nothing;
         }
     });
     mod.method("shared_host_pinned_space", [](){
+#ifdef KOKKOS_VERSION_GREATER_EQUAL
+#if KOKKOS_VERSION_GREATER_EQUAL(4, 0, 0)
         if constexpr (Kokkos::has_shared_host_pinned_space) {
             return jlcxx::julia_type<Kokkos::SharedHostPinnedSpace>()->super->super;
-        } else {
+        } else
+#endif // KOKKOS_VERSION_GREATER_EQUAL(4, 0, 0)
+#endif // KOKKOS_VERSION_GREATER_EQUAL
+        {
             return jl_nothing;
         }
     });

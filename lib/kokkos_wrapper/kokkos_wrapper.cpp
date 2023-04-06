@@ -32,9 +32,15 @@ jl_value_t* kokkos_version()
 
     jl_value_t** versions;
     JL_GC_PUSHARGS(versions, 3);
+#ifndef KOKKOS_VERSION_MAJOR
+    versions[0] = jl_box_int64(KOKKOS_VERSION / 10000);
+    versions[1] = jl_box_int64(KOKKOS_VERSION / 100 % 100);
+    versions[2] = jl_box_int64(KOKKOS_VERSION % 100);
+#else
     versions[0] = jl_box_int64(KOKKOS_VERSION_MAJOR);
     versions[1] = jl_box_int64(KOKKOS_VERSION_MINOR);
     versions[2] = jl_box_int64(KOKKOS_VERSION_PATCH);
+#endif
     jl_value_t* version = jl_call(version_number_t, versions, 3);
     JL_GC_POP();
 

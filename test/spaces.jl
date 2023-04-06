@@ -8,9 +8,10 @@
 @test Kokkos.DEFAULT_DEVICE_MEM_SPACE === Kokkos.HostSpace
 @test Kokkos.DEFAULT_HOST_MEM_SPACE === Kokkos.HostSpace
 
-# Since host == device, both of these are defined
-@test Kokkos.SHARED_MEMORY_SPACE === Kokkos.HostSpace
-@test Kokkos.SHARED_HOST_PINNED_MEMORY_SPACE === Kokkos.HostSpace
+skip_shared_mem = Kokkos.KOKKOS_VERSION < v"4.0.0"
+# Since host == device, both of these are defined to HostSpace
+@test Kokkos.SHARED_MEMORY_SPACE === Kokkos.HostSpace skip=skip_shared_mem
+@test Kokkos.SHARED_HOST_PINNED_MEMORY_SPACE === Kokkos.HostSpace skip=skip_shared_mem
 
 @test Kokkos.enabled(Kokkos.Serial)
 @test Kokkos.enabled(Kokkos.OpenMP)

@@ -1,7 +1,7 @@
 @testset "utils" begin
     
-@test Kokkos.require(; version = >=(v"4.0.0"), no_error = true)
-@test !Kokkos.require(; version = <(v"4.0.0"), no_error = true)
+@test Kokkos.require(; version = ≥(v"4.0.0"), no_error = true) == (Kokkos.KOKKOS_VERSION ≥ v"4.0.0")
+@test Kokkos.require(; version = <(v"4.0.0"), no_error = true) == (Kokkos.KOKKOS_VERSION < v"4.0.0")
 
 @test Kokkos.require(; dims = [1], no_error = true)
 @test Kokkos.require(; dims = [1, 2], no_error = true)

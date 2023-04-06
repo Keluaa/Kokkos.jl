@@ -1,5 +1,7 @@
 @testset "Views" begin
 
+import Kokkos: Idx, View, ViewPtr
+
 @test Idx <: Union{UInt64, Int64, UInt32, Int32}
 
 @test Kokkos.COMPILED_DIMS == (1, 2)
