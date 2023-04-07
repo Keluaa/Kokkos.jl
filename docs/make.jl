@@ -18,9 +18,12 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "Environment" => "environment.md",
+        "Calling a Kokkos library" => "calling_c.md",
         "Execution & Memory Spaces" => "spaces.md",
         "Views" => "views.md",
         "Compilation" => "compilation.md",
+        "Library Management" => "library_management.md",
         "Configuration options" => "config_options.md"
     ],
 )

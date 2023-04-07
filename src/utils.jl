@@ -78,6 +78,34 @@ end
 
 
 """
+    finalize()
+
+Calls `Kokkos::finalize()`.
+
+!!! warning
+
+    Kokkos requires that all view destructors should be called __before__ calling `finalize`.
+"""
+function finalize end
+
+
+"""
+    is_initialized()
+
+Return `Kokkos::is_initialized()`.
+"""
+function is_initialized end
+
+
+"""
+    is_finalized()
+
+Return `Kokkos::is_finalized()`.
+"""
+function is_finalized end
+
+
+"""
     versioninfo(io::IO = stdout; internal=true, verbose=false)
 
 Print the version and various information about the underlying Kokkos library.

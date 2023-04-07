@@ -1,6 +1,6 @@
 @testset "Views" begin
 
-import Kokkos: Idx, View, ViewPtr
+import Kokkos: Idx, View
 
 @test Idx <: Union{UInt64, Int64, UInt32, Int32}
 

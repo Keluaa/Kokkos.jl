@@ -8,6 +8,63 @@ using which options.
 abstract type KokkosProject end
 
 
+"""
+    build_dir(project::KokkosProject)
+
+Return the build directory of `project`.
+"""
+function build_dir end
+
+
+"""
+    source_dir(project::KokkosProject)
+
+Return the source directory of `project`.
+"""
+function source_dir end
+
+
+"""
+    lib_path(project::KokkosProject)
+
+Return the path to the target library for `project`.
+"""
+function lib_path end
+
+
+"""
+    options(project::KokkosProject)
+
+Return the set of options to the target library for `project`.
+"""
+function options end
+
+
+"""
+    option!(project::KokkosProject, name::String, val; prefix="Kokkos_")
+
+Sets the given Kokkos option for the `project` to `val`.
+This will result in the following compilation option: `\$(prefix)\$(name)=\$(val)`.
+"""
+function option! end
+
+
+"""
+    configuration_changed(project::KokkosProject)
+
+Return `true` if the configuration of `project` changed, and needs to be recompiled.
+"""
+function configuration_changed end
+
+
+"""
+    configuration_changed!(project::KokkosProject, val::Bool = true)
+
+Sets the configuration state of `project` to `val`.
+"""
+function configuration_changed! end
+
+
 function read_stdout_file(file)
     flush(file)
     seekstart(file)
@@ -244,7 +301,7 @@ end
 
 Construct a project from another, for a different target.
 
-The source and build directories will stay the same, as for all other options.
+The source and build directories will stay the same, and options will be shared.
 """
 function CMakeKokkosProject(project::CMakeKokkosProject, target, target_lib_path)
     lib_path = normpath(project.build_dir, target_lib_path) |> abspath

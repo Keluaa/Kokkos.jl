@@ -28,7 +28,7 @@ function call_perfect_gas(lib_1D, range, γ, ρ::V, u::V, v::V, E::V, p::V, c::V
     #     view& p, view& c
     # )
     ccall(Kokkos.get_symbol(lib_1D, :perfect_gas),
-        Cvoid, (Idx, Idx, Float64, ViewPtr, ViewPtr, ViewPtr, ViewPtr, ViewPtr, ViewPtr),
+        Cvoid, (Idx, Idx, Float64, Ref{V}, Ref{V}, Ref{V}, Ref{V}, Ref{V}, Ref{V}),
         first(range), last(range), γ, ρ, u, v, E, p, c    
     )
 end
@@ -42,7 +42,7 @@ function call_perfect_gas(lib_2D, range_x, range_y, γ, ρ::V, u::V, v::V, E::V,
     #     view& p, view& c
     # )
     ccall(Kokkos.get_symbol(lib_2D, :perfect_gas),
-        Cvoid, (Idx, Idx, Idx, Idx, Float64, ViewPtr, ViewPtr, ViewPtr, ViewPtr, ViewPtr, ViewPtr),
+        Cvoid, (Idx, Idx, Idx, Idx, Float64, Ref{V}, Ref{V}, Ref{V}, Ref{V}, Ref{V}, Ref{V}),
         first(range_x), first(range_y), last(range_x), last(range_y), γ, ρ, u, v, E, p, c    
     )
 end

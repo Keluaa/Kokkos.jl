@@ -5,7 +5,7 @@ import ..Kokkos: ExecutionSpace, MemorySpace
 import ..Kokkos: KOKKOS_LIB_PATH, COMPILED_MEM_SPACES, DEFAULT_DEVICE_MEM_SPACE
 import ..Kokkos: memory_space, accessible, main_space_type
 
-export View, ViewPtr, Idx
+export View, Idx
 export COMPILED_TYPES, COMPILED_DIMS
 export label
 
@@ -23,6 +23,15 @@ achieved by calling Kokkos kernels compiled from C++.
 It is supposed that all view accesses are done from the default host execution space. Since the view
 may be stored in a memory space different from the host, it may be invalid to access its elements:
 if [`accessible`](@ref)`(MemSpace)` is `false`, then all view accesses will throw an error.
+
+Views are created through [CxxWrap.jl](https://github.com/JuliaInterop/CxxWrap.jl), which adds
+automatically a [finalizer](https://docs.julialang.org/en/v1/base/base/#Base.finalizer) to all
+objects which calls the view's destructor when the Julia object is deleted by the garbage collector.
+
+It is important to understand that for a view to be properly disposed of, there is two requirements:
+ - the library containing its destructor is still loaded. Views created by the `Kokkos.jl` library
+   will always meet this requirement.
+ - Kokkos is not [`finalized`](@ref).
 """
 abstract type View{T, D, MemSpace} <: Base.AbstractArray{T, D} end
 
@@ -203,10 +212,6 @@ Base.similar(::View{<: Any,<: Any, M}, ::Type{T}, dims::Dims{D}) where {T, D, M}
 
 # === Pointer conversion ===
 
-
-# TODO: make this an UnionAll, to be able to write `ViewPtr{Float64, 2}` or `ViewPtr{Float64, 1, HostSpace}`
-const ViewPtr = Ptr{Nothing}
-
-Base.unsafe_convert(::Type{ViewPtr}, v::View) = v.cpp_object
+Base.cconvert(::Type{Ref{V}}, v::V) where {V <: View} = Ptr{Nothing}(v.cpp_object)
 
 end

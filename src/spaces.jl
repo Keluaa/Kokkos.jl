@@ -52,6 +52,13 @@ Sub-types:
  - `HIP`
  - `HPX`
  - `SYCL`
+
+All sub-types are always defined, but only some of them are [`enabled`](@ref).
+To enable an execution space, you must enable its related Kokkos backend, e.g.
+'-DKokkos_ENABLE_SERIAL=ON' for the `Serial` execution space.
+
+To do this you can set the [backends](@ref) option with `Kokkos.set_backends`,
+or specify the option directly through [kokkos_options](@ref).
 """
 abstract type ExecutionSpace <: Space          end
 abstract type Serial         <: ExecutionSpace end
@@ -78,6 +85,9 @@ Sub-types:
  - `HIPSpace`
  - `HIPHostPinnedSpace`
  - `HIPManagedSpace`
+
+Sub-types work the same as for [`ExecutionSpace`](@ref). They can be enabled by enabling their
+respective backend.
 """
 abstract type MemorySpace           <: Space       end
 abstract type HostSpace             <: MemorySpace end
