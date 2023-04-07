@@ -28,7 +28,6 @@ endif()
 add_library(KokkosWrapper SHARED
         views.cpp views.h
         kokkos_wrapper.cpp kokkos_wrapper.h
-        jlcxx_val.h
         execution_spaces.h
         memory_spaces.h
         spaces.cpp spaces.h)
