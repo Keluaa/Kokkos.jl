@@ -48,25 +48,15 @@ struct ViewWrap : public Kokkos::View<T_Ptr, MemSpace>
 };
 
 
-bool is_integer(jl_datatype_t* v)
+template<typename>
+struct ViewCtorWrap {};
+
+
+template<typename... Dims>
+std::array<size_t, KOKKOS_MAX_DIMENSIONS> unpack_dims(const std::tuple<Dims...>& dims)
 {
-    return v == jl_int64_type || v == jl_int32_type || v == jl_uint64_type || v == jl_uint32_type;
-}
+    static_assert(sizeof...(Dims) <= KOKKOS_MAX_DIMENSIONS, "Kokkos supports only up to 8 dimensions");
 
-
-size_t unbox_dim_size(jl_datatype_t* type, const uint64_t* v)
-{
-    constexpr size_t LOW_32BITS_MASK = 0xFF'FF'FF'FF;
-    if (type == jl_int64_type) return *v;
-    if (type == jl_int32_type) return *v & LOW_32BITS_MASK;
-    if (type == jl_uint64_type) return *v;
-    if (type == jl_uint32_type) return *v & LOW_32BITS_MASK;
-    jl_error("unknown dimension integer type argument");
-}
-
-
-std::array<size_t, KOKKOS_MAX_DIMENSIONS> unpack_dims(size_t dim, jl_value_t* dims)
-{
     std::array<size_t, KOKKOS_MAX_DIMENSIONS> N = {
             KOKKOS_IMPL_CTOR_DEFAULT_ARG,
             KOKKOS_IMPL_CTOR_DEFAULT_ARG,
@@ -78,28 +68,12 @@ std::array<size_t, KOKKOS_MAX_DIMENSIONS> unpack_dims(size_t dim, jl_value_t* di
             KOKKOS_IMPL_CTOR_DEFAULT_ARG
     };
 
-    auto* dims_t = (jl_datatype_t*) jl_typeof(dims);
-
-    if (is_integer(dims_t)) {
-        N.at(0) = jl_unbox_uint64(dims);
-    } else if (jl_is_tuple(dims)) {
-        size_t const len = jl_nparams(dims_t);
-        if (len > dim) {
-            jl_errorf("too many dimensions for Kokkos.View{T, %d} constructor: %d (maximum is %d)", dim, len, dim);
-        }
-        for (size_t i = 0; i < len; i++) {
-            auto* field_ptr = (uint64_t*) (((char*) jl_data_ptr(dims)) + jl_field_offset(dims_t, (int) i));
-            auto* d_t = (jl_datatype_t*) jl_tparam(dims_t, i);
-            if (is_integer(d_t)) {
-                N.at(i) = unbox_dim_size(d_t, field_ptr);
-            } else {
-                jl_errorf("dimension %d in Kokkos.View{T, %d} constructor doesn't have a valid integer type", i+1, dim);
-            }
-        }
-    } else {
-        jl_errorf("incompatible type for `dims` argument of Kokkos.View{T, %d} constructor: %s",
-                  dim, jl_typename_str((jl_value_t*) dims_t));
-    }
+    std::apply(
+    [&](const Dims&... dim)
+    {
+        std::size_t n{0};
+        ((N[n++] = dim), ...);
+    }, dims);
 
     return N;
 }
@@ -110,10 +84,11 @@ const MemSpace* unbox_memory_space_arg(jl_value_t* boxed_memory_space)
 {
     if (jl_is_nothing(boxed_memory_space)) {
         return nullptr;
+
     } else if (jl_typeis(boxed_memory_space, jlcxx::julia_type<MemSpace>())) {
         return jlcxx::unbox<MemSpace*>(boxed_memory_space);
     } else {
-        jl_type_error_rt("Kokkos.View", "memory space",  (jl_value_t*) jlcxx::julia_type<MemSpace>(), boxed_memory_space);
+        jl_type_error_rt("Kokkos.View constructor", "memory space assignment",  (jl_value_t*) jlcxx::julia_type<MemSpace>(), boxed_memory_space);
     }
 }
 
@@ -124,19 +99,19 @@ const MemSpace* unbox_memory_space_arg(jl_value_t* boxed_memory_space)
  * `pad` specifies whether or not to allow padding of dimensions.
  *
  * `dims` is a Julia value:
- *  - a boxed integer (Int32, Int64, UInt32 or UInt64): dimension of the first dimension, only for 1D views
- *  - a tuple of integers (Int32, Int64, UInt32 or UInt64): dimensions of each dimensions
+ *  - a boxed integer (Int64): dimension of the first dimension, only for 1D views
+ *  - a tuple of integers (Int64): dimensions of each dimensions
  *
  * `boxed_memory_space` is a Julia value:
  *  - `nothing`: default construct the memory space object in-place
  *  - an instance of `MemorySpace`: use the boxed C++ instance
  */
-template<typename T, typename DimCst, typename MemSpace>
-ViewWrap<T, DimCst, MemSpace> create_view(jl_value_t* dims, jl_value_t* boxed_memory_space, const char* label, bool init, bool pad)
+template<typename T, typename DimCst, typename MemSpace, typename... Dims>
+ViewWrap<T, DimCst, MemSpace> create_view(const std::tuple<Dims...>& dims, jl_value_t* boxed_memory_space, const char* label, bool init, bool pad)
 {
-    static_assert(DimCst::value <= KOKKOS_MAX_DIMENSIONS, "Kokkos supports only up to 8 dimensions");
+    static_assert(DimCst::value == sizeof...(Dims));
 
-    auto [N0, N1, N2, N3, N4, N5, N6, N7] = unpack_dims(DimCst::value, dims);
+    auto [N0, N1, N2, N3, N4, N5, N6, N7] = unpack_dims(dims);
     const std::string label_str(label);
 
     const auto* mem_space_p = unbox_memory_space_arg<MemSpace>(boxed_memory_space);
@@ -198,6 +173,28 @@ jl_value_t* build_abstract_array_type(jlcxx::Module& mod, int dim, jl_datatype_t
 }
 
 
+template<typename T, int D, typename MemorySpace>
+jl_datatype_t* build_array_constructor_type(jlcxx::Module& mod)
+{
+    jl_value_t** stack;
+    JL_GC_PUSHARGS(stack, 4);
+
+    stack[0] = (jl_value_t*) jlcxx::julia_type<T>();
+    stack[1] = jl_box_int64(D);
+    stack[2] = (jl_value_t*) jlcxx::julia_type<SpaceInfo<MemorySpace>>();
+
+    jl_module_t* kokkos_module = mod.julia_module();
+    jl_value_t* view_t = jl_get_global(kokkos_module, jl_symbol("View"));
+    stack[3] = view_t;
+
+    jl_value_t* array_ctor_t = jl_apply_type(view_t, stack, 3);
+
+    JL_GC_POP();
+
+    return (jl_datatype_t*) array_ctor_t;
+}
+
+
 struct RegisterUtils
 {
     template<std::size_t>
@@ -252,6 +249,25 @@ struct RegisterUtils
             register_inaccessible_operator(wrapped, std::make_index_sequence<D>{});
         }
     }
+
+    template<typename view_dim, typename MemorySpace, typename Wrapped>
+    static void register_constructor(jlcxx::Module& mod) {
+        using type = typename Wrapped::type;
+        using ctor_type = ViewCtorWrap<Wrapped>;
+        constexpr size_t D = view_dim::value;
+
+        jl_datatype_t* view_ctor_type = build_array_constructor_type<type, D, MemorySpace>(mod);
+        jlcxx::set_julia_type<ctor_type>(view_ctor_type);
+
+        using DimsTuple = decltype(std::tuple_cat(std::array<int64_t, D>()));
+
+        mod.method("alloc_view",
+        [](jlcxx::SingletonType<ctor_type>, const DimsTuple& dims, jl_value_t* boxed_memory_space,
+                const char* label, bool init, bool pad)
+        {
+            return create_view<type, view_dim, MemorySpace>(dims, boxed_memory_space, label, init, pad);
+        });
+    }
 };
 
 
@@ -276,24 +292,15 @@ void register_view_types(jlcxx::Module& mod)
             >([&](auto wrapped)
     {
         using WrappedT = typename decltype(wrapped)::type;
-        using type = typename WrappedT::type;
 
-        wrapped.method("alloc_view",
-        [](jlcxx::SingletonType<type>, jlcxx::Val<int64_t, D>, jlcxx::SingletonType<SpaceInfo<MemorySpace>>,
-                jl_value_t* dims, jl_value_t* boxed_memory_space, const char* label, bool init, bool pad)
-        {
-            return create_view<type, view_dim, MemorySpace>(dims, boxed_memory_space, label, init, pad);
-        });
+        RegisterUtils::register_constructor<view_dim, MemorySpace, WrappedT>(mod);
+        RegisterUtils::register_access_operator<D, MemorySpace>(wrapped);
+
         wrapped.method("view_size", &WrappedT::size);
         wrapped.method("view_data", &WrappedT::data);
         wrapped.method("label", &WrappedT::label);
-        RegisterUtils::register_access_operator<D, MemorySpace>(wrapped);
         wrapped.method("dimension", [](const WrappedT&) { return D; });
-        wrapped.method("get_dims", [](const WrappedT& view)
-        {
-            auto dims = view.get_dims();
-            return std::tuple_cat(dims);
-        });
+        wrapped.method("get_dims", [](const WrappedT& view) { return std::tuple_cat(view.get_dims()); });
     });
 }
 

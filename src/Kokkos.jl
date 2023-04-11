@@ -24,6 +24,7 @@ const KOKKOS_BUILD_DIR     = @load_preference("build_dir", joinpath(pwd(), ".kok
 
 include("dynamic_build.jl")
 include("kokkos_lib.jl")
+include("utils.jl")
 
 include("kokkos_wrapper.jl")
 using .KokkosWrapper
@@ -43,6 +44,13 @@ end
 
 
 include("configuration.jl")
-include("utils.jl")
+
+
+"""
+    KOKKOS_VERSION::VersionNumber
+
+The Kokkos version currently loaded.
+"""
+const KOKKOS_VERSION = kokkos_version()
 
 end

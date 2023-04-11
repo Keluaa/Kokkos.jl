@@ -3,7 +3,7 @@ module Views
 using CxxWrap
 import ..Kokkos: ExecutionSpace, MemorySpace
 import ..Kokkos: KOKKOS_LIB_PATH, COMPILED_MEM_SPACES, DEFAULT_DEVICE_MEM_SPACE
-import ..Kokkos: memory_space, accessible, main_space_type
+import ..Kokkos: memory_space, accessible, main_space_type, finalize
 
 export View, Idx
 export COMPILED_TYPES, COMPILED_DIMS
@@ -31,7 +31,7 @@ objects which calls the view's destructor when the Julia object is deleted by th
 It is important to understand that for a view to be properly disposed of, there is two requirements:
  - the library containing its destructor is still loaded. Views created by the `Kokkos.jl` library
    will always meet this requirement.
- - Kokkos is not [`finalized`](@ref).
+ - [`finalize`](@ref) wasn't called.
 """
 abstract type View{T, D, MemSpace} <: Base.AbstractArray{T, D} end
 
@@ -74,34 +74,9 @@ By default, the following types are compiled: Float64 (double), Float32 (float) 
 const COMPILED_TYPES = compiled_types()
 
 
-"""
-    alloc_view(::Type{T}, dims::Union{Integer, Tuple{Vararg{<:Integer}}};
-        mem_space=DEFAULT_DEVICE_MEM_SPACE,
-        label="",
-        zero_fill=false,
-        dim_pad=false
-    )
-
-Allocate a new `Kokkos::View` of type `T` with the given `dims` in the memory space `mem_space`.
-
-`dims` is either an integer (1D), or a tuple of integers.
-
-Optional arguments:
- - `mem_space` is the memory space of the view, a `Kokkos.ExecutionSpace`. It is by default the
-   memory space of the device: [`DEFAULT_DEVICE_MEM_SPACE`](@ref). It can be given as a type: then a
-   new memory space will be default-constructed.
- - `label` is the debug label of the view.
- - `zero_fill` controls the initialization of the view. If `true`, all elements will be set to `0`.
-   Uses `Kokkos::WithoutInitializing` internally.
- - `dim_pad` controls the padding of dimensions. Uses `Kokkos::AllowPadding` internally.
-
-See [the Kokkos documentation about `Kokkos::view_alloc()`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/view_alloc.html)
-"""
-function alloc_view end
-
-# Instances of `alloc_view` for each compiled type, dimension and memory space are defined from the C++ library
-
-function alloc_view(::Type{T}, ::Val{D}, ::Type{S}, dims, mem_space, label, zero_fill, dim_pad) where {T, D, S}
+# Instances of `alloc_view` for each compiled type, dimension and memory space are defined in
+# 'views.cpp', in 'register_constructor'.
+function alloc_view(::Type{View{T, D, S}}, dims::Dims{D}, mem_space, label, zero_fill, dim_pad) where {T, D, S}
     # Fallback: error handler
     if !(D in COMPILED_DIMS)
         dims_str = join(string.(COMPILED_DIMS) .* 'D', ", ", " and ")
@@ -126,29 +101,6 @@ function alloc_view(::Type{T}, ::Val{D}, ::Type{S}, dims, mem_space, label, zero
 end
 
 
-function alloc_view(::Type{T}, D::Int, dims;
-    mem_space = DEFAULT_DEVICE_MEM_SPACE,
-    label = "",
-    zero_fill = false,
-    dim_pad = false
-) where {T}
-    if mem_space isa DataType
-        # Default construction of the memory space
-        if mem_space <: ExecutionSpace
-            return alloc_view(T, Val(D), memory_space(mem_space), dims, nothing, label, zero_fill, dim_pad)
-        else
-            return alloc_view(T, Val(D), mem_space, dims, nothing, label, zero_fill, dim_pad)
-        end
-    else
-        # `mem_space` is an instance of a memory space
-        return alloc_view(T, Val(D), typeof(mem_space), dims, mem_space, label, zero_fill, dim_pad)
-    end
-end
-
-
-alloc_view(::Type{T}, dims; kwargs...) where {T} = alloc_view(T, length(dims), dims; kwargs...)
-
-
 """
     accessible(::View)
 
@@ -168,20 +120,112 @@ function label end
 # === Constructors ===
 
 """
-    View{T}(undef, dims; kwargs...)
-    View{T}(dims; kwargs...)
+    View{T, D, S}(dims;
+        mem_space = DEFAULT_DEVICE_MEM_SPACE,
+        label = "",
+        zero_fill = true,
+        dim_pad = false
+    )
 
-Construct an N-dimensional `View{T}`. `dims` is either an integer or a tuple of integers.
+Construct an N-dimensional `View{T}`.
 
-See [`alloc_view`](@ref) for the documentation about the `kwargs`, allowing to specify the memory
-space or label of the view.
+`D` can be deduced from `dims`, which can either be a `NTuple{D, Integer}` or `D` integers.
 
-If `undef` is not given, then `zero_fill=true` is passed to [`alloc_view`](@ref).
+`S` defaults to the type of `mem_space`. `mem_space` can be an [`ExecutionSpace`](@ref), in which
+case it is converted to a [`MemorySpace`](@ref) with [`memory_space`](@ref). `mem_space` can be
+either an instance of a [`MemorySpace`](@ref) or one of the main types of memory spaces, in which
+case an instance of a [`MemorySpace`](@ref) is default constructed (behaviour of Kokkos by default).
+
+The `label` is the debug label of the view.
+
+If `zero_fill=true`, all elements will be set to `0`. Uses `Kokkos::WithoutInitializing` internally.
+
+`dim_pad` controls the padding of dimensions. Uses `Kokkos::AllowPadding` internally. If `true`,
+then a view might not have a layout identical to a classic `Array`, for better memory alignment.
+
+See [the Kokkos documentation about `Kokkos::view_alloc()`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/view_alloc.html)
+for more info.
 """
-View{T}(::UndefInitializer, dims; kwargs...) where T = alloc_view(T, length(dims), dims; kwargs...)
-View{T}(dims; kwargs...) where T = alloc_view(T, length(dims), dims; zero_fill = true, kwargs...)
+function View{T, D, S}(dims::Dims{D};
+    mem_space = DEFAULT_DEVICE_MEM_SPACE,
+    label = "",
+    zero_fill = true,
+    dim_pad = false
+) where {T, D, S}
+    mem_space_t = mem_space isa DataType ? mem_space : typeof(mem_space)
+    if !(main_space_type(mem_space_t) <: S)
+        error("Conficting types for View constructor typing `$S` and `mem_space` kwarg: $mem_space \
+               (a $(main_space_type(mem_space_t)))")
+    end
 
-# TODO: better constructors which cover most combinasions, see CUDA.jl: https://github.com/JuliaGPU/CUDA.jl/blob/master/src/array.jl#L176 
+    if mem_space isa DataType
+        # Let `alloc_view` call the memory space constructor
+        return alloc_view(View{T, D, S}, dims, nothing, label, zero_fill, dim_pad)
+    else
+        return alloc_view(View{T, D, S}, dims, mem_space, label, zero_fill, dim_pad)
+    end
+end
+
+View{T, D, S}(::UndefInitializer, dims::Dims{D}; kwargs...) where {T, D, S} =
+    View{T, D, S}(dims; kwargs..., zero_fill=false)
+
+
+# View{T, D} to View{T, D, S}
+function View{T, D}(dims::Dims{D};
+    mem_space = DEFAULT_DEVICE_MEM_SPACE,
+    label = "",
+    zero_fill = true,
+    dim_pad = false
+) where {T, D}
+    if mem_space isa DataType
+        # Default construction of the memory space (delegated to `alloc_view`)
+        (mem_space <: ExecutionSpace) && (mem_space = memory_space(mem_space))
+        return View{T, D, mem_space}(dims; mem_space, label, zero_fill, dim_pad)
+    elseif mem_space isa MemorySpace
+        return View{T, D, typeof(mem_space)}(dims; mem_space, label, zero_fill, dim_pad)
+    else
+        throw(TypeError(:View, "constructor", MemorySpace, mem_space))
+    end
+end
+
+View{T, D}(::UndefInitializer, dims::Dims{D}; kwargs...) where {T, D} =
+    View{T, D}(dims; kwargs..., zero_fill=false)
+
+
+# Int... to Dims{D}
+"""
+    View{T, D, S}(undef, dims; kwargs...)
+
+Construct an N-dimensional `View{T}`, without initialization of its elements.
+
+Strictly equivalent to passing `zero_fill=false` to the `kwargs`.
+"""
+View{T, D, S}(::UndefInitializer, dims::Integer...; kwargs...) where {T, D, S} =
+    View{T, D, S}(convert(Tuple{Vararg{Int}}, dims); kwargs..., zero_fill=false)
+View{T, D}(::UndefInitializer, dims::Integer...; kwargs...) where {T, D} =
+    View{T, D}(convert(Tuple{Vararg{Int}}, dims); kwargs..., zero_fill=false)
+View{T, D, S}(dims::Integer...; kwargs...) where {T, D, S} =
+    View{T, D, S}(convert(Tuple{Vararg{Int}}, dims); kwargs...)
+View{T, D}(dims::Integer...; kwargs...) where {T, D} =
+    View{T, D}(convert(Tuple{Vararg{Int}}, dims); kwargs...)
+
+# Deduce `D` from the number of Ints
+View{T}(::UndefInitializer, dims::Dims{D}; kwargs...) where {T, D} =
+    View{T, D}(dims; kwargs..., zero_fill=false)
+View{T}(::UndefInitializer, dims::Integer...; kwargs...) where {T} =
+    View{T}(convert(Tuple{Vararg{Int}}, dims); kwargs..., zero_fill=false)
+View{T}(dims::Dims{D}; kwargs...) where {T, D} =
+    View{T, D}(dims; kwargs...)
+View{T}(dims::Integer...; kwargs...) where {T} =
+    View{T}(convert(Tuple{Vararg{Int}}, dims); kwargs...)
+
+# Empty constructors
+View{T, D, S}(; kwargs...) where {T, D, S} =
+    View{T, D, S}(ntuple(Returns(0), D); kwargs..., zero_fill=false)
+View{T, D}(; kwargs...) where {T, D} =
+    View{T, D}(ntuple(Returns(0), D); kwargs..., zero_fill=false)
+View{T}(; kwargs...) where {T} =
+    View{T}((0,); kwargs..., zero_fill=false)
 
 
 # === Array interface ===
@@ -201,13 +245,13 @@ Base.@propagate_inbounds Base.setindex!(v::View{T, D}, val, I::Vararg{Int, D}) w
     (elem_ptr(v, I...)[] = convert(T, val))
 
 
-# TODO: copy 'dim_pad' too
+# TODO: copy 'dim_pad' too (and LayoutType in the future)
 Base.similar(a::View{T, D, M}) where {T, D, M} =
-    alloc_view(T, D, size(a); zero_fill=false, mem_space=main_space_type(M))
-Base.similar(::View{T, <: Any, M}, dims::Dims{D}) where {T, D, M} =
-    alloc_view(T, D, dims; zero_fill=false, mem_space=main_space_type(M))
-Base.similar(::View{<: Any,<: Any, M}, ::Type{T}, dims::Dims{D}) where {T, D, M} =
-    alloc_view(T, D, dims; zero_fill=false, mem_space=main_space_type(M))
+    View{T, D, main_space_type(M)}(size(a); zero_fill=false)
+Base.similar(::View{T, <:Any, M}, dims::Dims{D}) where {T, D, M} =
+    View{T, D, main_space_type(M)}(dims; zero_fill=false)
+Base.similar(::View{<:Any, <:Any, M}, ::Type{T}, dims::Dims{D}) where {T, D, M} =
+    View{T, D, main_space_type(M)}(dims; zero_fill=false)
 
 
 # === Pointer conversion ===

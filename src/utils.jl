@@ -1,13 +1,5 @@
 
 """
-    KOKKOS_VERSION::VersionNumber
-
-The Kokkos version currently loaded.
-"""
-const KOKKOS_VERSION = kokkos_version()
-
-
-"""
     set_omp_vars(;
         places = "cores",
         bind = "close",

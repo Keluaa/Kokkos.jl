@@ -8,7 +8,6 @@ CurrentModule = Kokkos.Views
 
 ```@docs
 View
-alloc_view
 accessible(::View)
 label
 ```

@@ -91,11 +91,31 @@ v5 = copy(v3')
 @test typeof(v5) == typeof(v3)
 @test all(v5 .== v3')
 
-# TODO
-# v6 = View{Float64, 2}(undef, (1, 2))
-# v6 = View{Float64, 2}(undef, 1, 2)
-# v6 = View{Float64, 2}((1, 2))
-# v6 = View{Float64, 2}(1, 2)
+v6 = View{Float64, 2}(undef, (1, 2))
+v6_simili = [
+    View{Float64, 2, Kokkos.HostSpace}(undef, (1, 2)),
+    View{Float64, 2, Kokkos.HostSpace}(undef, 1, 2),
+    View{Float64, 2, Kokkos.HostSpace}((1, 2)),
+    View{Float64, 2, Kokkos.HostSpace}(1, 2),
+    View{Float64, 2}(undef, (1, 2)),
+    View{Float64, 2}(undef, 1, 2),
+    View{Float64, 2}((1, 2)),
+    View{Float64, 2}(1, 2),
+    View{Float64}(undef, (1, 2)),
+    View{Float64}(undef, 1, 2),
+    View{Float64}((1, 2)),
+    View{Float64}(1, 2),
+    View{Float64}(1, 2; dim_pad=true),
+    View{Float64}(1, 2; label=""),
+    View{Float64}(1, 2; mem_space=Kokkos.HostSpace)
+]
+for v6_s in v6_simili
+    @test typeof(v6) == typeof(v6_s)
+    @test size(v6) == size(v6_s)
+end
+
+@test size(View{Float64}()) == (0,)
+@test size(View{Float64, 2}()) == (0, 0)
 
 @test_throws "`Int32` is not compiled" View{Int32}(undef, n1)
 @test_throws "`Kokkos.View3D` cannot" View{Int64}(undef, (2, 2, 2))
