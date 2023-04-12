@@ -56,6 +56,8 @@ jobs:
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
       - run: |
           julia --project=docs -e '
+            using Pkg
+            Pkg.precompile()
             using Documenter: DocMeta, doctest
             using Kokkos
             DocMeta.setdocmeta!(Kokkos, :DocTestSetup, :(using Kokkos); recursive=true)

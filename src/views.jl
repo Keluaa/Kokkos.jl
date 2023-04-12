@@ -249,7 +249,7 @@ View{T}(; kwargs...) where {T} =
     view_wrap(::Type{View{T, D, S}}, array::DenseArray{T, D})
     view_wrap(::Type{View{T, D, S}}, d::NTuple{D, Int}, p::Ptr{T})
 
-Construct a new [`Kokkos.View`](@ref) from the data of a Julia-allocated array.
+Construct a new [`View`](@ref) from the data of a Julia-allocated array.
 The returned view does not own the data, and no copy is made.
 
 The memory space `S` defaults to [`DEFAULT_HOST_MEM_SPACE`](@ref).
