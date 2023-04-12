@@ -4,6 +4,8 @@ push!(LOAD_PATH, joinpath(@__DIR__, "../"))
 using Kokkos
 using Documenter
 
+ci = get(ENV, "CI", "") == "true"
+
 DocMeta.setdocmeta!(Kokkos, :DocTestSetup, :(using Kokkos); recursive=true)
 
 makedocs(;
@@ -27,3 +29,12 @@ makedocs(;
         "Configuration options" => "config_options.md"
     ],
 )
+
+
+if ci
+    @info "Deploying..."
+    deploydocs(
+        repo = "github.com/Keluaa/Kokkos.jl.git",
+        push_preview = true
+    )
+end
