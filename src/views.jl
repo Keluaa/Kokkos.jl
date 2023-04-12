@@ -2,12 +2,12 @@ module Views
 
 using CxxWrap
 import ..Kokkos: ExecutionSpace, MemorySpace
-import ..Kokkos: KOKKOS_LIB_PATH, COMPILED_MEM_SPACES, DEFAULT_DEVICE_MEM_SPACE
+import ..Kokkos: KOKKOS_LIB_PATH, COMPILED_MEM_SPACES, DEFAULT_DEVICE_MEM_SPACE, DEFAULT_HOST_MEM_SPACE
 import ..Kokkos: memory_space, accessible, main_space_type, finalize
 
 export View, Idx
 export COMPILED_TYPES, COMPILED_DIMS
-export label
+export label, view_wrap, view_data
 
 
 # The View type must be defined before loading the Kokkos wrapper library which depends on it
@@ -74,10 +74,7 @@ By default, the following types are compiled: Float64 (double), Float32 (float) 
 const COMPILED_TYPES = compiled_types()
 
 
-# Instances of `alloc_view` for each compiled type, dimension and memory space are defined in
-# 'views.cpp', in 'register_constructor'.
-function alloc_view(::Type{View{T, D, S}}, dims::Dims{D}, mem_space, label, zero_fill, dim_pad) where {T, D, S}
-    # Fallback: error handler
+function error_view_not_compiled(::Type{View{T, D, S}}) where {T, D, S}
     if !(D in COMPILED_DIMS)
         dims_str = join(string.(COMPILED_DIMS) .* 'D', ", ", " and ")
         pluralized_str = length(COMPILED_DIMS) > 1 ? "are" : "is"
@@ -101,6 +98,14 @@ function alloc_view(::Type{View{T, D, S}}, dims::Dims{D}, mem_space, label, zero
 end
 
 
+# Instances of `alloc_view` for each compiled type, dimension and memory space are defined in
+# 'views.cpp', in 'register_constructor'.
+function alloc_view(::Type{View{T, D, S}}, dims::Dims{D}, mem_space, label, zero_fill, dim_pad) where {T, D, S}
+    # Fallback: error handler
+    error_view_not_compiled(View{T, D, S})
+end
+
+
 """
     accessible(::View)
 
@@ -115,6 +120,14 @@ accessible(::View{T, D, MemSpace}) where {T, D, MemSpace} = accessible(MemSpace)
 Return the label of the `View`.
 """
 function label end
+
+
+"""
+    view_data(::View)
+
+The pointer to the data of the `View`.
+"""
+function view_data end
 
 
 # === Constructors ===
@@ -226,6 +239,44 @@ View{T, D}(; kwargs...) where {T, D} =
     View{T, D}(ntuple(Returns(0), D); kwargs..., zero_fill=false)
 View{T}(; kwargs...) where {T} =
     View{T}((0,); kwargs..., zero_fill=false)
+
+
+# TODO: add an array layout parameter
+# Instances of `view_wrap` for each compiled type, dimension and memory space are defined in
+# 'views.cpp', in 'register_constructor'.
+"""
+    view_wrap(array::DenseArray{T, D})
+    view_wrap(::Type{View{T, D, S}}, array::DenseArray{T, D})
+    view_wrap(::Type{View{T, D, S}}, d::NTuple{D, Int}, p::Ptr{T})
+
+Construct a new [`Kokkos.View`](@ref) from the data of a Julia-allocated array.
+The returned view does not own the data, and no copy is made.
+
+The memory space `S` defaults to [`DEFAULT_HOST_MEM_SPACE`](@ref).
+
+!!! warning
+
+    Julia arrays have a column-major layout.
+    Kokkos can handle both row and column major array layouts, but it is imposed by the memory
+    space. If the layouts don't match the view behaviour is unpredictable.
+    This only affects 2D arrays and above.
+
+!!! warning
+
+    The returned view does not hold a reference to the original Julia array.
+    It is the responsability of the user to make sure the original array is kept alive as long as
+    the view should be accessed.
+"""
+view_wrap(::Type{View{T, D, S}}, ::Dims{D}, ::Ptr{T}) where {T, D, S} =
+    error_view_not_compiled(View{T, D, S})
+view_wrap(::Type{View{T, D, S}}, a::DenseArray{T, D}) where {T, D, S} =
+    view_wrap(View{T, D, main_space_type(S)}, size(a), pointer(a))
+view_wrap(::Type{View{T, D}}, a::DenseArray{T, D}) where {T, D} =
+    view_wrap(View{T, D, DEFAULT_HOST_MEM_SPACE}, a)
+view_wrap(::Type{View{T}}, a::DenseArray{T, D}) where {T, D} =
+    view_wrap(View{T, D}, a)
+view_wrap(a::DenseArray{T, D}) where {T, D} =
+    view_wrap(View{T, D}, a)
 
 
 # === Array interface ===

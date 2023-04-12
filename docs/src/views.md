@@ -10,6 +10,8 @@ CurrentModule = Kokkos.Views
 View
 accessible(::View)
 label
+view_data
+view_wrap
 ```
 
 ## Constants

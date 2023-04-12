@@ -107,7 +107,8 @@ const MemSpace* unbox_memory_space_arg(jl_value_t* boxed_memory_space)
  *  - an instance of `MemorySpace`: use the boxed C++ instance
  */
 template<typename T, typename DimCst, typename MemSpace, typename... Dims>
-ViewWrap<T, DimCst, MemSpace> create_view(const std::tuple<Dims...>& dims, jl_value_t* boxed_memory_space, const char* label, bool init, bool pad)
+ViewWrap<T, DimCst, MemSpace> create_view(const std::tuple<Dims...>& dims, jl_value_t* boxed_memory_space,
+                                          const char* label, bool init, bool pad)
 {
     static_assert(DimCst::value == sizeof...(Dims));
 
@@ -134,6 +135,16 @@ ViewWrap<T, DimCst, MemSpace> create_view(const std::tuple<Dims...>& dims, jl_va
             return ViewWrap<T, DimCst, MemSpace>(ctor_prop, N0, N1, N2, N3, N4, N5, N6, N7);
         }
     }
+}
+
+
+template<typename T, typename DimCst, typename MemSpace, typename... Dims>
+ViewWrap<T, DimCst, MemSpace> view_wrap(const std::tuple<Dims...>& dims, T* data_ptr)
+{
+    static_assert(DimCst::value == sizeof...(Dims));
+    auto [N0, N1, N2, N3, N4, N5, N6, N7] = unpack_dims(dims);
+    auto ctor_prop = Kokkos::view_wrap(data_ptr);
+    return ViewWrap<T, DimCst, MemSpace>(ctor_prop, N0, N1, N2, N3, N4, N5, N6, N7);
 }
 
 
@@ -266,6 +277,12 @@ struct RegisterUtils
                 const char* label, bool init, bool pad)
         {
             return create_view<type, view_dim, MemorySpace>(dims, boxed_memory_space, label, init, pad);
+        });
+
+        mod.method("view_wrap",
+        [](jlcxx::SingletonType<ctor_type>, const DimsTuple& dims, type* data_ptr)
+        {
+            return view_wrap<type, view_dim, MemorySpace>(dims, data_ptr);
         });
     }
 };

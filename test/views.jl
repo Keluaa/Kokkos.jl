@@ -121,4 +121,15 @@ end
 @test_throws "`Kokkos.View3D` cannot" View{Int64}(undef, (2, 2, 2))
 @test_throws "CudaSpace` is not compiled" View{Int64}(undef, n1; mem_space=Kokkos.CudaSpace)
 
+a7 = rand(Float64, 43)
+v7 = view_wrap(a7)
+@test all(v7 .== a7)
+@test pointer(a7) == Kokkos.view_data(v7)
+
+a8 = rand(Float64, 16)
+v8 = view_wrap(View{Float64, 2, Kokkos.DEFAULT_HOST_MEM_SPACE}, (4, 4), pointer(a8))
+@test v8[4, 4] == a8[16]
+@test all(reshape(v8', 16) .== a8)  # HostSpace defaults to row-major, hence the transposition
+@test pointer(a8) == Kokkos.view_data(v8)
+
 end

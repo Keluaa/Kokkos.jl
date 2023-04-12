@@ -32,7 +32,6 @@ makedocs(;
 
 
 if ci
-    @info "Deploying..."
     deploydocs(
         repo = "github.com/Keluaa/Kokkos.jl.git",
         push_preview = true

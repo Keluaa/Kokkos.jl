@@ -8,7 +8,7 @@ export KokkosProject, CMakeKokkosProject, CLibrary
 export configure, compile, clean, options, option!
 export is_valid, handle, load_lib, unload_lib, is_lib_loaded, get_symbol
 export memory_space, execution_space, enabled, main_space_type
-export accessible, label
+export accessible, label, view_wrap
 
 
 # Configuration options
