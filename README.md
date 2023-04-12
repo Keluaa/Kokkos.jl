@@ -5,7 +5,7 @@
 
 A Julia wrapper around the popular [Kokkos](https://github.com/kokkos/kokkos) C++ library.
 
-This package allows to create `Kokkos::View` objects, use them as an `Array` in Julia, and call a library using `ccall`.
+This package allows to create `Kokkos::View` objects, use them as an `Array` in Julia, and call a C++ Kokkos library using `ccall`.
 Most basic functionnalities of Kokkos (initialization, execution and memory spaces) are available.
 
 If the library you want to use is configured with CMake, it is possible to configure the project with `Kokkos.jl`.
