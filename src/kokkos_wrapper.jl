@@ -1,9 +1,11 @@
 module KokkosWrapper
 
 using libcxxwrap_julia_jll
+using LibGit2
 
 import ..Kokkos: CMakeKokkosProject
 import ..Kokkos: run_cmd_print_on_error, lib_path, build_dir, pretty_compile
+import ..Kokkos: LOCAL_KOKKOS_DIR, LOCAL_KOKKOS_VERSION_STR
 import ..Kokkos: KOKKOS_PATH, KOKKOS_CMAKE_OPTIONS, KOKKOS_LIB_OPTIONS, KOKKOS_BACKENDS
 import ..Kokkos: KOKKOS_VIEW_DIMS, KOKKOS_VIEW_TYPES, KOKKOS_BUILD_TYPE, KOKKOS_BUILD_DIR
 
@@ -33,7 +35,7 @@ If `KOKKOS_PATH` is not set, it defaults to the sources of Kokkos packaged with 
 This directory is meant to be passed to the CMake function `add_subdirectory` in order to load
 Kokkos as an in-tree build.
 """
-get_kokkos_dir() = @something KOKKOS_PATH normpath(@__DIR__, "..", "lib", "kokkos")
+get_kokkos_dir() = KOKKOS_PATH
 
 
 julia_type_to_c(::Type{Float64}) = "double"
@@ -61,7 +63,24 @@ function julia_str_type_to_c_type(t::String)
 end
 
 
+function setup_local_kokkos_source()
+    KOKKOS_PATH != LOCAL_KOKKOS_DIR && return
+    # Download our local Kokkos source files into a scratch directory
+    if isempty(readdir(LOCAL_KOKKOS_DIR))
+        @debug "Cloning Kokkos $LOCAL_KOKKOS_VERSION_STR to $LOCAL_KOKKOS_DIR..."
+        repo = LibGit2.clone("https://github.com/kokkos/kokkos.git", LOCAL_KOKKOS_DIR)
+    else
+        repo = LibGit2.GitRepo(LOCAL_KOKKOS_DIR)
+    end
+    release_commit = LibGit2.GitObject(repo, LOCAL_KOKKOS_VERSION_STR)
+    release_hash = string(LibGit2.GitHash(release_commit))
+    LibGit2.checkout!(repo, release_hash)
+end
+
+
 function create_kokkos_lib_project()
+    setup_local_kokkos_source()
+
     julia_exe_path = joinpath(Sys.BINDIR, "julia")
     !isfile(julia_exe_path) && error("Could not determine the position of the Julia executable")
 

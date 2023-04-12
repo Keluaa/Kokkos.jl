@@ -8,6 +8,19 @@ Configuration options are set using [`Preferences.jl`](https://github.com/JuliaP
 Your `LocalPreferences.jl` file will store the options needed by your current project in a `[Kokkos]` section.
 
 
+### kokkos_version
+
+The version of Kokkos to use. Must be a valid version tag in the official Kokkos repository (e.g.
+"4.0.00").
+
+Only used when [kokkos_path](@ref) is not set, and defaults to the packaged sources of kokkos.
+
+Each version is stored in the package's scratch space, and checked-out when loading the package.
+
+Can be set using `Kokkos.set_kokkos_version()`.
+The value for the current Julia session is stored in `Kokkos.LOCAL_KOKKOS_VERSION_STR`.
+
+
 ### kokkos_path
 
 The path to the Kokkos sources (not an installation!) to use.

@@ -3,6 +3,8 @@ module Kokkos
 using CxxWrap
 using Libdl
 using Preferences
+using Scratch
+using LibGit2
 
 export KokkosProject, CMakeKokkosProject, CLibrary
 export configure, compile, clean, options, option!
@@ -11,8 +13,11 @@ export memory_space, execution_space, enabled, main_space_type
 export accessible, label, view_wrap
 
 
+const LOCAL_KOKKOS_VERSION_STR = @load_preference("kokkos_version", "4.0.00")  # Must be a valid tag in the Kokkos repo
+const LOCAL_KOKKOS_DIR = @get_scratch!("kokkos-" * LOCAL_KOKKOS_VERSION_STR)
+
 # Configuration options
-const KOKKOS_PATH          = @load_preference("kokkos_path")  # Defaults to the packaged installation
+const KOKKOS_PATH          = @load_preference("kokkos_path", LOCAL_KOKKOS_DIR)
 const KOKKOS_CMAKE_OPTIONS = @load_preference("cmake_options", [])
 const KOKKOS_LIB_OPTIONS   = @load_preference("kokkos_options", Dict())
 const KOKKOS_BACKENDS      = @load_preference("backends", ["Serial", "OpenMP"])

@@ -2,6 +2,15 @@
 HAS_CONFIGURATION_CHANGED = false
 
 
+function set_kokkos_version(version::Union{Nothing, Missing, String})
+    @set_preferences!("kokkos_version" => version)
+    global HAS_CONFIGURATION_CHANGED = true
+    @info "New Kokkos version set to '$version'.\n\
+           Restart your Julia session for this change to take effect.\n\
+           Note that the version is only used if 'kokkos_path' is not set."
+end
+
+
 function set_kokkos_path(path::Union{Nothing, Missing, String})
     @set_preferences!("kokkos_path" => path)
     global HAS_CONFIGURATION_CHANGED = true
