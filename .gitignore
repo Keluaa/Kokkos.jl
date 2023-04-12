@@ -1,6 +1,5 @@
 /**/Manifest.toml
 /**/.kokkos-build/
-/LocalPreferences.toml
 /docs/build/
 /lib/kokkos_wrapper/.idea/
 /lib/kokkos_wrapper/cmake-build-*/
