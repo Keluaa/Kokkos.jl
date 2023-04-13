@@ -11,8 +11,16 @@ void register_space(jlcxx::Module& mod)
     const std::string impl_type_name = main_type_name + "Impl";
 
     mod.map_type<SpaceInfo<Space>>(main_type_name);
-    mod.add_type<Space>(impl_type_name, jlcxx::julia_type<SpaceInfo<Space>>())
-            .constructor();
+    auto space_type = mod.add_type<Space>(impl_type_name, jlcxx::julia_type<SpaceInfo<Space>>());
+    space_type.constructor();
+
+    if constexpr (Kokkos::is_memory_space<Space>::value) {
+        space_type.method("allocate", [](const Space& s, ptrdiff_t size) { return s.allocate(size); });
+        space_type.method("deallocate", [](const Space& s, void* ptr, ptrdiff_t size) { return s.deallocate(ptr, size); });
+    } else if constexpr (Kokkos::is_execution_space<Space>::value) {
+        space_type.method("concurrency", &Space::concurrency);
+        space_type.method("fence", &Space::fence);
+    }
 
     mod.method("kokkos_name", [](jlcxx::SingletonType<SpaceInfo<Space>>) { return std::string(Space::name()); });
     mod.method("enabled", [](jlcxx::SingletonType<SpaceInfo<Space>>) { return true; });

@@ -138,4 +138,6 @@ JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
     mod.method("is_finalized", (bool (*)()) &Kokkos::is_finalized);
 
     mod.method("kokkos_version", &kokkos_version);
+
+    mod.method("fence", &Kokkos::fence);
 }

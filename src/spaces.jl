@@ -2,6 +2,7 @@ module Spaces
 
 using CxxWrap
 import ..Kokkos: KOKKOS_LIB_PATH
+import ..Kokkos: ensure_kokkos_wrapper_loaded, fence
 
 export Space, ExecutionSpace, MemorySpace
 export Serial, OpenMP, OpenACC, OpenMPTarget, Threads, Cuda, HIP, HPX, SYCL
@@ -10,6 +11,7 @@ export COMPILED_EXEC_SPACES, COMPILED_MEM_SPACES
 export DEFAULT_DEVICE_SPACE, DEFAULT_HOST_SPACE, DEFAULT_DEVICE_MEM_SPACE, DEFAULT_HOST_MEM_SPACE
 export SHARED_MEMORY_SPACE, SHARED_HOST_PINNED_MEMORY_SPACE
 export memory_space, execution_space, enabled, kokkos_name, accessible, main_space_type
+export fence, concurrency, allocate, deallocate
 
 
 """
@@ -99,7 +101,7 @@ abstract type HIPHostPinnedSpace    <: MemorySpace end
 abstract type HIPManagedSpace       <: MemorySpace end
 
 
-# Defined in 'spaces_common.cpp', in 'post_register_space'
+# Defined in 'spaces.cpp', in 'post_register_space'
 """
     execution_space(space::Union{<:MemorySpace, Type{<:MemorySpace}})
 
@@ -110,7 +112,7 @@ execution_space(::Type{S}) where {S <: ExecutionSpace} = error("space $S must be
 execution_space(::Type{S}) where {S <: MemorySpace} = error("space $S is not compiled")
 
 
-# Defined in 'spaces_common.cpp', in 'post_register_space'
+# Defined in 'spaces.cpp', in 'post_register_space'
 """
     memory_space(space::Union{<:ExecutionSpace, Type{<:ExecutionSpace}})
 
@@ -121,7 +123,7 @@ memory_space(::Type{S}) where {S <: MemorySpace} = error("space $S must be an ex
 memory_space(::Type{S}) where {S <: ExecutionSpace} = error("space $S is not compiled")
 
 
-# Defined in 'spaces_common.cpp', in 'register_space'
+# Defined in 'spaces.cpp', in 'register_space'
 """
     enabled(space::Union{Space, Type{<:Space}})
 
@@ -131,7 +133,7 @@ enabled(::S) where {S <: Space} = enabled(main_space_type(S))
 enabled(::Type{<:Space}) = false
 
 
-# Defined in 'spaces_common.cpp', in 'register_space'
+# Defined in 'spaces.cpp', in 'register_space'
 """
     kokkos_name(space::Union{Space, Type{<:Space}})
 
@@ -142,7 +144,7 @@ Equivalent to `Kokkos::space::name()`
 kokkos_name(::Type{<:Space}) = error("space $S is not compiled")
 
 
-# Defined in 'spaces_common.cpp', in 'post_register_space'
+# Defined in 'spaces.cpp', in 'post_register_space'
 """
     accessible(::Union{<:MemorySpace, Type{<:MemorySpace}})
 
@@ -179,14 +181,51 @@ end
 main_space_type(::S) where {S <: Space} = main_space_type(S)
 
 
-@wrapmodule(KOKKOS_LIB_PATH, :define_all_spaces)
+# Defined in 'spaces.cpp', in 'register_space'
+"""
+    fence(exec_space::ExecutionSpace)
 
-function __init__()
-    @initcxx
-end
+Wait for all asynchronous tasks operating on this execution space instance to complete.
+
+Equivalent to [`exec_space.fence()`](https://kokkos.github.io/kokkos-core-wiki/API/core/execution_spaces.html#functionality).
+"""
+fence
 
 
-# Defined in 'spaces_common.cpp', in 'register_all'
+# Defined in 'spaces.cpp', in 'register_space'
+"""
+    concurrency(exec_space::ExecutionSpace)
+
+The maximum number of threads utilized by the execution space instance.
+
+Equivalent to [`exec_space.concurrency()`](https://kokkos.github.io/kokkos-core-wiki/API/core/execution_spaces.html#functionality).
+"""
+function concurrency end
+
+
+# Defined in 'spaces.cpp', in 'register_space'
+"""
+    allocate(mem_space::MemorySpace, bytes)
+
+Allocate `bytes` on the memory space instance. Returns a pointer to the allocated memory.
+
+Equivalent to [`mem_space.allocate(bytes)`](https://kokkos.github.io/kokkos-core-wiki/API/core/memory_spaces.html#functions)
+"""
+function allocate end
+
+
+# Defined in 'spaces.cpp', in 'register_space'
+"""
+    deallocate(mem_space::MemorySpace, ptr)
+
+Frees `ptr`, previously allocated with [`allocate`](@ref).
+
+Equivalent to [`mem_space.deallocate(ptr, bytes)`](https://kokkos.github.io/kokkos-core-wiki/API/core/memory_spaces.html#functions)
+"""
+function deallocate end
+
+
+# Defined in 'spaces.cpp', in 'register_all'
 """
     COMPILED_EXEC_SPACES::Tuple{Vararg{Type{<:ExecutionSpace}}}
 
@@ -195,7 +234,7 @@ List of all compiled Kokkos execution spaces.
 const COMPILED_EXEC_SPACES = compiled_exec_spaces()
 
 
-# Defined in 'spaces_common.cpp', in 'define_execution_spaces_functions'
+# Defined in 'spaces.cpp', in 'define_execution_spaces_functions'
 """
     DEFAULT_DEVICE_SPACE::Type{<:ExecutionSpace}
 
@@ -206,7 +245,7 @@ Equivalent to `Kokkos::DefaultExecutionSpace`.
 const DEFAULT_DEVICE_SPACE = default_device_space()
 
 
-# Defined in 'spaces_common.cpp', in 'define_execution_spaces_functions'
+# Defined in 'spaces.cpp', in 'define_execution_spaces_functions'
 """
     DEFAULT_HOST_SPACE::Type{<:ExecutionSpace}
 
@@ -217,7 +256,7 @@ Equivalent to `Kokkos::DefaultHostExecutionSpace`.
 const DEFAULT_HOST_SPACE = default_host_space()
 
 
-# Defined in 'spaces_common.cpp', in 'register_all'
+# Defined in 'spaces.cpp', in 'register_all'
 """
     COMPILED_MEM_SPACES::Tuple{Vararg{Type{<:MemorySpace}}}
 
@@ -226,7 +265,7 @@ List of all compiled Kokkos execution spaces.
 const COMPILED_MEM_SPACES = compiled_mem_spaces()
 
 
-# Defined in 'spaces_common.cpp', in 'define_memory_spaces_functions'
+# Defined in 'spaces.cpp', in 'define_memory_spaces_functions'
 """
     DEFAULT_DEVICE_MEM_SPACE::Type{<:MemorySpace}
 
@@ -237,7 +276,7 @@ Equivalent to `Kokkos::DefaultExecutionSpace::memory_space`.
 const DEFAULT_DEVICE_MEM_SPACE = default_memory_space()
 
 
-# Defined in 'spaces_common.cpp', in 'define_memory_spaces_functions'
+# Defined in 'spaces.cpp', in 'define_memory_spaces_functions'
 """
     DEFAULT_HOST_MEM_SPACE::Type{<:MemorySpace}
 
@@ -248,7 +287,7 @@ Equivalent to `Kokkos::DefaultHostExecutionSpace::memory_space`.
 const DEFAULT_HOST_MEM_SPACE = default_host_memory_space()
 
 
-# Defined in 'spaces_common.cpp', in 'define_memory_spaces_functions'
+# Defined in 'spaces.cpp', in 'define_memory_spaces_functions'
 """
     SHARED_MEMORY_SPACE::Union{Nothing, Type{<:MemorySpace}}
 
@@ -259,7 +298,7 @@ Equivalent to `Kokkos::SharedSpace` if `Kokkos::has_shared_space` is `true`.
 const SHARED_MEMORY_SPACE = shared_memory_space()
 
 
-# Defined in 'spaces_common.cpp', in 'define_memory_spaces_functions'
+# Defined in 'spaces.cpp', in 'define_memory_spaces_functions'
 """
     SHARED_HOST_PINNED_MEMORY_SPACE::Union{Nothing, Type{<:MemorySpace}}
 

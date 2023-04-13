@@ -1,6 +1,6 @@
 
-#ifndef KOKKOS_WRAPPER_SPACES_COMMON_H
-#define KOKKOS_WRAPPER_SPACES_COMMON_H
+#ifndef KOKKOS_WRAPPER_SPACES_H
+#define KOKKOS_WRAPPER_SPACES_H
 
 #include "jlcxx/jlcxx.hpp"
 
@@ -19,4 +19,4 @@ struct SpaceInfo {
 
 JLCXX_MODULE define_all_spaces(jlcxx::Module& mod);
 
-#endif //KOKKOS_WRAPPER_SPACES_COMMON_H
+#endif //KOKKOS_WRAPPER_SPACES_H

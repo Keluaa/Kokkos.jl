@@ -84,7 +84,6 @@ const MemSpace* unbox_memory_space_arg(jl_value_t* boxed_memory_space)
 {
     if (jl_is_nothing(boxed_memory_space)) {
         return nullptr;
-
     } else if (jl_typeis(boxed_memory_space, jlcxx::julia_type<MemSpace>())) {
         return jlcxx::unbox<MemSpace*>(boxed_memory_space);
     } else {

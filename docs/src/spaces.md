@@ -14,6 +14,10 @@ execution_space
 memory_space
 main_space_type
 kokkos_name
+fence
+concurrency
+allocate
+deallocate
 ```
 
 ## Constants

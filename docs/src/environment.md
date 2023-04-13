@@ -12,6 +12,7 @@ is_finalized
 require
 set_omp_vars
 versioninfo
+fence
 ```
 
 ## Constants
