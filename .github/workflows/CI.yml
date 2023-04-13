@@ -49,16 +49,10 @@ jobs:
       - uses: julia-actions/setup-julia@v1
         with:
           version: '1.8'
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-docdeploy@v1
+      - name: Install dependencies
+        run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+      - name: Build and deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
-      - run: |
-          julia --project=docs -e '
-            using Pkg
-            Pkg.precompile()
-            using Documenter: DocMeta, doctest
-            using Kokkos
-            DocMeta.setdocmeta!(Kokkos, :DocTestSetup, :(using Kokkos); recursive=true)
-            doctest(Kokkos)'
+        run: julia --project=docs/ docs/make.jl
