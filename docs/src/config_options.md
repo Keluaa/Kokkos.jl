@@ -5,17 +5,28 @@ CurrentModule = Kokkos
 # Configuration Options
 
 Configuration options are set using [`Preferences.jl`](https://github.com/JuliaPackaging/Preferences.jl).
-Your `LocalPreferences.jl` file will store the options needed by your current project in a `[Kokkos]` section.
+Your `LocalPreferences.jl` file will store the options needed by your current project in a
+`[Kokkos]` section.
+
+!!! danger "Important"
+    
+    Unlike some packages using `Preferences.jl`, it is possible to change all options during the
+    same Julia session, using their setters.
+    However, if you need to dynamically configure `Kokkos.jl`, it must be done before loading the
+    wrapper library.
+    After calling [`load_wrapper_lib`](@ref) (or [`initialize`](@ref)), all options will be
+    locked, and any changes made afterwards will __not__ affect the current Julia session.
 
 
 ### kokkos_version
 
 The version of Kokkos to use. Must be a valid version tag in the official Kokkos repository (e.g.
-"4.0.00").
+`"4.0.00"`).
 
-Only used when [kokkos_path](@ref) is not set, and defaults to the packaged sources of kokkos.
+Only used when [kokkos_path](@ref) is not set, and defaults to the one of the packaged sources of
+kokkos.
 
-Each version is stored in the package's scratch space, and checked-out when loading the package.
+Each version is stored in the package's scratch space, which is checked-out upon loading the Kokkos.
 
 Can be set using `Kokkos.set_kokkos_version()`.
 The value for the current Julia session is stored in `Kokkos.LOCAL_KOKKOS_VERSION_STR`.
@@ -42,17 +53,22 @@ The value for the current Julia session is stored in `Kokkos.KOKKOS_CMAKE_OPTION
 
 The list of Kokkos options to pass to all [`KokkosProjects`](@ref KokkosProject).
 
+It can be passed as a list of `"Kokkos_<option_name>=<value>"`, or as a `Dict{String, Any}` (`Bool`
+values will be converted to `"ON"` and `"OFF"`, others to strings).
+
 Can be set using `Kokkos.set_kokkos_options()`.
 The value for the current Julia session is stored in `Kokkos.KOKKOS_LIB_OPTIONS`.
 
 
 ### backends
 
-The list of Kokkos backends to compile for. When in uppercase and prefixed by `Kokkos_ENABLE_` the names should
-correspond to one of the valid [device backends options](https://kokkos.github.io/kokkos-core-wiki/keywords.html#device-backends).
+The list of Kokkos backends to compile for. When in uppercase and prefixed by `Kokkos_ENABLE_` the
+names should correspond to one of the valid
+[device backends options](https://kokkos.github.io/kokkos-core-wiki/keywords.html#device-backends).
 Defaults to `Serial` and `OpenMP`.
 
-Can be set using `Kokkos.set_backends()`, using a vector of `String` or [`ExecutionSpace`](@ref) sub-types.
+Can be set using `Kokkos.set_backends()`, using a vector of `String` or [`ExecutionSpace`](@ref)
+sub-types.
 
 The value for the current Julia session is stored in `Kokkos.KOKKOS_BACKENDS`.
 

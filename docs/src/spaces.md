@@ -8,13 +8,13 @@ CurrentModule = Kokkos.Spaces
 Space
 ExecutionSpace
 MemorySpace
-accessible
+accessible(::Space)
 enabled
 execution_space
 memory_space
 main_space_type
 kokkos_name
-fence
+fence(::ExecutionSpace)
 concurrency
 allocate
 deallocate

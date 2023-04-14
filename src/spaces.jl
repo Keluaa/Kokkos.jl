@@ -56,7 +56,7 @@ Sub-types:
 
 All sub-types are always defined, but only some of them are [`enabled`](@ref).
 To enable an execution space, you must enable its related Kokkos backend, e.g.
-'-DKokkos_ENABLE_SERIAL=ON' for the `Serial` execution space.
+`"-DKokkos_ENABLE_SERIAL=ON"` for the `Serial` execution space.
 
 To do this you can set the [backends](@ref) option with `Kokkos.set_backends`,
 or specify the option directly through [kokkos_options](@ref).
@@ -188,7 +188,7 @@ Wait for all asynchronous tasks operating on this execution space instance to co
 
 Equivalent to [`exec_space.fence()`](https://kokkos.github.io/kokkos-core-wiki/API/core/execution_spaces.html#functionality).
 """
-fence
+function fence(::ExecutionSpace) end
 
 
 # Defined in 'spaces.cpp', in 'register_space'

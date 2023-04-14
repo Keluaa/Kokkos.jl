@@ -64,8 +64,8 @@ load_lib(project::KokkosProject; kwargs...) = load_lib(lib_path(project); kwargs
 Unload a library. Return true if the library has a valid handle and `Libdl.dlclose` was called.
 
 Because of the mechanism behind shared library loading, it is not guaranteed that the library is
-unloaded from memory after this call. Using [`is_lib_loaded`](@ref) rather than the return value of
-this function is more reliable.
+unloaded from memory after this call.
+[`is_lib_loaded`](@ref) is more reliable than the return value of this function.
 
 The symbol cache of the library is cleared by this function.
 """

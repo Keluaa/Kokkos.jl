@@ -4,15 +4,20 @@ CurrentModule = Kokkos
 
 # Environment
 
+## Functions
+
 ```@docs
 initialize
-finalize
 is_initialized
+finalize
 is_finalized
+load_wrapper_lib
+is_kokkos_wrapper_loaded
 require
 set_omp_vars
 versioninfo
-fence
+print_configuration
+fence(::String)
 ```
 
 ## Constants
