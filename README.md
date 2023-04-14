@@ -5,7 +5,7 @@
 [![Build Status](https://github.com/Keluaa/Kokkos.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Keluaa/Kokkos.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/Keluaa/Kokkos.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/Keluaa/Kokkos.jl)
 
-A Julia wrapper around the popular [Kokkos](https://github.com/kokkos/kokkos) C++ library.
+A Julia wrapper around the popular [Kokkos](https://github.com/kokkos/kokkos) C++ library, using [CxxWrap.jl](https://github.com/JuliaInterop/CxxWrap.jl).
 
 This package allows to create `Kokkos::View` objects, use them as an `Array` in Julia, and call a C++ Kokkos library using `ccall`.
 Most basic functionnalities of Kokkos (initialization, execution and memory spaces) are available.
