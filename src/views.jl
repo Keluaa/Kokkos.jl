@@ -2,7 +2,8 @@ module Views
 
 using CxxWrap
 import ..Kokkos: ExecutionSpace, MemorySpace
-import ..Kokkos: KOKKOS_LIB_PATH, COMPILED_MEM_SPACES, DEFAULT_DEVICE_MEM_SPACE, DEFAULT_HOST_MEM_SPACE
+import ..Kokkos: COMPILED_MEM_SPACES, DEFAULT_DEVICE_MEM_SPACE, DEFAULT_HOST_MEM_SPACE
+import ..Kokkos: ensure_kokkos_wrapper_loaded, get_impl_module
 import ..Kokkos: memory_space, accessible, main_space_type, finalize
 
 export View, Idx
@@ -36,11 +37,9 @@ It is important to understand that for a view to be properly disposed of, there 
 abstract type View{T, D, MemSpace} <: Base.AbstractArray{T, D} end
 
 
-@wrapmodule(KOKKOS_LIB_PATH, :define_kokkos_views)
-
-function __init__()
-    @initcxx
-end
+# Internal functions, defined for each view in 'views.cpp', in 'register_view_types'
+function get_ptr end
+function get_dims end
 
 
 """
@@ -50,8 +49,10 @@ Integer type used by views for indexing on the default execution device. Usually
 `Clonglong`.
 
 Equivalent to `Kokkos::RangePolicy<>::index_type`.
+
+`nothing` if Kokkos is not yet loaded.
 """
-const Idx = idx_type()
+Idx = nothing
 
 
 """
@@ -60,8 +61,10 @@ const Idx = idx_type()
 List of all View dimensions which are compiled.
 
 By default, dimensions 1 and 2 are compiled.
+
+`nothing` if Kokkos is not yet loaded.
 """
-const COMPILED_DIMS = compiled_dims()
+COMPILED_DIMS = nothing
 
 
 """
@@ -70,11 +73,15 @@ const COMPILED_DIMS = compiled_dims()
 List of all View element types which are compiled
 
 By default, the following types are compiled: Float64 (double), Float32 (float) and Int64 (int64_t).
+
+`nothing` if Kokkos is not yet loaded.
 """
-const COMPILED_TYPES = compiled_types()
+COMPILED_TYPES = nothing
 
 
 function error_view_not_compiled(::Type{View{T, D, S}}) where {T, D, S}
+    ensure_kokkos_wrapper_loaded()
+
     if !(D in COMPILED_DIMS)
         dims_str = join(string.(COMPILED_DIMS) .* 'D', ", ", " and ")
         pluralized_str = length(COMPILED_DIMS) > 1 ? "are" : "is"
@@ -197,6 +204,7 @@ function View{T, D}(dims::Dims{D};
     elseif mem_space isa MemorySpace
         return View{T, D, typeof(mem_space)}(dims; mem_space, label, zero_fill, dim_pad)
     else
+        ensure_kokkos_wrapper_loaded()
         throw(TypeError(:View, "constructor", MemorySpace, mem_space))
     end
 end
@@ -308,5 +316,13 @@ Base.similar(::View{<:Any, <:Any, M}, ::Type{T}, dims::Dims{D}) where {T, D, M} 
 # === Pointer conversion ===
 
 Base.cconvert(::Type{Ref{V}}, v::V) where {V <: View} = Ptr{Nothing}(v.cpp_object)
+
+
+function __init_vars()
+    impl = get_impl_module()
+    global Idx = Base.invokelatest(impl.__idx_type)
+    global COMPILED_DIMS = Base.invokelatest(impl.__compiled_dims)
+    global COMPILED_TYPES = Base.invokelatest(impl.__compiled_types)
+end
 
 end

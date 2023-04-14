@@ -40,22 +40,6 @@ using .Spaces
 include("views.jl")
 using .Views
 
-
-@wrapmodule(KOKKOS_LIB_PATH, :define_kokkos_module)
-
-function __init__()
-    @initcxx
-end
-
-
 include("configuration.jl")
-
-
-"""
-    KOKKOS_VERSION::VersionNumber
-
-The Kokkos version currently loaded.
-"""
-const KOKKOS_VERSION = kokkos_version()
 
 end

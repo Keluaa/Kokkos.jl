@@ -1,8 +1,7 @@
 module Spaces
 
 using CxxWrap
-import ..Kokkos: KOKKOS_LIB_PATH
-import ..Kokkos: ensure_kokkos_wrapper_loaded, fence
+import ..Kokkos: ensure_kokkos_wrapper_loaded, fence, get_impl_module
 
 export Space, ExecutionSpace, MemorySpace
 export Serial, OpenMP, OpenACC, OpenMPTarget, Threads, Cuda, HIP, HPX, SYCL
@@ -230,8 +229,10 @@ function deallocate end
     COMPILED_EXEC_SPACES::Tuple{Vararg{Type{<:ExecutionSpace}}}
 
 List of all compiled Kokkos execution spaces.
+
+`nothing` if Kokkos is not yet loaded.
 """
-const COMPILED_EXEC_SPACES = compiled_exec_spaces()
+COMPILED_EXEC_SPACES = nothing
 
 
 # Defined in 'spaces.cpp', in 'define_execution_spaces_functions'
@@ -241,8 +242,10 @@ const COMPILED_EXEC_SPACES = compiled_exec_spaces()
 The default execution space where kernels are applied on the device.
 
 Equivalent to `Kokkos::DefaultExecutionSpace`.
+
+`nothing` if Kokkos is not yet loaded.
 """
-const DEFAULT_DEVICE_SPACE = default_device_space()
+DEFAULT_DEVICE_SPACE = nothing
 
 
 # Defined in 'spaces.cpp', in 'define_execution_spaces_functions'
@@ -252,8 +255,10 @@ const DEFAULT_DEVICE_SPACE = default_device_space()
 The default execution space where kernels are applied on the host.
 
 Equivalent to `Kokkos::DefaultHostExecutionSpace`.
+
+`nothing` if Kokkos is not yet loaded.
 """
-const DEFAULT_HOST_SPACE = default_host_space()
+DEFAULT_HOST_SPACE = nothing
 
 
 # Defined in 'spaces.cpp', in 'register_all'
@@ -261,8 +266,10 @@ const DEFAULT_HOST_SPACE = default_host_space()
     COMPILED_MEM_SPACES::Tuple{Vararg{Type{<:MemorySpace}}}
 
 List of all compiled Kokkos execution spaces.
+
+`nothing` if Kokkos is not yet loaded.
 """
-const COMPILED_MEM_SPACES = compiled_mem_spaces()
+COMPILED_MEM_SPACES = nothing
 
 
 # Defined in 'spaces.cpp', in 'define_memory_spaces_functions'
@@ -272,8 +279,10 @@ const COMPILED_MEM_SPACES = compiled_mem_spaces()
 The default memory space where views are stored on the device.
 
 Equivalent to `Kokkos::DefaultExecutionSpace::memory_space`.
+
+`nothing` if Kokkos is not yet loaded.
 """
-const DEFAULT_DEVICE_MEM_SPACE = default_memory_space()
+DEFAULT_DEVICE_MEM_SPACE = nothing
 
 
 # Defined in 'spaces.cpp', in 'define_memory_spaces_functions'
@@ -283,8 +292,10 @@ const DEFAULT_DEVICE_MEM_SPACE = default_memory_space()
 The default memory space where views are stored on the host.
 
 Equivalent to `Kokkos::DefaultHostExecutionSpace::memory_space`.
+
+`nothing` if Kokkos is not yet loaded.
 """
-const DEFAULT_HOST_MEM_SPACE = default_host_memory_space()
+DEFAULT_HOST_MEM_SPACE = nothing
 
 
 # Defined in 'spaces.cpp', in 'define_memory_spaces_functions'
@@ -294,8 +305,10 @@ const DEFAULT_HOST_MEM_SPACE = default_host_memory_space()
 The shared memory space between the host and device, or `nothing` if there is none.
 
 Equivalent to `Kokkos::SharedSpace` if `Kokkos::has_shared_space` is `true`.
+
+`nothing` if Kokkos is not yet loaded.
 """
-const SHARED_MEMORY_SPACE = shared_memory_space()
+SHARED_MEMORY_SPACE = nothing
 
 
 # Defined in 'spaces.cpp', in 'define_memory_spaces_functions'
@@ -305,7 +318,22 @@ const SHARED_MEMORY_SPACE = shared_memory_space()
 The shared pinned memory space between the host and device, or `nothing` if there is none.
 
 Equivalent to `Kokkos::SharedHostPinnedSpace` if `Kokkos::has_shared_host_pinned_space` is `true`.
+
+`nothing` if Kokkos is not yet loaded.
 """
-const SHARED_HOST_PINNED_MEMORY_SPACE = shared_host_pinned_space()
+SHARED_HOST_PINNED_MEMORY_SPACE = nothing
+
+
+function __init_vars()
+    impl = get_impl_module()
+    global COMPILED_EXEC_SPACES = Base.invokelatest(impl.__compiled_exec_spaces)
+    global DEFAULT_DEVICE_SPACE = Base.invokelatest(impl.__default_device_space)
+    global DEFAULT_HOST_SPACE = Base.invokelatest(impl.__default_host_space)
+    global COMPILED_MEM_SPACES = Base.invokelatest(impl.__compiled_mem_spaces)
+    global DEFAULT_DEVICE_MEM_SPACE = Base.invokelatest(impl.__default_memory_space)
+    global DEFAULT_HOST_MEM_SPACE = Base.invokelatest(impl.__default_host_memory_space)
+    global SHARED_MEMORY_SPACE = Base.invokelatest(impl.__shared_memory_space)
+    global SHARED_HOST_PINNED_MEMORY_SPACE = Base.invokelatest(impl.__shared_host_pinned_space)
+end
 
 end

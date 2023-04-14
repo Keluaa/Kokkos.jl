@@ -20,7 +20,7 @@ v1 = View{Float64}(n1)
 @test v1 isa View{Float64}
 @test v1 isa View{Float64, 1}
 @test v1 isa View{Float64, 1, <:Kokkos.HostSpace}
-@test v1 isa Kokkos.Views.View1D_HostAllocated{Float64}
+@test v1 isa Kokkos.KokkosWrapper.Impl.View1D_HostAllocated{Float64}
 @test v1 isa AbstractArray
 @test v1 isa AbstractArray{Float64}
 @test v1 isa AbstractArray{Float64, 1}

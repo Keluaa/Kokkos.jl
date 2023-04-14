@@ -36,6 +36,6 @@ using Idx = typename Kokkos::RangePolicy<>::index_type;
 
 jl_datatype_t* get_idx_type();
 
-JLCXX_MODULE define_kokkos_views(jlcxx::Module& mod);
+void define_kokkos_views(jlcxx::Module& mod);
 
 #endif //KOKKOS_WRAPPER_VIEWS_H

@@ -1,6 +1,9 @@
 
 #include "kokkos_wrapper.h"
 
+#include "spaces.h"
+#include "views.h"
+
 #include <sstream>
 
 
@@ -122,12 +125,53 @@ void print_configuration(jl_value_t* io, bool verbose)
     const std::string config_str = oss.str();
 
     jl_function_t* println = jl_get_function(jl_base_module, "println");
-    jl_call1(println, jl_cstr_to_string(config_str.c_str()));
+    jl_call2(println, io, jl_cstr_to_string(config_str.c_str()));
+}
+
+
+void import_all_env_methods(jl_module_t* impl_module, jl_module_t* kokkos_module)
+{
+    // In order to override the methods in the main Kokkos module, we must have them imported
+    const std::array declared_methods = {
+            "print_configuration",
+            "initialize",
+            "finalize",
+            "is_initialized",
+            "is_finalized",
+            "fence",
+            "num_threads",
+            "device_id",
+            "disable_warnings",
+            "print_configuration",
+            "tune_internals",
+            "tools_libs",
+            "tools_args",
+            "map_device_id_by",
+            "num_threads!",
+            "device_id!",
+            "disable_warnings!",
+            "print_configuration!",
+            "tune_internals!",
+            "tools_libs!",
+            "tools_args!",
+            "map_device_id_by!"
+    };
+
+    for (auto& method : declared_methods) {
+        jl_module_import(impl_module, kokkos_module, jl_symbol(method));
+    }
 }
 
 
 JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
 {
+    jl_module_t* wrapper_module = mod.julia_module()->parent;
+    jl_module_t* kokkos_module = wrapper_module->parent;
+
+    import_all_env_methods(mod.julia_module(), kokkos_module);
+
+    mod.set_override_module(kokkos_module);
+
     define_initialization_settings(mod);
     mod.method("print_configuration", &print_configuration);
 
@@ -137,7 +181,12 @@ JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
     mod.method("is_initialized",  (bool (*)()) &Kokkos::is_initialized);
     mod.method("is_finalized", (bool (*)()) &Kokkos::is_finalized);
 
-    mod.method("kokkos_version", &kokkos_version);
-
     mod.method("fence", &Kokkos::fence);
+
+    mod.unset_override_module();
+
+    mod.method("__kokkos_version", &kokkos_version);
+
+    define_all_spaces(mod);
+    define_kokkos_views(mod);
 }

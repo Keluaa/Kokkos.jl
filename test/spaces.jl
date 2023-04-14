@@ -42,9 +42,9 @@ skip_shared_mem = Kokkos.KOKKOS_VERSION < v"4.0.0"
 @test Kokkos.kokkos_name(Kokkos.HostSpace) == "Host"
 
 @test Kokkos.main_space_type(Kokkos.Serial) === Kokkos.Serial
-@test Kokkos.main_space_type(Kokkos.Spaces.SerialImpl) === Kokkos.Serial
-@test Kokkos.main_space_type(Kokkos.Spaces.SerialImplAllocated) === Kokkos.Serial
-@test Kokkos.main_space_type(Kokkos.Spaces.SerialImplDereferenced) === Kokkos.Serial
+@test Kokkos.main_space_type(Kokkos.KokkosWrapper.Impl.SerialImpl) === Kokkos.Serial
+@test Kokkos.main_space_type(Kokkos.KokkosWrapper.Impl.SerialImplAllocated) === Kokkos.Serial
+@test Kokkos.main_space_type(Kokkos.KokkosWrapper.Impl.SerialImplDereferenced) === Kokkos.Serial
 
 if VERSION >= v"1.8"
     @test_throws "must be a subtype" Kokkos.main_space_type(Kokkos.Space)
@@ -52,12 +52,12 @@ if VERSION >= v"1.8"
     @test_throws "must be a subtype" Kokkos.main_space_type(Kokkos.ExecutionSpace)
 end
 
-serial = Kokkos.Spaces.SerialImpl()
+serial = Kokkos.KokkosWrapper.Impl.SerialImpl()
 @test Kokkos.main_space_type(serial) === Kokkos.Serial
 @test Kokkos.memory_space(serial) === Kokkos.HostSpace
 @test Kokkos.enabled(serial)
 
-host_space = Kokkos.Spaces.HostSpaceImpl()
+host_space = Kokkos.KokkosWrapper.Impl.HostSpaceImpl()
 @test Kokkos.main_space_type(host_space) === Kokkos.HostSpace
 @test Kokkos.execution_space(host_space) === Kokkos.OpenMP
 @test Kokkos.accessible(host_space)

@@ -2,15 +2,17 @@ module KokkosWrapper
 
 using libcxxwrap_julia_jll
 using LibGit2
+using CxxWrap
 
 import ..Kokkos: CMakeKokkosProject
-import ..Kokkos: run_cmd_print_on_error, lib_path, build_dir, pretty_compile
+import ..Kokkos: run_cmd_print_on_error, load_lib, lib_path, build_dir, pretty_compile
+import ..Kokkos: ensure_kokkos_wrapper_loaded
 import ..Kokkos: LOCAL_KOKKOS_DIR, LOCAL_KOKKOS_VERSION_STR
 import ..Kokkos: KOKKOS_PATH, KOKKOS_CMAKE_OPTIONS, KOKKOS_LIB_OPTIONS, KOKKOS_BACKENDS
 import ..Kokkos: KOKKOS_VIEW_DIMS, KOKKOS_VIEW_TYPES, KOKKOS_BUILD_TYPE, KOKKOS_BUILD_DIR
 
 export get_jlcxx_root, get_kokkos_dir, get_kokkos_build_dir, get_kokkos_install_dir
-export KOKKOS_LIB_PROJECT, KOKKOS_LIB_PATH
+export load_wrapper_lib, get_impl_module
 
 
 """
@@ -67,13 +69,14 @@ function setup_local_kokkos_source()
     KOKKOS_PATH != LOCAL_KOKKOS_DIR && return
     # Download our local Kokkos source files into a scratch directory
     if isempty(readdir(LOCAL_KOKKOS_DIR))
-        @debug "Cloning Kokkos $LOCAL_KOKKOS_VERSION_STR to $LOCAL_KOKKOS_DIR..."
+        @info "Cloning Kokkos $LOCAL_KOKKOS_VERSION_STR to $LOCAL_KOKKOS_DIR..."
         repo = LibGit2.clone("https://github.com/kokkos/kokkos.git", LOCAL_KOKKOS_DIR)
     else
         repo = LibGit2.GitRepo(LOCAL_KOKKOS_DIR)
     end
     release_commit = LibGit2.GitObject(repo, LOCAL_KOKKOS_VERSION_STR)
     release_hash = string(LibGit2.GitHash(release_commit))
+    @debug "Checkout Kokkos $LOCAL_KOKKOS_VERSION_STR (hash: $release_hash) in repo at $LOCAL_KOKKOS_DIR..."
     LibGit2.checkout!(repo, release_hash)
 end
 
@@ -105,7 +108,11 @@ function create_kokkos_lib_project()
     for backend in KOKKOS_BACKENDS
         kokkos_options["Kokkos_ENABLE_" * uppercase(backend)] = "ON"
     end
-    merge!(kokkos_options, KOKKOS_LIB_OPTIONS)
+
+    for option in KOKKOS_LIB_OPTIONS
+        name, val = rsplit(option, '='; limit=2)
+        kokkos_options[name] = val
+    end
 
     return CMakeKokkosProject(joinpath(@__DIR__, "../lib/kokkos_wrapper"), "libKokkosWrapper";
         build_dir, build_type = KOKKOS_BUILD_TYPE, cmake_options, kokkos_path, kokkos_options
@@ -114,16 +121,27 @@ end
 
 
 function install_kokkos()
+    @debug "Installing Kokkos to $(get_kokkos_install_dir())"
     run_cmd_print_on_error(Cmd(`cmake --build $(build_dir(KOKKOS_LIB_PROJECT)) --target install`;
         dir=KOKKOS_LIB_PROJECT.commands_dir))
 end
 
 
-const KOKKOS_LIB_PROJECT = create_kokkos_lib_project()
-const KOKKOS_LIB_PATH = lib_path(KOKKOS_LIB_PROJECT)
+function compile_wrapper_lib()
+    global KOKKOS_LIB_PROJECT = create_kokkos_lib_project()
+    global KOKKOS_LIB_PATH = lib_path(KOKKOS_LIB_PROJECT)
 
-pretty_compile(KOKKOS_LIB_PROJECT)
-include_dependency(KOKKOS_LIB_PATH)
+    pretty_compile(KOKKOS_LIB_PROJECT; info=true)
+    install_kokkos()
+end
+
+
+KOKKOS_LIB_PROJECT = nothing
+KOKKOS_LIB_PATH = nothing
+KOKKOS_LIB = nothing
+
+
+is_kokkos_wrapper_compiled() = !isnothing(KOKKOS_LIB_PATH)
 
 
 """
@@ -131,7 +149,10 @@ include_dependency(KOKKOS_LIB_PATH)
 
 The directory where Kokkos is compiled.
 """
-get_kokkos_build_dir() = joinpath(build_dir(KOKKOS_LIB_PROJECT), "lib", "kokkos")
+function get_kokkos_build_dir()
+    ensure_kokkos_wrapper_loaded()
+    return joinpath(build_dir(KOKKOS_LIB_PROJECT), "lib", "kokkos")
+end
 
 
 """
@@ -142,11 +163,52 @@ The directory where Kokkos is installed.
 This directory can be passed to the CMake function `find_package` through the `Kokkos_ROOT` variable
 in order to load Kokkos with the same options and backends as the ones used by `Kokkos.jl`.
 """
-get_kokkos_install_dir() = joinpath(build_dir(KOKKOS_LIB_PROJECT), "install")
+function get_kokkos_install_dir()
+    ensure_kokkos_wrapper_loaded()
+    return joinpath(build_dir(KOKKOS_LIB_PROJECT), "install")
+end
 
 
-function __init__()
-    install_kokkos()
+module Impl
+    using CxxWrap
+end
+
+
+get_impl_module() = Impl
+
+
+"""
+    load_wrapper_lib()
+
+Configures, compiles then loads the wrapper library using the current [Configuration Options](@ref).
+
+After calling this method, all configuration options become locked.
+"""
+function load_wrapper_lib()
+    !isnothing(KOKKOS_LIB) && return
+    !is_kokkos_wrapper_compiled() && compile_wrapper_lib()
+
+    @debug "Loading the Kokkos Wrapper library..."
+
+    global KOKKOS_LIB = load_lib(KOKKOS_LIB_PROJECT)
+
+    # This seemingly innocent macro call will add methods in all modules.
+    # All of those methods will be imported into the `Impl` module then overloaded here.
+    # While each of them are defined in their respective module, all specializations are stored in
+    # `Impl`.
+    # Methods meant to define variables are prefixed by '__' and defined only in `Impl`. Then they
+    # are called through '__init_vars()', circumventing the requirement that variables can only be
+    # set by methods of the same module.
+    Core.eval(Impl, quote
+        @wrapmodule($KOKKOS_LIB_PATH, :define_kokkos_module)
+    end)
+
+    Kokkos = parentmodule(KokkosWrapper)
+    Kokkos.__init_vars()
+    Kokkos.Spaces.__init_vars()
+    Kokkos.Views.__init_vars()
+
+    return
 end
 
 end

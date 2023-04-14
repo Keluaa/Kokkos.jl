@@ -147,10 +147,8 @@ ViewWrap<T, DimCst, MemSpace> view_wrap(const std::tuple<Dims...>& dims, T* data
 }
 
 
-jl_value_t* build_abstract_array_type(jlcxx::Module& mod, int dim, jl_datatype_t* space_type)
+jl_value_t* build_abstract_array_type(jlcxx::Module& mod, jl_module_t* views_module, int dim, jl_datatype_t* space_type)
 {
-    jl_module_t* kokkos_module = mod.julia_module();
-
     // Since we call `mod.add_type` by applying only the data type of the array, we need a UnionAll with the dimension
     // already specified. The Julia equivalent would be `Kokkos.View{T, dim, space_type} where T`.
 
@@ -167,8 +165,11 @@ jl_value_t* build_abstract_array_type(jlcxx::Module& mod, int dim, jl_datatype_t
     stack[2] = (jl_value_t*) space_type;
 
     // `Kokkos.View`
-    jl_value_t* view_t = jl_get_global(kokkos_module, jl_symbol("View"));
+    jl_value_t* view_t = jl_get_global(views_module, jl_symbol("View"));
     stack[3] = view_t;
+    if (view_t == nullptr) {
+        throw std::runtime_error("Type 'View' not found in the Kokkos.Views module");
+    }
 
     // `Kokkos.View{T_var, dim, space_type}`
     jl_value_t* view_data_type = jl_apply_type(view_t, stack, 3);
@@ -184,7 +185,7 @@ jl_value_t* build_abstract_array_type(jlcxx::Module& mod, int dim, jl_datatype_t
 
 
 template<typename T, int D, typename MemorySpace>
-jl_datatype_t* build_array_constructor_type(jlcxx::Module& mod)
+jl_datatype_t* build_array_constructor_type(jlcxx::Module& mod, jl_module_t* views_module)
 {
     jl_value_t** stack;
     JL_GC_PUSHARGS(stack, 4);
@@ -193,8 +194,7 @@ jl_datatype_t* build_array_constructor_type(jlcxx::Module& mod)
     stack[1] = jl_box_int64(D);
     stack[2] = (jl_value_t*) jlcxx::julia_type<SpaceInfo<MemorySpace>>();
 
-    jl_module_t* kokkos_module = mod.julia_module();
-    jl_value_t* view_t = jl_get_global(kokkos_module, jl_symbol("View"));
+    jl_value_t* view_t = jl_get_global(views_module, jl_symbol("View"));
     stack[3] = view_t;
 
     jl_value_t* array_ctor_t = jl_apply_type(view_t, stack, 3);
@@ -261,12 +261,12 @@ struct RegisterUtils
     }
 
     template<typename view_dim, typename MemorySpace, typename Wrapped>
-    static void register_constructor(jlcxx::Module& mod) {
+    static void register_constructor(jlcxx::Module& mod, jl_module_t* views_module) {
         using type = typename Wrapped::type;
         using ctor_type = ViewCtorWrap<Wrapped>;
         constexpr size_t D = view_dim::value;
 
-        jl_datatype_t* view_ctor_type = build_array_constructor_type<type, D, MemorySpace>(mod);
+        jl_datatype_t* view_ctor_type = build_array_constructor_type<type, D, MemorySpace>(mod, views_module);
         jlcxx::set_julia_type<ctor_type>(view_ctor_type);
 
         using DimsTuple = decltype(std::tuple_cat(std::array<int64_t, D>()));
@@ -288,11 +288,11 @@ struct RegisterUtils
 
 
 template<typename MemorySpace, size_t D>
-void register_view_types(jlcxx::Module& mod)
+void register_view_types(jlcxx::Module& mod, jl_module_t* views_module)
 {
     using view_dim = std::integral_constant<size_t, D>;
 
-    jl_value_t* view_type = build_abstract_array_type(mod, D, jlcxx::julia_type<MemorySpace>());
+    jl_value_t* view_type = build_abstract_array_type(mod, views_module, D, jlcxx::julia_type<MemorySpace>());
 
     std::stringstream str;
     str << "View" << D << "D_" << MemorySpace::name();
@@ -309,29 +309,27 @@ void register_view_types(jlcxx::Module& mod)
     {
         using WrappedT = typename decltype(wrapped)::type;
 
-        RegisterUtils::register_constructor<view_dim, MemorySpace, WrappedT>(mod);
+        RegisterUtils::register_constructor<view_dim, MemorySpace, WrappedT>(mod, views_module);
         RegisterUtils::register_access_operator<D, MemorySpace>(wrapped);
 
-        wrapped.method("view_size", &WrappedT::size);
         wrapped.method("view_data", &WrappedT::data);
         wrapped.method("label", &WrappedT::label);
-        wrapped.method("dimension", [](const WrappedT&) { return D; });
         wrapped.method("get_dims", [](const WrappedT& view) { return std::tuple_cat(view.get_dims()); });
     });
 }
 
 
 template<typename MemorySpace, typename T, T... I>
-void register_all_dimensions(jlcxx::Module& mod, std::integer_sequence<T, I...>)
+void register_all_dimensions(jlcxx::Module& mod, jl_module_t* views_module, std::integer_sequence<T, I...>)
 {
-    ([&](){ register_view_types<MemorySpace, I>(mod); } (), ...);
+    ([&](){ register_view_types<MemorySpace, I>(mod, views_module); } (), ...);
 }
 
 
 template<typename... T>
-void register_views_for_all_memory_spaces(jlcxx::Module& mod, MemorySpaces<T...>)
+void register_views_for_all_memory_spaces(jlcxx::Module& mod, jl_module_t* views_module, MemorySpaces<T...>)
 {
-    ([&](){ register_all_dimensions<T>(mod, DimensionsToInstantiate{}); } (), ...);
+    ([&](){ register_all_dimensions<T>(mod, views_module, DimensionsToInstantiate{}); } (), ...);
 }
 
 
@@ -361,10 +359,36 @@ jl_datatype_t* get_idx_type()
 }
 
 
-JLCXX_MODULE define_kokkos_views(jlcxx::Module& mod)
+void import_all_views_methods(jl_module_t* impl_module, jl_module_t* views_module)
 {
-    mod.method("idx_type", &get_idx_type);
-    mod.method("compiled_dims", [](){ return std::make_tuple(VIEW_DIMENSIONS); });
-    mod.method("compiled_types", [](){ return std::tuple_cat(build_julia_types_array()); });
-    register_views_for_all_memory_spaces(mod, MemorySpacesList{});
+    // In order to override the methods in the Kokkos.Spaces module, we must have them imported
+    const std::array declared_methods = {
+        "get_ptr",
+        "alloc_view",
+        "view_wrap",
+        "view_data",
+        "label",
+        "get_dims"
+    };
+
+    for (auto& method : declared_methods) {
+        jl_module_import(impl_module, views_module, jl_symbol(method));
+    }
+}
+
+
+void define_kokkos_views(jlcxx::Module& mod)
+{
+    jl_module_t* wrapper_module = mod.julia_module()->parent;
+    auto* views_module = (jl_module_t*) jl_get_global(wrapper_module->parent, jl_symbol("Views"));
+
+    import_all_views_methods(mod.julia_module(), views_module);
+
+    mod.set_override_module(views_module);
+    register_views_for_all_memory_spaces(mod, views_module, MemorySpacesList{});
+    mod.unset_override_module();
+
+    mod.method("__idx_type", &get_idx_type);
+    mod.method("__compiled_dims", [](){ return std::make_tuple(VIEW_DIMENSIONS); });
+    mod.method("__compiled_types", [](){ return std::tuple_cat(build_julia_types_array()); });
 }

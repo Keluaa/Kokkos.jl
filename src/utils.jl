@@ -34,6 +34,34 @@ function warn_config_changed()
 end
 
 
+function new_initialization_settings()
+    ensure_kokkos_wrapper_loaded()
+    return Base.invokelatest(get_impl_module().InitializationSettings)
+end
+
+
+# Initialization settings getters, defined in 'kokkos_wrapper.cpp', in 'define_initialization_settings'
+function num_threads end
+function device_id end
+function disable_warnings end
+function print_configuration end
+function tune_internals end
+function tools_libs end
+function tools_args end
+function map_device_id_by end
+
+
+# Initialization settings setters, defined in 'kokkos_wrapper.cpp', in 'define_initialization_settings'
+function num_threads! end
+function device_id! end
+function disable_warnings! end
+function print_configuration! end
+function tune_internals! end
+function tools_libs! end
+function tools_args! end
+function map_device_id_by! end
+
+
 """
     initialize(;
         num_threads=nothing,
@@ -47,6 +75,9 @@ Initializes Kokkos by calling `Kokkos::initialize()`.
 
 The keyword arguments build are passed to the `InitializationSettings` constructor which is then
 passed to `Kokkos::initialize()`. A value of `nothing` keeps the default behaviour of Kokkos.
+
+The Kokkos wrapper library is loaded (and recompiled if needed) if it is not already the case.
+This locks the current [Configuration Options](@ref) until the end of the current Julia session.
 """
 function initialize(;
     num_threads=nothing,
@@ -56,7 +87,8 @@ function initialize(;
     tools_libs=nothing, tools_args=nothing
 )
     warn_config_changed()
-    settings = InitializationSettings()
+    load_wrapper_lib()
+    settings = new_initialization_settings()
     !isnothing(num_threads)         && num_threads!(settings, num_threads)
     !isnothing(device_id)           && device_id!(settings, device_id)
     !isnothing(disable_warnings)    && disable_warnings!(settings, disable_warnings)
@@ -65,7 +97,7 @@ function initialize(;
     !isnothing(tools_libs)          && tools_libs!(settings, tools_libs)
     !isnothing(tools_args)          && tools_args!(settings, tools_args)
     !isnothing(map_device_id_by)    && map_device_id_by!(settings, map_device_id_by)
-    initialize(settings)
+    Base.invokelatest(initialize, settings)
 end
 
 
@@ -81,20 +113,37 @@ Calls `Kokkos::finalize()`.
 function finalize end
 
 
+# Overloaded in 'kokkos_wrapper.cpp', in 'define_kokkos_module'
 """
     is_initialized()
 
 Return `Kokkos::is_initialized()`.
+
+Can be called before the wrapper library is loaded.
 """
-function is_initialized end
+is_initialized() = false
 
 
+# Overloaded in 'kokkos_wrapper.cpp', in 'define_kokkos_module'
 """
     is_finalized()
 
 Return `Kokkos::is_finalized()`.
+
+Can be called before the wrapper library is loaded.
 """
-function is_finalized end
+is_finalized() = false
+
+
+# Defined in 'kokkos_wrapper.cpp', in 'define_kokkos_module'
+"""
+    fence(label::String)
+
+Wait for all asynchronous Kokkos operations to complete.
+
+Equivalent to [`Kokkos::fence()`](https://kokkos.github.io/kokkos-core-wiki/API/core/parallel-dispatch/fence.html).
+"""
+function fence(::String) end
 
 
 """
@@ -108,6 +157,7 @@ This function does not require for Kokkos to be initialized, however if `interna
 output will be incomplete.
 """
 function versioninfo(io::IO = stdout; internal=true, verbose=false)
+    ensure_kokkos_wrapper_loaded()
     warn_config_changed()
     print(io, "Kokkos version $KOKKOS_VERSION")
     if isnothing(KOKKOS_PATH)
@@ -117,7 +167,7 @@ function versioninfo(io::IO = stdout; internal=true, verbose=false)
     end
     println(io, "Kokkos installation dir: ", get_kokkos_install_dir())
     println(io, "Wrapper library compiled at ", build_dir(KokkosWrapper.KOKKOS_LIB_PROJECT))
-    println(io, "Compiled execution spaces:")
+    println(io, "\nCompiled execution spaces:")
     for space in COMPILED_EXEC_SPACES
         println(io, " - $(nameof(space)) (default memory space: $(nameof(memory_space(space))))")
     end
@@ -149,7 +199,7 @@ requirement_fail(msg, args...) = "$msg"
         no_error=false
     )
 
-Asserts that the underlying Kokkos library of `Kokkos.jl` respects the given requirements.
+Asserts that the underlying Kokkos wrapper library of `Kokkos.jl` respects the given requirements.
 
 An argument with a value of `nothing` is considered to have no requirements.
 
@@ -168,7 +218,8 @@ Kokkos versions including `v4.0.0` and above.
 
 If `no_error` is true, then this function will return `false` if any requirement is not met.
 
-This function does not require for Kokkos to be initialized.
+This function does not require for Kokkos to be initialized, but for the wrapper library to be
+loaded.
 
 # Examples
 
@@ -195,6 +246,8 @@ function require(;
     exec_spaces=nothing, mem_spaces=nothing,
     no_error=false
 )
+    ensure_kokkos_wrapper_loaded()
+
     failures = []
 
     if !isnothing(version) && !version(KOKKOS_VERSION)
@@ -231,12 +284,19 @@ function require(;
 end
 
 
-# Defined in 'kokkos_wrapper.cpp', in 'define_kokkos_module'
 """
-    fence(label::String)
+    KOKKOS_VERSION::VersionNumber
 
-Wait for all asynchronous Kokkos operations to complete.
+The Kokkos version currently loaded.
 
-Equivalent to [`Kokkos::fence()`](https://kokkos.github.io/kokkos-core-wiki/API/core/parallel-dispatch/fence.html).
+`nothing` if Kokkos is not yet loaded.
+See [kokkos_version](@ref) for the version of the packaged installation of Kokkos, which
+is defined before loading Kokkos.
 """
-function fence end
+KOKKOS_VERSION = nothing
+
+
+function __init_vars()
+    impl = get_impl_module()
+    global KOKKOS_VERSION = Base.invokelatest(impl.__kokkos_version)
+end
