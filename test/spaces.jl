@@ -46,11 +46,9 @@ skip_shared_mem = Kokkos.KOKKOS_VERSION < v"4.0.0"
 @test Kokkos.main_space_type(Kokkos.KokkosWrapper.Impl.SerialImplAllocated) === Kokkos.Serial
 @test Kokkos.main_space_type(Kokkos.KokkosWrapper.Impl.SerialImplDereferenced) === Kokkos.Serial
 
-if VERSION >= v"1.8"
-    @test_throws "must be a subtype" Kokkos.main_space_type(Kokkos.Space)
-    @test_throws "must be a subtype" Kokkos.main_space_type(Kokkos.MemorySpace)
-    @test_throws "must be a subtype" Kokkos.main_space_type(Kokkos.ExecutionSpace)
-end
+@test_throws @error_match("must be a subtype") Kokkos.main_space_type(Kokkos.Space)
+@test_throws @error_match("must be a subtype") Kokkos.main_space_type(Kokkos.MemorySpace)
+@test_throws @error_match("must be a subtype") Kokkos.main_space_type(Kokkos.ExecutionSpace)
 
 serial = Kokkos.KokkosWrapper.Impl.SerialImpl()
 @test Kokkos.main_space_type(serial) === Kokkos.Serial

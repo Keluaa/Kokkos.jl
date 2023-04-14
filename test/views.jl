@@ -117,11 +117,9 @@ end
 @test size(View{Float64}()) == (0,)
 @test size(View{Float64, 2}()) == (0, 0)
 
-if VERSION >= v"1.8"
-    @test_throws "`Int32` is not compiled" View{Int32}(undef, n1)
-    @test_throws "`Kokkos.View3D` cannot" View{Int64}(undef, (2, 2, 2))
-    @test_throws "CudaSpace` is not compiled" View{Int64}(undef, n1; mem_space=Kokkos.CudaSpace)
-end
+@test_throws @error_match("`Int32` is not compiled") View{Int32}(undef, n1)
+@test_throws @error_match("`Kokkos.View3D` cannot") View{Int64}(undef, (2, 2, 2))
+@test_throws @error_match("CudaSpace` is not compiled") View{Int64}(undef, n1; mem_space=Kokkos.CudaSpace)
 
 a7 = rand(Float64, 43)
 v7 = view_wrap(a7)

@@ -3,8 +3,8 @@ using Kokkos
 using Test
 
 
-Kokkos.require(; dims=[1, 2], types=[Float64], exec_spaces=[Kokkos.Serial, Kokkos.OpenMP])
 !Kokkos.is_initialized() && Kokkos.initialize()
+Kokkos.require(; dims=[1, 2], types=[Float64], exec_spaces=[Kokkos.Serial, Kokkos.OpenMP])
 
 
 const lib_src = joinpath(@__DIR__, "lib", "simple_lib")
@@ -90,6 +90,8 @@ project_2D = CMakeKokkosProject(project_1D, "SimpleKokkosLib2D", "libSimpleKokko
         compile(project_1D)
         lib_1D = Kokkos.load_lib(project_1D)
 
+        @test handle(lib_1D) != C_NULL
+
         test_lib(lib_1D, Nx)
 
         Kokkos.unload_lib(lib_1D)
@@ -102,7 +104,12 @@ project_2D = CMakeKokkosProject(project_1D, "SimpleKokkosLib2D", "libSimpleKokko
 
         test_lib(lib_2D, (Nx, Ny))
 
-        Kokkos.unload_lib(lib_2D)
-        @test !Kokkos.is_lib_loaded(lib_2D)
+        Kokkos.unload_lib(project_2D)
+        @test !Kokkos.is_lib_loaded(project_2D)
     end
+
+    Kokkos.clean(project_1D)  # Also cleans 'project_2D'
+    @test isempty(filter!(endswith(".so"), readdir(Kokkos.build_dir(project_1D))))
+    Kokkos.clean(project_1D; reset=true)
+    @test isempty(readdir(Kokkos.build_dir(project_1D)))
 end
