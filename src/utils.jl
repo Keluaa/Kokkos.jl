@@ -20,10 +20,6 @@ function set_omp_vars(; places = "cores", bind = "close", num_threads = Base.Thr
     ENV["OMP_PLACES"] = places
     ENV["OMP_PROC_BIND"] = bind
     ENV["OMP_NUM_THREADS"] = num_threads
-    if haskey(ENV, "KMP_AFFINITY")
-        # Prevent Intel's variables from interfering with ours
-        delete!(ENV, "KMP_AFFINITY")
-    end
 end
 
 
@@ -101,6 +97,18 @@ function initialize(;
 end
 
 
+# Defined in 'kokkos_wrapper.cpp', in 'define_kokkos_module'
+"""
+    print_configuration(io::IO, verbose::Bool)
+
+Prints the internal Kokkos configuration to `io`.
+
+Equivalent to `Kokkos::print_configuration(out, verbose)`.
+"""
+function print_configuration end
+
+
+# Defined in 'kokkos_wrapper.cpp', in 'define_kokkos_module'
 """
     finalize()
 

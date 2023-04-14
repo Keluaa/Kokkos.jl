@@ -44,7 +44,7 @@ function options end
     option!(project::KokkosProject, name::String, val; prefix="Kokkos_")
 
 Sets the given Kokkos option for the `project` to `val`.
-This will result in the following compilation option: `\$(prefix)\$(name)=\$(val)`.
+This will result in the following compilation option: `"-D\$(prefix)\$(name)=\$(val)"`.
 """
 function option! end
 
@@ -180,11 +180,19 @@ function clean(project::KokkosProject; reset=false)
 end
 
 
-function pretty_compile(p::KokkosProject)
+function pretty_compile(p::KokkosProject; info=false)
     # TODO: add loading bars?
-    @info "Configuring Kokkos project at $(source_dir(p))"
+    if info
+        @info "Configuring Kokkos project at $(source_dir(p))"
+    else
+        @debug "Configuring Kokkos project at $(source_dir(p))"
+    end
     configure(p)
-    @info "Compiling Kokkos project at $(source_dir(p))"
+    if info
+        @info "Compiling Kokkos project at $(source_dir(p))"
+    else
+        @debug "Compiling Kokkos project at $(source_dir(p))"
+    end
     compile(p)
 end
 
@@ -213,11 +221,12 @@ end
         build_type = "Release",
         build_dir = joinpath(source_dir, "cmake-build-\$(lowercase(build_type))"),
         cmake_options = [],
-        kokkos_path = nothing, kokkos_options = Dict{String, String}()
+        kokkos_path = nothing,
+        kokkos_options = nothing
     )
 
 Construct a new Kokkos project in `source_dir` built to `build_dir` using CMake.
-After compilation, the target library can be found at `joinpath(build_dir, target_lib_path)`.
+After compilation, the target library should be found at `joinpath(build_dir, target_lib_path)`.
 
 The shared library extension of `target_lib_path` can be omitted, as it is added if needed by
 `Libdl.dlopen`.
@@ -241,8 +250,11 @@ directory of Kokkos correctly configured with the current options (see
     Use the [kokkos_path](@ref) configuration variable to change the Kokkos version throughout
     `Kokkos.jl`.
 
-`kokkos_options` contains the list of Kokkos variables needed to configure the project
+`kokkos_options` is a `Dict` of Kokkos variables needed to configure the project
 ([see the docs](https://kokkos.github.io/kokkos-core-wiki/keywords.html#device-backends)).
+Values of type `Bool` are converted to "ON" and "OFF", all other types directly are converted to
+strings.
+Each variable is then passed to CMake as `"-D\$(name)=\$(value)"`.
 
 All commands are invoked from the current working directory.
 """
@@ -251,7 +263,8 @@ function CMakeKokkosProject(source_dir, target_lib_path;
     build_type = "Release",
     build_dir = joinpath(source_dir, "cmake-build-$(lowercase(build_type))"),
     cmake_options = String[],
-    kokkos_path = nothing, kokkos_options = Dict{String, String}()
+    kokkos_path = nothing,
+    kokkos_options = nothing
 )
     source_dir = normpath(source_dir)
     build_dir = normpath(build_dir)
@@ -286,11 +299,20 @@ function CMakeKokkosProject(source_dir, target_lib_path;
         push!(cmake_options, "-DKokkos_ROOT=$kokkos_path")
     end
 
+    new_kokkos_options = Dict{String, String}()
+    for (name, value) in something(kokkos_options, ())
+        if value isa Bool
+            new_kokkos_options[name] = value ? "ON" : "OFF"
+        else
+            new_kokkos_options[name] = string(value)
+        end
+    end
+
     return CMakeKokkosProject(
         source_dir, build_dir, lib_path,
         pwd(),
         config_options, build_options, clean_options,
-        cmake_options, kokkos_options,
+        cmake_options, new_kokkos_options,
         true
     )
 end
@@ -301,7 +323,7 @@ end
 
 Construct a project from another, for a different target.
 
-The source and build directories will stay the same, and options will be shared.
+The source and build directories will stay the same, and options will be copied.
 """
 function CMakeKokkosProject(project::CMakeKokkosProject, target, target_lib_path)
     lib_path = normpath(project.build_dir, target_lib_path) |> abspath
@@ -315,8 +337,8 @@ function CMakeKokkosProject(project::CMakeKokkosProject, target, target_lib_path
     return CMakeKokkosProject(
         project.source_dir, project.build_dir, lib_path,
         project.commands_dir,
-        project.config_options, build_options, project.clean_options,
-        project.cmake_options, project.kokkos_options,
+        copy(project.config_options), build_options, copy(project.clean_options),
+        copy(project.cmake_options), copy(project.kokkos_options),
         project.configuration_changed
     )
 end
@@ -328,7 +350,11 @@ lib_path(p::CMakeKokkosProject) = p.lib_path
 
 options(p::CMakeKokkosProject) = p.kokkos_options
 function option!(p::CMakeKokkosProject, name::String, val; prefix="Kokkos_")
-    p.kokkos_options[prefix * name] = val
+    if val isa Bool
+        p.kokkos_options[prefix * name] = val ? "ON" : "OFF"
+    else
+        p.kokkos_options[prefix * name] = string(val)
+    end
     configuration_changed!(p)
 end
 
