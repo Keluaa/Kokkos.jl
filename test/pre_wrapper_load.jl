@@ -27,11 +27,20 @@ default_path = Kokkos.LOCAL_KOKKOS_DIR
 @test Kokkos.set_kokkos_path(missing)    == Kokkos.KOKKOS_PATH              == Kokkos.LOCAL_KOKKOS_DIR
 @test Kokkos.set_cmake_options(missing)  == Kokkos.KOKKOS_CMAKE_OPTIONS     == Kokkos.__DEFAULT_KOKKOS_CMAKE_OPTIONS
 @test Kokkos.set_kokkos_options(missing) == Kokkos.KOKKOS_LIB_OPTIONS       == Kokkos.__DEFAULT_KOKKOS_LIB_OPTIONS
-@test Kokkos.set_backends(missing)       == Kokkos.KOKKOS_BACKENDS          == Kokkos.__DEFAULT_KOKKOS_BACKENDS
-@test Kokkos.set_view_dims(missing)      == Kokkos.KOKKOS_VIEW_DIMS         == Kokkos.__DEFAULT_KOKKOS_VIEW_DIMS
-@test Kokkos.set_view_types(missing)     == Kokkos.KOKKOS_VIEW_TYPES        == Kokkos.__DEFAULT_KOKKOS_VIEW_TYPES
 @test Kokkos.set_build_type(missing)     == Kokkos.KOKKOS_BUILD_TYPE        == Kokkos.__DEFAULT_KOKKOS_BUILD_TYPE
 @test Kokkos.set_build_dir(missing)      == Kokkos.KOKKOS_BUILD_DIR         == Kokkos.__DEFAULT_KOKKOS_BUILD_DIR
+
+if VERSION ≥ v"1.8"
+    # In 1.8 and above, `Pkg.test` has a different behaviour from `include("./runtests.jl")`, which
+    # changes how default values of preferences are affected by the package's "LocalPreferences.toml"
+    @test Kokkos.set_backends(missing)   == Kokkos.KOKKOS_BACKENDS   == ["Serial", "OpenMP"]
+    @test Kokkos.set_view_dims(missing)  == Kokkos.KOKKOS_VIEW_DIMS  == [1, 2]
+    @test Kokkos.set_view_types(missing) == Kokkos.KOKKOS_VIEW_TYPES == ["Float64", "Int64"]
+else
+    @test Kokkos.set_backends(missing)   == Kokkos.KOKKOS_BACKENDS   == Kokkos.__DEFAULT_KOKKOS_BACKENDS
+    @test Kokkos.set_view_dims(missing)  == Kokkos.KOKKOS_VIEW_DIMS  == Kokkos.__DEFAULT_KOKKOS_VIEW_DIMS
+    @test Kokkos.set_view_types(missing) == Kokkos.KOKKOS_VIEW_TYPES == Kokkos.__DEFAULT_KOKKOS_VIEW_TYPES
+end
 
 # Set the configuration back to what other tests expect (on top of the default values)
 Kokkos.set_backends([Kokkos.Serial, Kokkos.OpenMP])
