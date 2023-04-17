@@ -30,6 +30,7 @@ end
     include("views.jl")
     include("spaces.jl")
     include("utils.jl")
+    include("projects.jl")
     include("simple_lib_tests.jl")
     include("misc.jl")
 end
