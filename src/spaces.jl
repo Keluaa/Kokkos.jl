@@ -9,7 +9,7 @@ export HostSpace, CudaSpace, CudaHostPinnedSpace, CudaUVMSpace, HIPSpace, HIPHos
 export COMPILED_EXEC_SPACES, COMPILED_MEM_SPACES
 export DEFAULT_DEVICE_SPACE, DEFAULT_HOST_SPACE, DEFAULT_DEVICE_MEM_SPACE, DEFAULT_HOST_MEM_SPACE
 export SHARED_MEMORY_SPACE, SHARED_HOST_PINNED_MEMORY_SPACE
-export memory_space, execution_space, enabled, kokkos_name, accessible, main_space_type
+export memory_space, execution_space, enabled, kokkos_name, accessible, main_space_type, impl_space_type
 export fence, concurrency, allocate, deallocate
 
 
@@ -178,6 +178,16 @@ function main_space_type(::Type{S}) where {S <: Space}
 end
 
 main_space_type(::S) where {S <: Space} = main_space_type(S)
+
+
+"""
+    impl_space_type(::Type{<:Space})
+
+Opposite of [`main_space_type`](@ref): from the main space type (`Serial`, `OpenMP`, `HostSpace`...)
+return the implementation type (`SerialImpl`, `OpenMPImpl`, `HostSpaceImpl`...).
+The given space must be compiled.
+"""
+impl_space_type(::Type{S}) where {S <: Space} = error("space $S is not compiled")
 
 
 # Defined in 'spaces.cpp', in 'register_space'

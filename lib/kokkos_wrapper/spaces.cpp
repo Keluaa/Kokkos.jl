@@ -24,12 +24,13 @@ void register_space(jlcxx::Module& mod, jl_module_t* spaces_module)
         space_type.method("allocate", [](const Space& s, ptrdiff_t size) { return s.allocate(size); });
         space_type.method("deallocate", [](const Space& s, void* ptr, ptrdiff_t size) { return s.deallocate(ptr, size); });
     } else if constexpr (Kokkos::is_execution_space<Space>::value) {
-        space_type.method("concurrency", &Space::concurrency);
+        space_type.method("concurrency", [](const Space& s){ return s.concurrency(); });  // Serial::concurrency is static, while OpenMP::concurrency is not
         space_type.method("fence", &Space::fence);
     }
 
     mod.method("kokkos_name", [](jlcxx::SingletonType<SpaceInfo<Space>>) { return std::string(Space::name()); });
     mod.method("enabled", [](jlcxx::SingletonType<SpaceInfo<Space>>) { return true; });
+    mod.method("impl_space_type", [](jlcxx::SingletonType<SpaceInfo<Space>>) { return jlcxx::julia_type<Space>()->super; });
 }
 
 
@@ -138,6 +139,7 @@ void import_all_spaces_methods(jl_module_t* impl_module, jl_module_t* spaces_mod
         "fence",
         "kokkos_name",
         "enabled",
+        "impl_space_type",
         "execution_space",
         "accessible",
         "memory_space"

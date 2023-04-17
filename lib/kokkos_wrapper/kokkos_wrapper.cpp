@@ -181,6 +181,7 @@ JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
     mod.method("is_initialized",  (bool (*)()) &Kokkos::is_initialized);
     mod.method("is_finalized", (bool (*)()) &Kokkos::is_finalized);
 
+    mod.method("fence", [](){ Kokkos::fence(); });
     mod.method("fence", &Kokkos::fence);
 
     mod.unset_override_module();

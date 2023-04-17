@@ -120,9 +120,9 @@ function Base.show(io::IO, project::KokkosProject)
     else
         println(io, "Kokkos options: <none>")
     end
-    println("Config command:  `", pretty_cmd_string(configure_command(project)), "`")
-    println("Compile command: `", pretty_cmd_string(compile_command(project)), "`")
-    println("Clean command:   `", pretty_cmd_string(clean_command(project)), "`")
+    println(io, "Config command:  `", pretty_cmd_string(configure_command(project)), "`")
+    println(io, "Compile command: `", pretty_cmd_string(compile_command(project)), "`")
+    println(io, "Clean command:   `", pretty_cmd_string(clean_command(project)), "`")
 end
 
 

@@ -17,7 +17,7 @@ require
 set_omp_vars
 versioninfo
 print_configuration
-fence(::String)
+fence()
 ```
 
 ## Constants

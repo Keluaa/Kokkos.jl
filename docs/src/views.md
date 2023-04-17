@@ -9,6 +9,7 @@ CurrentModule = Kokkos.Views
 ```@docs
 View
 accessible(::View)
+memory_space(::View)
 label
 view_data
 view_wrap

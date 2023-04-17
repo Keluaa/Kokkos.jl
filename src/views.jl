@@ -116,9 +116,28 @@ end
 """
     accessible(::View)
 
-Return `true` if the view is accesssible from the default host execution space.
+Return `true` if the view is accessible from the default host execution space.
 """
 accessible(::View{T, D, MemSpace}) where {T, D, MemSpace} = accessible(MemSpace)
+
+
+"""
+    memory_space(::View)
+
+The memory space type in which the view data is stored.
+
+```julia-repl
+julia> my_cuda_space = Kokkos.impl_space_type(Kokkos.CudaSpace)()
+ ...
+
+julia> v = View{Float64}(undef, 10; mem_space=my_cuda_space)
+ ...
+
+julia> memory_space(v)
+Kokkos.Spaces.CudaSpace
+```
+"""
+memory_space(::View{T, D, MemSpace}) where {T, D, MemSpace} = main_space_type(MemSpace)
 
 
 """
@@ -202,7 +221,8 @@ function View{T, D}(dims::Dims{D};
         (mem_space <: ExecutionSpace) && (mem_space = memory_space(mem_space))
         return View{T, D, mem_space}(dims; mem_space, label, zero_fill, dim_pad)
     elseif mem_space isa MemorySpace
-        return View{T, D, typeof(mem_space)}(dims; mem_space, label, zero_fill, dim_pad)
+        mem_space_t = main_space_type(typeof(mem_space))
+        return View{T, D, mem_space_t}(dims; mem_space, label, zero_fill, dim_pad)
     else
         ensure_kokkos_wrapper_loaded()
         throw(TypeError(:View, "constructor", MemorySpace, mem_space))

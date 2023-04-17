@@ -50,15 +50,36 @@ skip_shared_mem = Kokkos.KOKKOS_VERSION < v"4.0.0"
 @test_throws @error_match("must be a subtype") Kokkos.main_space_type(Kokkos.MemorySpace)
 @test_throws @error_match("must be a subtype") Kokkos.main_space_type(Kokkos.ExecutionSpace)
 
-serial = Kokkos.KokkosWrapper.Impl.SerialImpl()
+@test Kokkos.impl_space_type(Kokkos.Serial) === Kokkos.KokkosWrapper.Impl.SerialImpl
+@test Kokkos.impl_space_type(Kokkos.OpenMP) === Kokkos.KokkosWrapper.Impl.OpenMPImpl
+@test Kokkos.impl_space_type(Kokkos.HostSpace) === Kokkos.KokkosWrapper.Impl.HostSpaceImpl
+
+@test_throws @error_match("is not compiled") Kokkos.impl_space_type(Kokkos.Cuda)
+
+serial = Kokkos.impl_space_type(Kokkos.Serial)()
 @test Kokkos.main_space_type(serial) === Kokkos.Serial
 @test Kokkos.memory_space(serial) === Kokkos.HostSpace
 @test Kokkos.enabled(serial)
 
-host_space = Kokkos.KokkosWrapper.Impl.HostSpaceImpl()
+host_space = Kokkos.impl_space_type(Kokkos.HostSpace)()
 @test Kokkos.main_space_type(host_space) === Kokkos.HostSpace
 @test Kokkos.execution_space(host_space) === Kokkos.OpenMP
 @test Kokkos.accessible(host_space)
 @test Kokkos.enabled(host_space)
+
+@test Kokkos.fence() === nothing
+@test Kokkos.fence("test_fence") === nothing
+@test Kokkos.fence(serial) === nothing
+@test Kokkos.fence(serial, "test_fence_Serial") === nothing
+
+@test Kokkos.concurrency(serial) == 1
+@test Kokkos.concurrency(Kokkos.impl_space_type(Kokkos.OpenMP)()) == Threads.nthreads()
+
+alloc_ptr = Kokkos.allocate(host_space, 10)
+@test alloc_ptr !== C_NULL
+Kokkos.deallocate(host_space, alloc_ptr, 10)
+
+my_view_in_host_space = View{Float64}(undef, 10; mem_space=host_space)
+@test Kokkos.memory_space(my_view_in_host_space) === Kokkos.HostSpace
 
 end

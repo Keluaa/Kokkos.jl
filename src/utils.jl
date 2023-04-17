@@ -145,13 +145,14 @@ is_finalized() = false
 
 # Defined in 'kokkos_wrapper.cpp', in 'define_kokkos_module'
 """
+    fence()
     fence(label::String)
 
 Wait for all asynchronous Kokkos operations to complete.
 
 Equivalent to [`Kokkos::fence()`](https://kokkos.github.io/kokkos-core-wiki/API/core/parallel-dispatch/fence.html).
 """
-function fence(::String) end
+fence() = ensure_kokkos_wrapper_loaded()
 
 
 """

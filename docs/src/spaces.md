@@ -11,8 +11,9 @@ MemorySpace
 accessible(::Space)
 enabled
 execution_space
-memory_space
+memory_space(::Space)
 main_space_type
+impl_space_type
 kokkos_name
 fence(::ExecutionSpace)
 concurrency
