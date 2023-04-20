@@ -20,6 +20,9 @@ MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
 MPIExt = "MPI"
 
 [compat]
+CxxWrap = "0.13"
+Scratch = "1"
+Preferences = "1"
 julia = "1.7"
 
 [extras]

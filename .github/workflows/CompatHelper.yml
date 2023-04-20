@@ -1,7 +1,7 @@
 name: CompatHelper
 on:
   schedule:
-    - cron: 0 0 * * *
+    - cron: 0 8 * * *
   workflow_dispatch:
 permissions:
   contents: write
@@ -41,4 +41,4 @@ jobs:
         shell: julia --color=yes {0}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COMPATHELPER_PRIV: ${{ secrets.DOCUMENTER_KEY }}
+          COMPATHELPER_PRIV: ${{ secrets.COMPATHELPER_PRIV }}
