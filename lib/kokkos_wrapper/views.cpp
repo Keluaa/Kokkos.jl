@@ -147,7 +147,7 @@ ViewWrap<T, DimCst, MemSpace> view_wrap(const std::tuple<Dims...>& dims, T* data
 }
 
 
-jl_value_t* build_abstract_array_type(jlcxx::Module& mod, jl_module_t* views_module, int dim, jl_datatype_t* space_type)
+jl_value_t* build_abstract_array_type(jl_module_t* views_module, int dim, jl_datatype_t* space_type)
 {
     // Since we call `mod.add_type` by applying only the data type of the array, we need a UnionAll with the dimension
     // already specified. The Julia equivalent would be `Kokkos.View{T, dim, space_type} where T`.
@@ -185,7 +185,7 @@ jl_value_t* build_abstract_array_type(jlcxx::Module& mod, jl_module_t* views_mod
 
 
 template<typename T, int D, typename MemorySpace>
-jl_datatype_t* build_array_constructor_type(jlcxx::Module& mod, jl_module_t* views_module)
+jl_datatype_t* build_array_constructor_type(jl_module_t* views_module)
 {
     jl_value_t** stack;
     JL_GC_PUSHARGS(stack, 4);
@@ -266,7 +266,7 @@ struct RegisterUtils
         using ctor_type = ViewCtorWrap<Wrapped>;
         constexpr size_t D = view_dim::value;
 
-        jl_datatype_t* view_ctor_type = build_array_constructor_type<type, D, MemorySpace>(mod, views_module);
+        jl_datatype_t* view_ctor_type = build_array_constructor_type<type, D, MemorySpace>(views_module);
         jlcxx::set_julia_type<ctor_type>(view_ctor_type);
 
         using DimsTuple = decltype(std::tuple_cat(std::array<int64_t, D>()));
@@ -292,7 +292,7 @@ void register_view_types(jlcxx::Module& mod, jl_module_t* views_module)
 {
     using view_dim = std::integral_constant<size_t, D>;
 
-    jl_value_t* view_type = build_abstract_array_type(mod, views_module, D, jlcxx::julia_type<MemorySpace>());
+    jl_value_t* view_type = build_abstract_array_type(views_module, D, jlcxx::julia_type<MemorySpace>());
 
     std::stringstream str;
     str << "View" << D << "D_" << MemorySpace::name();
@@ -313,6 +313,7 @@ void register_view_types(jlcxx::Module& mod, jl_module_t* views_module)
         RegisterUtils::register_access_operator<D, MemorySpace>(wrapped);
 
         wrapped.method("view_data", &WrappedT::data);
+        wrapped.method("memory_span", [](const WrappedT& view) { return view.impl_map().memory_span(); });
         wrapped.method("label", &WrappedT::label);
         wrapped.method("get_dims", [](const WrappedT& view) { return std::tuple_cat(view.get_dims()); });
     });
@@ -367,6 +368,7 @@ void import_all_views_methods(jl_module_t* impl_module, jl_module_t* views_modul
         "alloc_view",
         "view_wrap",
         "view_data",
+        "memory_span",
         "label",
         "get_dims"
     };

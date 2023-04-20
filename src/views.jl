@@ -8,7 +8,7 @@ import ..Kokkos: memory_space, accessible, main_space_type, finalize
 
 export View, Idx
 export COMPILED_TYPES, COMPILED_DIMS
-export label, view_wrap, view_data
+export label, view_wrap, view_data, memory_span
 
 
 # The View type must be defined before loading the Kokkos wrapper library which depends on it
@@ -154,6 +154,14 @@ function label end
 The pointer to the data of the `View`.
 """
 function view_data end
+
+
+"""
+    memory_span(::View)
+
+Total size of the view data in memory, in bytes.
+"""
+function memory_span end
 
 
 # === Constructors ===

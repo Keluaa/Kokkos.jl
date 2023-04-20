@@ -12,6 +12,7 @@ accessible(::View)
 memory_space(::View)
 label
 view_data
+memory_span
 view_wrap
 ```
 
