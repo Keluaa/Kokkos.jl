@@ -291,12 +291,13 @@ function CMakeKokkosProject(source_dir, target_lib_path;
         "--target", "clean"
     ]
 
-    push!(cmake_options, "-DCMAKE_BUILD_TYPE=$build_type", "-DBUILD_SHARED_LIBS=ON")
+    cmake_options = copy(cmake_options)
+    pushfirst!(cmake_options, "-DCMAKE_BUILD_TYPE=$build_type", "-DBUILD_SHARED_LIBS=ON")
 
     if isnothing(kokkos_path)
-        push!(cmake_options, "-DKokkos_ROOT=$(get_kokkos_install_dir())")
+        pushfirst!(cmake_options, "-DKokkos_ROOT=$(get_kokkos_install_dir())")
     elseif !isempty(kokkos_path)
-        push!(cmake_options, "-DKokkos_ROOT=$kokkos_path")
+        pushfirst!(cmake_options, "-DKokkos_ROOT=$kokkos_path")
     end
 
     new_kokkos_options = Dict{String, String}()
