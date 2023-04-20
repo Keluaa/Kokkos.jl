@@ -6,6 +6,10 @@ using Preferences
 using Scratch
 using LibGit2
 
+if !isdefined(Base, :get_extension)
+    using Requires
+end
+
 export KokkosProject, CMakeKokkosProject, CLibrary
 export configure, compile, clean, options, option!
 export is_valid, handle, load_lib, unload_lib, is_lib_loaded, get_symbol
@@ -65,5 +69,12 @@ include("views.jl")
 using .Views
 
 include("configuration.jl")
+
+
+function __init__()
+    @static if !isdefined(Base, :get_extension)
+        @require MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195" include("../ext/MPIExt.jl")
+    end
+end
 
 end
