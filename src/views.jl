@@ -151,7 +151,9 @@ function label end
 """
     view_data(::View)
 
-The pointer to the data of the `View`.
+The pointer to the data of the `View`. Using `Base.pointer(view)` is preferred over this method.
+
+Equivalent to `view.data()`.
 """
 function view_data end
 
@@ -160,6 +162,8 @@ function view_data end
     memory_span(::View)
 
 Total size of the view data in memory, in bytes.
+
+Equivalent to `view.impl_map().memory_span()`.
 """
 function memory_span end
 
@@ -342,6 +346,8 @@ Base.similar(::View{<:Any, <:Any, M}, ::Type{T}, dims::Dims{D}) where {T, D, M} 
 
 
 # === Pointer conversion ===
+
+Base.pointer(v::V) where {T, V <: View{T}} = Ptr{T}(view_data(v).cpp_object)
 
 Base.cconvert(::Type{Ref{V}}, v::V) where {V <: View} = Ptr{Nothing}(v.cpp_object)
 

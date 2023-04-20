@@ -6,7 +6,7 @@ using CxxWrap
 
 import ..Kokkos: CMakeKokkosProject
 import ..Kokkos: run_cmd_print_on_error, load_lib, lib_path, build_dir, pretty_compile
-import ..Kokkos: ensure_kokkos_wrapper_loaded
+import ..Kokkos: ensure_kokkos_wrapper_loaded, configuration_changed!
 import ..Kokkos: LOCAL_KOKKOS_DIR, LOCAL_KOKKOS_VERSION_STR
 import ..Kokkos: KOKKOS_PATH, KOKKOS_CMAKE_OPTIONS, KOKKOS_LIB_OPTIONS, KOKKOS_BACKENDS
 import ..Kokkos: KOKKOS_VIEW_DIMS, KOKKOS_VIEW_TYPES, KOKKOS_BUILD_TYPE, KOKKOS_BUILD_DIR
@@ -81,8 +81,8 @@ function setup_local_kokkos_source()
 end
 
 
-function create_kokkos_lib_project()
-    setup_local_kokkos_source()
+function create_kokkos_lib_project(; no_git=false)
+    !no_git && setup_local_kokkos_source()
 
     julia_exe_path = joinpath(Sys.BINDIR, "julia")
     !isfile(julia_exe_path) && error("Could not determine the position of the Julia executable")
@@ -127,9 +127,14 @@ function install_kokkos()
 end
 
 
-function compile_wrapper_lib()
-    global KOKKOS_LIB_PROJECT = create_kokkos_lib_project()
+function compile_wrapper_lib(; no_compilation=false, no_git=false)
+    global KOKKOS_LIB_PROJECT = create_kokkos_lib_project(; no_git)
     global KOKKOS_LIB_PATH = lib_path(KOKKOS_LIB_PROJECT)
+
+    if no_compilation
+        configuration_changed!(KOKKOS_LIB_PROJECT, false)
+        return
+    end
 
     pretty_compile(KOKKOS_LIB_PROJECT; info=true)
     install_kokkos()
@@ -178,15 +183,24 @@ get_impl_module() = Impl
 
 
 """
-    load_wrapper_lib()
+    load_wrapper_lib(; no_compilation=false, no_git=false)
 
 Configures, compiles then loads the wrapper library using the current [Configuration Options](@ref).
 
 After calling this method, all configuration options become locked.
+
+If `no_compilation` is `true`, then the CMake project of the wrapper library will not be configured
+or compiled.
+
+If `no_git` is `true`, then if we need to use the Kokkos installation of the package, no Git
+operations (clone + checkout) will be done.
+
+Both `no_compilation=true` and `no_git=true` are needed when initializing Kokkos.jl in non-root MPI
+processes.
 """
-function load_wrapper_lib()
+function load_wrapper_lib(; no_compilation=false, no_git=false)
     !isnothing(KOKKOS_LIB) && return
-    !is_kokkos_wrapper_compiled() && compile_wrapper_lib()
+    !is_kokkos_wrapper_compiled() && compile_wrapper_lib(; no_compilation, no_git)
 
     @debug "Loading the Kokkos Wrapper library..."
 

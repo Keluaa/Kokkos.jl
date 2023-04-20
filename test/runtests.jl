@@ -33,4 +33,5 @@ end
     include("projects.jl")
     include("simple_lib_tests.jl")
     include("misc.jl")
+    include("mpi.jl")
 end

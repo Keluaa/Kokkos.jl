@@ -10,7 +10,7 @@ import MPI: MPIPtr, Buffer, Datatype
 Base.cconvert(::Type{MPIPtr}, arr::Kokkos.View) = arr
 
 function Base.unsafe_convert(::Type{MPIPtr}, arr::Kokkos.View{T}) where T
-    return reinterpret(MPIPtr, Base.unsafe_convert(Ptr{T}, Kokkos.view_data(arr)))
+    return reinterpret(MPIPtr, pointer(arr))
 end
 
 function Buffer(arr::Kokkos.View)
