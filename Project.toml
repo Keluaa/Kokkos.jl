@@ -13,17 +13,15 @@ Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 Scratch = "6c6a2e73-6563-6170-7368-637461726353"
 libcxxwrap_julia_jll = "3eaa8342-bff7-56a5-9981-c04077f7cee7"
 
-[weakdeps]
-MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
+[compat]
+CxxWrap = "0.13"
+MPI = "0.20"
+Preferences = "1"
+Scratch = "1"
+julia = "1.7"
 
 [extensions]
 MPIExt = "MPI"
-
-[compat]
-CxxWrap = "0.13"
-Scratch = "1"
-Preferences = "1"
-julia = "1.7"
 
 [extras]
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
@@ -33,3 +31,6 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test", "Preferences", "Logging", "MPI"]
+
+[weakdeps]
+MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
