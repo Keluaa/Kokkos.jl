@@ -121,15 +121,52 @@ end
 @test_throws @error_match("`Kokkos.View3D` cannot") View{Int64}(undef, (2, 2, 2))
 @test_throws @error_match("CudaSpace` is not compiled") View{Int64}(undef, n1; mem_space=Kokkos.CudaSpace)
 
-a7 = rand(Float64, 43)
-v7 = view_wrap(a7)
-@test all(v7 .== a7)
-@test pointer(a7) == Kokkos.view_data(v7)
 
-a8 = rand(Float64, 16)
-v8 = view_wrap(View{Float64, 2, Kokkos.DEFAULT_HOST_MEM_SPACE}, (4, 4), pointer(a8))
-@test v8[4, 4] == a8[16]
-@test all(reshape(v8', 16) .== a8)  # HostSpace defaults to row-major, hence the transposition
-@test pointer(a8) == Kokkos.view_data(v8)
+@testset "view_wrap" begin
+    a7 = rand(Float64, 43)
+    v7 = view_wrap(a7)
+    @test all(v7 .== a7)
+    @test pointer(a7) == Kokkos.view_data(v7)
+    
+    a8 = rand(Float64, 16)
+    v8 = view_wrap(View{Float64, 2, Kokkos.DEFAULT_HOST_MEM_SPACE}, (4, 4), pointer(a8))
+    @test v8[4, 4] == a8[16]
+    @test all(reshape(v8', 16) .== a8)  # HostSpace defaults to row-major, hence the transposition
+    @test pointer(a8) == Kokkos.view_data(v8) 
+end
+
+
+@testset "Deep copy on $exec_space_type in $(dim)D" for 
+        exec_space_type in (:no_exec_space, Kokkos.COMPILED_EXEC_SPACES...),
+        dim in Kokkos.COMPILED_DIMS
+
+    exec_space = exec_space_type === :no_exec_space ? nothing : Kokkos.impl_space_type(exec_space_type)()
+    n = ntuple(Returns(7), dim)
+
+    @testset "View{$src_type, $dim, $src_space} => View{$dst_type, $dim, $dst_space}" for 
+            src_type in Kokkos.COMPILED_TYPES, dst_type in Kokkos.COMPILED_TYPES,
+            src_space in Kokkos.COMPILED_MEM_SPACES, dst_space in Kokkos.COMPILED_MEM_SPACES
+
+        v_src = View{src_type}(undef, n; mem_space=src_space)
+        v_dst = View{dst_type}(n; mem_space=dst_space)
+
+        v_src .= rand(src_type, n) * 10
+
+        if isnothing(exec_space)
+            Kokkos.deep_copy(v_dst, v_src)
+        else
+            Kokkos.deep_copy(exec_space, v_dst, v_src)
+            Kokkos.fence(exec_space)
+        end
+    
+        if src_type == dst_type
+            @test all(v_dst .== v_src)
+        elseif dst_type <: AbstractFloat
+            @test all(v_dst .≈ v_src)  # Int to Float
+        else
+            @test all(v_dst .== trunc.(dst_type, v_src))  # Float to Int
+        end
+    end
+end
 
 end

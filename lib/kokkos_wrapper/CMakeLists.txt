@@ -26,11 +26,12 @@ endif()
 
 
 add_library(KokkosWrapper SHARED
-        views.cpp views.h
         kokkos_wrapper.cpp kokkos_wrapper.h
         execution_spaces.h
         memory_spaces.h
-        spaces.cpp spaces.h)
+        spaces.cpp spaces.h
+        views.cpp views.h
+        copy.cpp copy.h)
 target_link_libraries(KokkosWrapper PUBLIC JlCxx::cxxwrap_julia)
 target_link_libraries(KokkosWrapper PRIVATE Kokkos::kokkos)
 target_compile_definitions(KokkosWrapper PRIVATE

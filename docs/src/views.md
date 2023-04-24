@@ -14,6 +14,7 @@ label
 view_data
 memory_span
 view_wrap
+deep_copy
 ```
 
 ## Constants

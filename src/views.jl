@@ -8,7 +8,7 @@ import ..Kokkos: memory_space, accessible, main_space_type, finalize
 
 export View, Idx
 export COMPILED_TYPES, COMPILED_DIMS
-export label, view_wrap, view_data, memory_span
+export label, view_wrap, view_data, memory_span, deep_copy
 
 
 # The View type must be defined before loading the Kokkos wrapper library which depends on it
@@ -166,6 +166,23 @@ Total size of the view data in memory, in bytes.
 Equivalent to `view.impl_map().memory_span()`.
 """
 function memory_span end
+
+
+"""
+    deep_copy(dest::View, src::View)
+    deep_copy(space::ExecutionSpace, dest::View, src::View)
+
+Performs a copy of all data from `src` to `dest`.
+
+In order for the copy to be possible, both views must have the same dimension, and either have the
+same layout or are both accessible from `space`.
+
+If a `space` is given, the copy may be asynchronous. If not the copy will be synchronous.
+
+Equivalent to `Kokkos::deep_copy(dest, src)` or `Kokkos::deep_copy(space, dest, src)`.
+[See the Kokkos docs about `Kokkos::deep_copy`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/deep_copy.html#deep-copy)
+"""
+function deep_copy end
 
 
 # === Constructors ===
