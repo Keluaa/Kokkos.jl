@@ -8,44 +8,7 @@
 using jlcxx::Parametric;
 using jlcxx::TypeVar;
 
-using DimensionsToInstantiate = std::integer_sequence<int, VIEW_DIMENSIONS>;
-
 const size_t KOKKOS_MAX_DIMENSIONS = 8;
-
-
-/**
- * Sets `type` to `T` followed by `N` pointers: `add_pointers<int, 2>::type == int**`
- */
-template<typename T, int N>
-struct add_pointers { using type = typename add_pointers<std::add_pointer_t<T>, N-1>::type; };
-
-template<typename T>
-struct add_pointers<T, 0> { using type = T; };
-
-
-/**
- * Basic wrapper around a `Kokkos::View`, mostly providing convenience functionalities over dimensions and the data type
- * of the view.
- */
-template<typename T, typename DimCst, typename MemSpace, typename T_Ptr = typename add_pointers<T, DimCst::value>::type>
-struct ViewWrap : public Kokkos::View<T_Ptr, MemSpace>
-{
-    using type = T;
-    using mem_space = MemSpace;
-    using Kokkos::View<T_Ptr, MemSpace>::View;
-
-    static constexpr size_t dim = DimCst::value;
-
-    using IdxTuple [[maybe_unused]] = decltype(std::tuple_cat(std::array<Idx, dim>()));
-
-    [[nodiscard]] std::array<int64_t, dim> get_dims() const {
-        std::array<int64_t, dim> dims{};
-        for (size_t i = 0; i < dim; i++) {
-            dims.at(i) = this->extent_int(i);
-        }
-        return dims;
-    }
-};
 
 
 template<typename>
@@ -362,7 +325,7 @@ jl_datatype_t* get_idx_type()
 
 void import_all_views_methods(jl_module_t* impl_module, jl_module_t* views_module)
 {
-    // In order to override the methods in the Kokkos.Spaces module, we must have them imported
+    // In order to override the methods in the Kokkos.Views module, we must have them imported
     const std::array declared_methods = {
         "get_ptr",
         "alloc_view",

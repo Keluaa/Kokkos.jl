@@ -34,6 +34,49 @@
 
 using Idx = typename Kokkos::RangePolicy<>::index_type;
 
+using DimensionsToInstantiate = std::integer_sequence<int, VIEW_DIMENSIONS>;
+
+
+/**
+ * Sets `type` to `T` followed by `N` pointers: `add_pointers<int, 2>::type == int**`
+ */
+template<typename T, int N>
+struct add_pointers { using type = typename add_pointers<std::add_pointer_t<T>, N-1>::type; };
+
+template<typename T>
+struct add_pointers<T, 0> { using type = T; };
+
+
+/**
+ * Basic wrapper around a `Kokkos::View`, mostly providing convenience functionalities over dimensions and the data type
+ * of the view.
+ */
+template<typename T, typename DimCst, typename MemSpace,
+         typename T_Ptr = typename add_pointers<T, DimCst::value>::type,
+         typename KokkosViewT = typename Kokkos::View<T_Ptr, MemSpace>>
+struct ViewWrap : public KokkosViewT
+{
+    using type = T;
+    using mem_space = MemSpace;
+    using kokkos_view_t = KokkosViewT;
+
+    static constexpr size_t dim = DimCst::value;
+
+    using IdxTuple [[maybe_unused]] = decltype(std::tuple_cat(std::array<Idx, dim>()));
+
+    // Should be 'using typename KokkosViewT::View;' but compiler incompatibilities make this impossible
+    using Kokkos::View<T_Ptr, MemSpace>::View;
+
+    [[nodiscard]] std::array<int64_t, dim> get_dims() const {
+        std::array<int64_t, dim> dims{};
+        for (size_t i = 0; i < dim; i++) {
+            dims.at(i) = this->extent_int(i);
+        }
+        return dims;
+    }
+};
+
+
 jl_datatype_t* get_idx_type();
 
 void define_kokkos_views(jlcxx::Module& mod);
