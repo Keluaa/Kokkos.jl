@@ -15,6 +15,8 @@ view_data
 memory_span
 view_wrap
 deep_copy
+create_mirror
+create_mirror_view
 ```
 
 ## Constants

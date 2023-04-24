@@ -50,6 +50,9 @@ struct add_pointers<T, 0> { using type = T; };
 /**
  * Basic wrapper around a `Kokkos::View`, mostly providing convenience functionalities over dimensions and the data type
  * of the view.
+ *
+ * It is this type that is registered with CxxWrap, not Kokkos::View, therefore all Julia methods defined with CxxWrap
+ * should use this type in their arguments / return type, not Kokkos::View.
  */
 template<typename T, typename DimCst, typename MemSpace,
          typename T_Ptr = typename add_pointers<T, DimCst::value>::type,
@@ -66,6 +69,9 @@ struct ViewWrap : public KokkosViewT
 
     // Should be 'using typename KokkosViewT::View;' but compiler incompatibilities make this impossible
     using Kokkos::View<T_Ptr, MemSpace>::View;
+
+    explicit ViewWrap(const KokkosViewT& other) : KokkosViewT(other) {};
+    explicit ViewWrap(KokkosViewT&& other) : KokkosViewT(std::move(other)) {};
 
     [[nodiscard]] std::array<int64_t, dim> get_dims() const {
         std::array<int64_t, dim> dims{};

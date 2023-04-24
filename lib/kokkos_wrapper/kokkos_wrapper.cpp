@@ -4,6 +4,7 @@
 #include "spaces.h"
 #include "views.h"
 #include "copy.h"
+#include "mirrors.h"
 
 #include <sstream>
 
@@ -192,4 +193,5 @@ JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
     define_all_spaces(mod);
     define_kokkos_views(mod);
     define_kokkos_deep_copy(mod);
+    define_kokkos_mirrors(mod);
 }

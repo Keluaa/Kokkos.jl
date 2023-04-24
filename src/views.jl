@@ -8,10 +8,9 @@ import ..Kokkos: memory_space, accessible, main_space_type, finalize
 
 export View, Idx
 export COMPILED_TYPES, COMPILED_DIMS
-export label, view_wrap, view_data, memory_span, deep_copy
+export label, view_wrap, view_data, memory_span, deep_copy, create_mirror, create_mirror_view
 
 
-# The View type must be defined before loading the Kokkos wrapper library which depends on it
 """
     View{T, D, MemSpace} <: AbstractArray{T, D}
 
@@ -185,6 +184,35 @@ Equivalent to `Kokkos::deep_copy(dest, src)` or `Kokkos::deep_copy(space, dest, 
 function deep_copy end
 
 
+"""
+    create_mirror(src::View; mem_space = nothing, zero_fill = false)
+
+Create a new [`View`](@ref) in the same way as `similar(src)`, with the same layout and padding as
+`src`.
+
+If `mem_space` is `nothing` the new view will be in a memory space accessible by the host, otherwise
+it must be a memory space instance where the new view will be allocated.
+
+If `zero_fill` is true, the new view will have all of its elements set to their default value.
+
+[See the Kokkos docs about `Kokkos::create_mirror`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/create_mirror.html)
+"""
+function create_mirror(src::View; mem_space = nothing, zero_fill = false)
+    return create_mirror(src, mem_space, zero_fill)
+end
+
+
+"""
+    create_mirror_view(src::View; mem_space = nothing, zero_fill = false)
+
+Equivalent to [`create_mirror`](@ref), but if `src` is already accessible by the host, `src` is
+returned and no view is created.
+"""
+function create_mirror_view(src::View; mem_space = nothing, zero_fill = false)
+    return create_mirror_view(src, mem_space, zero_fill)
+end
+
+
 # === Constructors ===
 
 """
@@ -353,7 +381,7 @@ Base.@propagate_inbounds Base.setindex!(v::View{T, D}, val, I::Vararg{Int, D}) w
     (elem_ptr(v, I...)[] = convert(T, val))
 
 
-# TODO: copy 'dim_pad' too (and LayoutType in the future)
+# TODO: copy 'dim_pad' too (and LayoutType in the future), use `create_mirror`?
 Base.similar(a::View{T, D, M}) where {T, D, M} =
     View{T, D, main_space_type(M)}(size(a); zero_fill=false)
 Base.similar(::View{T, <:Any, M}, dims::Dims{D}) where {T, D, M} =

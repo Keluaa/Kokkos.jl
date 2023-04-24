@@ -169,4 +169,41 @@ end
     end
 end
 
+
+@testset "create_mirror to $dst_space_type in $(dim)D" for 
+        dst_space_type in (:default_mem_space, Kokkos.COMPILED_MEM_SPACES...),
+        dim in Kokkos.COMPILED_DIMS
+
+    dst_mem_space = dst_space_type === :default_mem_space ? nothing : Kokkos.impl_space_type(dst_space_type)()
+    n = ntuple(Returns(7), dim)
+
+    @testset "View{$src_type, $dim, $src_space}" for
+            src_type in Kokkos.COMPILED_TYPES,
+            src_space in Kokkos.COMPILED_MEM_SPACES
+        v_src = View{src_type}(undef, n; mem_space=src_space)
+        v_src_m = Kokkos.create_mirror(v_src; mem_space=dst_mem_space, zero_fill=true)
+
+        @test all(v_src_m .== 0)
+
+        if isnothing(dst_mem_space)
+            @test Kokkos.accessible(Kokkos.memory_space(v_src_m))
+        else
+            @test Kokkos.memory_space(v_src_m) == Kokkos.main_space_type(dst_mem_space)
+        end
+
+        v_src_m2 = Kokkos.create_mirror_view(v_src; mem_space=dst_mem_space, zero_fill=true)
+
+        if isnothing(dst_mem_space)
+            @test Kokkos.accessible(Kokkos.memory_space(v_src_m2))
+        elseif Kokkos.memory_space(v_src) == Kokkos.main_space_type(dst_mem_space)
+            @test v_src_m2 == v_src
+            @test pointer(v_src_m2) == pointer(v_src)
+        else
+            @test v_src_m2 != v_src
+            @test pointer(v_src_m2) != pointer(v_src)
+            @test all(v_src_m2 .== 0)
+        end
+    end
+end
+
 end
