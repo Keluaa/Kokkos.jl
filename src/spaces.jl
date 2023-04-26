@@ -190,6 +190,14 @@ The given space must be compiled.
 impl_space_type(::Type{S}) where {S <: Space} = error("space $S is not compiled")
 
 
+# Space constructors
+for S_type in (Serial, OpenMP, OpenACC, OpenMPTarget, Threads, Cuda, HIP, HPX, SYCL,
+               HostSpace, CudaSpace, CudaHostPinnedSpace, CudaUVMSpace,
+               HIPSpace, HIPHostPinnedSpace, HIPManagedSpace)
+    @eval (::Type{$S_type})() = impl_space_type($S_type)()
+end
+
+
 # Defined in 'spaces.cpp', in 'register_space'
 """
     fence(exec_space::ExecutionSpace)

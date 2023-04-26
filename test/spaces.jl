@@ -56,12 +56,12 @@ skip_shared_mem = Kokkos.KOKKOS_VERSION < v"4.0.0"
 
 @test_throws @error_match("is not compiled") Kokkos.impl_space_type(Kokkos.Cuda)
 
-serial = Kokkos.impl_space_type(Kokkos.Serial)()
+serial = Kokkos.Serial()
 @test Kokkos.main_space_type(serial) === Kokkos.Serial
 @test Kokkos.memory_space(serial) === Kokkos.HostSpace
 @test Kokkos.enabled(serial)
 
-host_space = Kokkos.impl_space_type(Kokkos.HostSpace)()
+host_space = Kokkos.HostSpace()
 @test Kokkos.main_space_type(host_space) === Kokkos.HostSpace
 @test Kokkos.execution_space(host_space) === Kokkos.OpenMP
 @test Kokkos.accessible(host_space)
@@ -73,7 +73,7 @@ host_space = Kokkos.impl_space_type(Kokkos.HostSpace)()
 @test Kokkos.fence(serial, "test_fence_Serial") === nothing
 
 @test Kokkos.concurrency(serial) == 1
-@test Kokkos.concurrency(Kokkos.impl_space_type(Kokkos.OpenMP)()) == Threads.nthreads()
+@test Kokkos.concurrency(Kokkos.OpenMP()) == Threads.nthreads()
 
 alloc_ptr = Kokkos.allocate(host_space, 10)
 @test alloc_ptr !== C_NULL

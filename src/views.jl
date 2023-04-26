@@ -126,7 +126,7 @@ accessible(::View{T, D, MemSpace}) where {T, D, MemSpace} = accessible(MemSpace)
 The memory space type in which the view data is stored.
 
 ```julia-repl
-julia> my_cuda_space = Kokkos.impl_space_type(Kokkos.CudaSpace)()
+julia> my_cuda_space = Kokkos.CudaSpace()
  ...
 
 julia> v = View{Float64}(undef, 10; mem_space=my_cuda_space)
@@ -388,6 +388,10 @@ Base.similar(::View{T, <:Any, M}, dims::Dims{D}) where {T, D, M} =
     View{T, D, main_space_type(M)}(dims; zero_fill=false)
 Base.similar(::View{<:Any, <:Any, M}, ::Type{T}, dims::Dims{D}) where {T, D, M} =
     View{T, D, main_space_type(M)}(dims; zero_fill=false)
+
+
+Base.copyto!(dest::View{DT, Dim, DM}, src::View{ST, Dim, SM}) where {DT, ST, DM, SM, Dim} =
+    deep_copy(dest, src)
 
 
 # === Pointer conversion ===

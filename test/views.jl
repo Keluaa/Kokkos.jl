@@ -140,7 +140,7 @@ end
         exec_space_type in (:no_exec_space, Kokkos.COMPILED_EXEC_SPACES...),
         dim in Kokkos.COMPILED_DIMS
 
-    exec_space = exec_space_type === :no_exec_space ? nothing : Kokkos.impl_space_type(exec_space_type)()
+    exec_space = exec_space_type === :no_exec_space ? nothing : exec_space_type()
     n = ntuple(Returns(7), dim)
 
     @testset "View{$src_type, $dim, $src_space} => View{$dst_type, $dim, $dst_space}" for 
@@ -174,7 +174,7 @@ end
         dst_space_type in (:default_mem_space, Kokkos.COMPILED_MEM_SPACES...),
         dim in Kokkos.COMPILED_DIMS
 
-    dst_mem_space = dst_space_type === :default_mem_space ? nothing : Kokkos.impl_space_type(dst_space_type)()
+    dst_mem_space = dst_space_type === :default_mem_space ? nothing : dst_space_type()
     n = ntuple(Returns(7), dim)
 
     @testset "View{$src_type, $dim, $src_space}" for
