@@ -15,6 +15,9 @@ export get_jlcxx_root, get_kokkos_dir, get_kokkos_build_dir, get_kokkos_install_
 export load_wrapper_lib, get_impl_module
 
 
+const USE_CLI_GIT = parse(Bool, get(ENV, "JULIA_PKG_USE_CLI_GIT", "false")) || parse(Bool, get(ENV, "JULIA_KOKKOS_USE_CLI_GIT", "false"))
+
+
 """
     get_jlcxx_root()
 
@@ -70,14 +73,30 @@ function setup_local_kokkos_source()
     # Download our local Kokkos source files into a scratch directory
     if isempty(readdir(LOCAL_KOKKOS_DIR))
         @info "Cloning Kokkos $LOCAL_KOKKOS_VERSION_STR to $LOCAL_KOKKOS_DIR..."
-        repo = LibGit2.clone("https://github.com/kokkos/kokkos.git", LOCAL_KOKKOS_DIR)
+        @static if USE_CLI_GIT
+            run_cmd_print_on_error(Cmd(`git clone https://github.com/kokkos/kokkos.git .`; dir=LOCAL_KOKKOS_DIR))
+        else
+            repo = LibGit2.clone("https://github.com/kokkos/kokkos.git", LOCAL_KOKKOS_DIR)
+        end
     else
         repo = LibGit2.GitRepo(LOCAL_KOKKOS_DIR)
     end
-    release_commit = LibGit2.GitObject(repo, LOCAL_KOKKOS_VERSION_STR)
-    release_hash = string(LibGit2.GitHash(release_commit))
+
+    # Get the commit hash for the version tag
+    @static if USE_CLI_GIT
+        tag_str = "tags/$LOCAL_KOKKOS_VERSION_STR"
+        release_hash = readchomp(Cmd(`git rev-list -n 1 $tag_str`; dir=LOCAL_KOKKOS_DIR))
+    else
+        release_commit = LibGit2.GitObject(repo, LOCAL_KOKKOS_VERSION_STR)
+        release_hash = string(LibGit2.GitHash(release_commit))
+    end
+
     @debug "Checkout Kokkos $LOCAL_KOKKOS_VERSION_STR (hash: $release_hash) in repo at $LOCAL_KOKKOS_DIR..."
-    LibGit2.checkout!(repo, release_hash)
+    @static if USE_CLI_GIT
+        run_cmd_print_on_error(Cmd(`git checkout $release_hash`; dir=LOCAL_KOKKOS_DIR))
+    else
+        LibGit2.checkout!(repo, release_hash)
+    end
 end
 
 
