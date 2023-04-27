@@ -24,7 +24,7 @@ extern "C"
 void perfect_gas(
         Idx start, Idx end,
         flt_t gamma,
-        const view& ρ, const view& u, const view& v, const view& E,
+        const view& r, const view& u, const view& v, const view& E,
         view& p, view& c
     )
 {
@@ -34,7 +34,7 @@ void perfect_gas(
     Kokkos::parallel_for(array_range,
     KOKKOS_LAMBDA(const Idx i) {
         flt_t e = internal_energy(E[i], kinetic_energy(u[i], v[i]));
-        p[i] = (gamma - 1) * ρ[i] * e;
-        c[i] = std::sqrt(gamma * p[i] / ρ[i]);
+        p[i] = (gamma - 1) * r[i] * e;
+        c[i] = std::sqrt(gamma * p[i] / r[i]);
     });
 }

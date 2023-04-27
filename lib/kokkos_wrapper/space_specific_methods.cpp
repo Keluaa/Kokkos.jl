@@ -10,9 +10,16 @@ void space_methods(jlcxx::Module&, jl_module_t*) {}
 #ifdef KOKKOS_ENABLE_OPENMP
 #include <omp.h>
 
+#pragma weak omp_capture_affinity
+extern "C" size_t omp_capture_affinity(char *buffer, size_t size, const char *format);
+
 
 jl_value_t* capture_affinity(const char* format)
 {
+    if (!omp_capture_affinity) {
+        jl_error("'omp_capture_affinity' is not defined in this version of OpenMP");
+    }
+
     std::vector<std::string> affinities(omp_get_max_threads());
 
 #pragma omp parallel for ordered default(none) shared(format, affinities, std::cout)
