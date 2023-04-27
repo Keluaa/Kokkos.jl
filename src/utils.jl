@@ -15,6 +15,11 @@ before calling [`initialize`](@ref).
 
 Note that since Julia threads and OpenMP threads are decoupled, there is no constraint imposed by
 Julia on OpenMP threads: there can be as many threads as needed.
+
+!!! warning
+
+    Pinning the Julia threads with [ThreadPinning.jl](https://github.com/carstenbauer/ThreadPinning.jl)
+    can have an impact on OpenMP thread affinities, making the environment variables useless.
 """
 function set_omp_vars(; places = "cores", bind = "close", num_threads = Base.Threads.nthreads())
     ENV["OMP_PLACES"] = places

@@ -19,4 +19,6 @@ struct SpaceInfo {
 
 void define_all_spaces(jlcxx::Module& mod);
 
+void define_space_specific_methods(jlcxx::Module& mod);
+
 #endif //KOKKOS_WRAPPER_SPACES_H

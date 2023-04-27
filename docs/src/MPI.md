@@ -31,6 +31,15 @@ Kokkos.initialize()
 Note that passing `no_compilation=true` and `no_git=true` to [`load_wrapper_lib`](@ref) on the
 non-root processes is required.
 
+The same workflow can be used to compile your library on the root process:
+
+```julia
+my_project = CMakeKokkosProject(project_src, "libproj")
+rank == 0 && compile(my_project)
+MPI.Barrier(MPI.COMM_WORLD)
+lib = load_lib(my_project)
+```
+
 If configuration options need to be changed before initializing Kokkos, then it is preferable to
 perform the changes on the root process before `using Kokkos` is called on the others, since
 changing options modify the `LocalPreferrences.toml` file.

@@ -172,4 +172,5 @@ void define_all_spaces(jlcxx::Module& mod)
     define_execution_spaces_functions(mod);
     define_memory_spaces_functions(mod);
 
+    define_space_specific_methods(mod);
 }

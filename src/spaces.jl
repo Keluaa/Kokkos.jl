@@ -342,6 +342,66 @@ Equivalent to `Kokkos::SharedHostPinnedSpace` if `Kokkos::has_shared_host_pinned
 SHARED_HOST_PINNED_MEMORY_SPACE = nothing
 
 
+module BackendFunctions
+
+# OpenMP
+
+"""
+    omp_set_num_threads(threads::Cint)::Cvoid
+   
+[See the OpenMP docs](https://www.openmp.org/spec-html/5.0/openmpsu110.html)
+"""
+function omp_set_num_threads end
+
+"""
+    omp_get_max_threads()::Cint
+   
+[See the OpenMP docs](https://www.openmp.org/spec-html/5.0/openmpsu112.html)
+"""
+function omp_get_max_threads end
+
+"""
+    omp_get_proc_bind()::Cint
+   
+[See the OpenMP docs](https://www.openmp.org/spec-html/5.0/openmpsu132.html)
+"""
+function omp_get_proc_bind end
+
+"""
+    omp_get_num_places()::Cint
+
+[See the OpenMP docs](https://www.openmp.org/spec-html/5.0/openmpsu133.html)
+"""
+function omp_get_num_places end
+
+"""
+    omp_get_place_num_procs(place::Cint)::Cint
+
+[See the OpenMP docs](https://www.openmp.org/spec-html/5.0/openmpsu134.html)
+"""
+function omp_get_place_num_procs end
+
+"""
+    omp_get_place_proc_ids(place::Cint)::Vector{Cint}
+
+[See the OpenMP docs](https://www.openmp.org/spec-html/5.0/openmpsu135.html)
+"""
+function omp_get_place_proc_ids end
+
+"""
+    omp_capture_affinity([format::String])::String
+
+More or less equivalent to 
+[`omp_display_affinity(char*)`](https://www.openmp.org/spec-html/5.0/openmpsu141.html#x178-8280003.2.32),
+but applies the given `format` (or OpenMP's default one) to each OpenMP thread using 
+[`omp_capture_affinity`](https://www.openmp.org/spec-html/5.0/openmpsu142.html#x179-8340003.2.33),
+and returns the result.
+"""
+function omp_capture_affinity end
+
+end
+
+
 function __init_vars()
     impl = get_impl_module()
     global COMPILED_EXEC_SPACES = Base.invokelatest(impl.__compiled_exec_spaces)

@@ -30,6 +30,7 @@ add_library(KokkosWrapper SHARED
         execution_spaces.h
         memory_spaces.h
         spaces.cpp spaces.h
+        space_specific_methods.cpp
         views.cpp views.h
         copy.cpp copy.h
         mirrors.cpp mirrors.h
