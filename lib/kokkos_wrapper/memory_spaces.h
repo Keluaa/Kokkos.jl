@@ -14,7 +14,7 @@ struct SpaceInfo<Kokkos::HostSpace>
     static constexpr const char* julia_name = "HostSpace";
 };
 
-#if KOKKOS_ENABLE_CUDA
+#ifdef KOKKOS_ENABLE_CUDA
 template<>
 struct SpaceInfo<Kokkos::CudaSpace>
 {
@@ -79,7 +79,7 @@ struct MemorySpaces {};
 using MemorySpacesList = MemorySpaces<
           Kokkos::HostSpace
 
-#if KOKKOS_ENABLE_CUDA
+#ifdef KOKKOS_ENABLE_CUDA
         , Kokkos::CudaSpace
         , Kokkos::CudaHostPinnedSpace
 #ifdef KOKKOS_ENABLE_CUDA_UVM
