@@ -279,6 +279,13 @@ void register_view_types(jlcxx::Module& mod, jl_module_t* views_module)
         wrapped.method("memory_span", [](const WrappedT& view) { return view.impl_map().memory_span(); });
         wrapped.method("label", &WrappedT::label);
         wrapped.method("get_dims", [](const WrappedT& view) { return std::tuple_cat(view.get_dims()); });
+        wrapped.method("get_tracker", [](const WrappedT& view) {
+            if (view.impl_track().has_record()) {
+                return reinterpret_cast<void*>(view.impl_track().template get_record<void>()->data());
+            } else {
+                return (void*) nullptr;
+            }
+        });
     });
 }
 
@@ -333,7 +340,8 @@ void import_all_views_methods(jl_module_t* impl_module, jl_module_t* views_modul
         "view_data",
         "memory_span",
         "label",
-        "get_dims"
+        "get_dims",
+        "get_tracker"
     };
 
     for (auto& method : declared_methods) {

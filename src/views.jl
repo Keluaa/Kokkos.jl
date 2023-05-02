@@ -39,6 +39,7 @@ abstract type View{T, D, MemSpace} <: Base.AbstractArray{T, D} end
 # Internal functions, defined for each view in 'views.cpp', in 'register_view_types'
 function get_ptr end
 function get_dims end
+function get_tracker end
 
 
 """
