@@ -40,22 +40,17 @@ void register_layouts(jl_module_t* views_module, Container<L...>)
 }
 
 
-constexpr auto view_layout_count = LayoutList::size;
-using julia_layouts = std::array<jl_value_t*, view_layout_count>;
-
-template<std::size_t... I, typename... T>
-void add_julia_layouts(julia_layouts& array, std::integer_sequence<std::size_t, I...>, TList<T...>)
+auto build_julia_layouts_tuple()
 {
-    ([&](){ array[I] = (jl_value_t*) jlcxx::julia_base_type<T>(); } (), ...);
-}
+    constexpr size_t layout_count = LayoutList::size;
+    std::array<jl_value_t*, layout_count> array{};
 
+    apply_with_index(LayoutList{}, [&](auto type, size_t i) {
+        using T = typename decltype(type)::template Arg<0>;
+        array[i] = (jl_value_t*) jlcxx::julia_base_type<T>();
+    });
 
-julia_layouts build_julia_layouts_array()
-{
-    const std::make_index_sequence<view_layout_count> indexes{};
-    julia_layouts array{};
-    add_julia_layouts(array, indexes, LayoutList{});
-    return array;
+    return std::tuple_cat(array);
 }
 
 
@@ -65,5 +60,5 @@ void define_all_layouts(jlcxx::Module& mod)
     auto* views_module = (jl_module_t*) jl_get_global(wrapper_module->parent, jl_symbol("Views"));
 
     register_layouts(views_module, LayoutList{});
-    mod.method("__compiled_layouts", [](){ return std::tuple_cat(build_julia_layouts_array()); });
+    mod.method("__compiled_layouts", [](){ return build_julia_layouts_tuple(); });
 }

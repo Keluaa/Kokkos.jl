@@ -66,7 +66,7 @@ void space_methods<SpaceInfo<Kokkos::OpenMP>>(jlcxx::Module& mod, jl_module_t*)
 template<typename... T>
 void register_all(jlcxx::Module& mod, jl_module_t* spaces_module, TList<T...>)
 {
-    ([&](){ space_methods<SpaceInfo<T>>(mod, spaces_module); }(), ...);
+    (space_methods<SpaceInfo<T>>(mod, spaces_module), ...);
 }
 
 

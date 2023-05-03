@@ -70,7 +70,7 @@ jl_datatype_t* get_julia_main_type(jl_module_t* spaces_module)
 template<typename... T>
 void register_all(jlcxx::Module& mod, jl_module_t* spaces_module, TList<T...>, const std::string& spaces_name)
 {
-    ([&](){ register_space<T>(mod, spaces_module); }(), ...);
+    (register_space<T>(mod, spaces_module), ...);
 
     mod.unset_override_module();
     const auto spaces_tuple = std::make_tuple(get_julia_main_type<T>(spaces_module)...);
@@ -82,7 +82,7 @@ void register_all(jlcxx::Module& mod, jl_module_t* spaces_module, TList<T...>, c
 template<typename... T>
 void post_register_all(jlcxx::Module& mod, TList<T...>)
 {
-    ([&](){ post_register_space<T>(mod); }(), ...);
+    (post_register_space<T>(mod), ...);
 }
 
 

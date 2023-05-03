@@ -276,16 +276,16 @@ struct RegisterUtils
 
 void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_module)
 {
-    using memorySpacesParameterList = decltype(to_parameter_list(MemorySpacesList{}));
-    using dimensionsList = decltype(wrap_dims(DimensionsToInstantiate{}));
-    using layoutParameterList = decltype(to_parameter_list(LayoutList{}));
+    using DimsList = decltype(wrap_dims(DimensionsToInstantiate{}));
 
-    MyApplyTypes{}.apply_combination<
-            TList,
-            memorySpacesParameterList,
-            layoutParameterList,
-            dimensionsList
-    >([&](auto params) {
+    auto combinations = build_all_combinations<
+            MemorySpacesList,
+            LayoutList,
+            DimsList
+    >();
+
+    apply_to_all(combinations, [&](auto params)
+    {
         using MemSpace = typename decltype(params)::template Arg<0>;
         using Layout = typename decltype(params)::template Arg<1>;
         using Dimension = typename decltype(params)::template Arg<2>;
@@ -328,23 +328,17 @@ void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_modul
 }
 
 
-constexpr int view_types_count = std::tuple_size_v<std::tuple<VIEW_TYPES>>;
-using julia_types = std::array<jl_value_t*, view_types_count>;
-
-template<std::size_t... I, typename... T>
-void add_julia_types(julia_types& array, std::integer_sequence<std::size_t, I...>, std::tuple<T...>)
+auto build_julia_types_tuple()
 {
-    ([&](){ array[I] = (jl_value_t*) jlcxx::julia_base_type<T>(); } (), ...);
-}
+    constexpr size_t view_types_count = TList<VIEW_TYPES>::size;
+    std::array<jl_value_t*, view_types_count> array{};
 
+    apply_with_index(TList<VIEW_TYPES>{}, [&](auto type, size_t i) {
+        using T = typename decltype(type)::template Arg<0>;
+        array[i] = (jl_value_t*) jlcxx::julia_base_type<T>();
+    });
 
-julia_types build_julia_types_array()
-{
-    const std::tuple<VIEW_TYPES> view_types{};
-    const std::make_index_sequence<view_types_count> indexes{};
-    julia_types array{};
-    add_julia_types(array, indexes, view_types);
-    return array;
+    return std::tuple_cat(array);
 }
 
 
@@ -387,5 +381,5 @@ void define_kokkos_views(jlcxx::Module& mod)
 
     mod.method("__idx_type", &get_idx_type);
     mod.method("__compiled_dims", [](){ return std::make_tuple(VIEW_DIMENSIONS); });
-    mod.method("__compiled_types", [](){ return std::tuple_cat(build_julia_types_array()); });
+    mod.method("__compiled_types", [](){ return build_julia_types_tuple(); });
 }

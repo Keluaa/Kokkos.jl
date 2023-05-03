@@ -9,25 +9,23 @@
 void register_mirror_methods(jlcxx::Module& mod)
 {
     using DimsList = decltype(wrap_dims(DimensionsToInstantiate{}));
-    using MemSpacesList = decltype(to_parameter_list(MemorySpacesList{}));
-    using LayoutsList = decltype(to_parameter_list(LayoutList{}));
-    using DstMemSpacesList = decltype(to_parameter_list(TList<jl_value_t*>{} + MemorySpacesList{}));
+    using DstMemSpacesList = decltype(TList<jl_value_t*>{} + MemorySpacesList{});
 
-    MyApplyTypes{}.apply_combination<
-            TList,
+    auto combinations = build_all_combinations<
             DimsList,
-            jlcxx::ParameterList<VIEW_TYPES>,
-            LayoutsList,
-            MemSpacesList,
+            TList<VIEW_TYPES>,
+            LayoutList,
+            MemorySpacesList,
             DstMemSpacesList
-        >(
-    [&](auto wrapped)
+    >();
+
+    apply_to_all(combinations, [&](auto combination_list)
     {
-        using Dimension = typename decltype(wrapped)::template Arg<0>;
-        using Type = typename decltype(wrapped)::template Arg<1>;
-        using Layout = typename decltype(wrapped)::template Arg<2>;
-        using SrcMemSpace = typename decltype(wrapped)::template Arg<3>;
-        using DstMemSpace = typename decltype(wrapped)::template Arg<4>;
+        using Dimension = typename decltype(combination_list)::template Arg<0>;
+        using Type = typename decltype(combination_list)::template Arg<1>;
+        using Layout = typename decltype(combination_list)::template Arg<2>;
+        using SrcMemSpace = typename decltype(combination_list)::template Arg<3>;
+        using DstMemSpace = typename decltype(combination_list)::template Arg<4>;
 
         using SrcView = ViewWrap<Type, Dimension, Layout, SrcMemSpace>;
 

@@ -1,33 +1,6 @@
 #ifndef KOKKOS_WRAPPER_UTILS_H
 #define KOKKOS_WRAPPER_UTILS_H
 
-#include "jlcxx/jlcxx.hpp"
-
-
-/**
- * Hack to use 'jlcxx::TypeWrapper<T>::apply_combination' outside of a 'jlcxx::Module::add_type' context
- */
-struct MyApplyTypes {
-    template<typename AppT, typename FunctorT>
-    void apply(FunctorT&& func)
-    {
-        func(AppT{});
-    }
-
-    template<template<typename...> class TemplateT, typename... TypeLists, typename FunctorT>
-    void apply_combination(FunctorT&& ftor)
-    {
-        this->template apply_combination<jlcxx::ApplyType<TemplateT>, TypeLists...>(std::forward<FunctorT>(ftor));
-    }
-
-    template<typename ApplyT, typename... TypeLists, typename FunctorT>
-    void apply_combination(FunctorT&& ftor)
-    {
-        typedef typename jlcxx::CombineTypes<ApplyT, TypeLists...>::type applied_list;
-        jlcxx::detail::DoApply<applied_list>()(*this, std::forward<FunctorT>(ftor));
-    }
-};
-
 
 /**
  * Template list where the N-th argument can be accessed with 'TList<...>::Arg<N>', and which can be combined with other
@@ -47,20 +20,6 @@ struct TList {
 };
 
 
-template<template<typename> typename List, typename... Args>
-constexpr TList<Args...> to_TList(List<Args...>)
-{
-    return {};
-}
-
-
-template<template<typename...> typename List, typename... Args>
-constexpr jlcxx::ParameterList<Args...> to_parameter_list(List<Args...>)
-{
-    return jlcxx::ParameterList<Args...>{};
-}
-
-
 /**
  * Helper function to transform a 'std::integer_sequence<int, 1, 2, ...>' into a
  * 'jlcxx::ParameterList<std::integral_constant<std::size_t, 1>, ...>'
@@ -69,7 +28,7 @@ constexpr jlcxx::ParameterList<Args...> to_parameter_list(List<Args...>)
 template<typename I, I... Dims>
 constexpr auto wrap_dims(std::integer_sequence<I, Dims...>)
 {
-    return to_parameter_list((TList<std::integral_constant<std::size_t, Dims>>{} + ...));
+    return (TList<std::integral_constant<std::size_t, Dims>>{} + ...);
 }
 
 
@@ -116,7 +75,7 @@ constexpr auto build_all_combinations(TList<Stack...>, TList<List...>)
     if constexpr (sizeof...(NextLists) == 0) {
         return (build_all_combinations<>(TList<Stack..., List>{}, NextList{}) + ...);
     } else {
-        return (build_all_combinations<NextLists...>(TList<Stack..., List>{}, NextList{})+ ...);
+        return (build_all_combinations<NextLists...>(TList<Stack..., List>{}, NextList{}) + ...);
     }
 }
 
@@ -152,6 +111,31 @@ template<typename Functor, typename... Combinations>
 void apply_to_all(TList<Combinations...>, Functor&& f)
 {
     (f(Combinations{}), ...);
+}
+
+
+template<typename Functor, typename... Combinations, typename... Args>
+void apply_to_each(TList<Combinations...>, Functor&& f, Args... args)
+{
+    (f(TList<Combinations>{}, std::forward<Args...>(args)...), ...);
+}
+
+
+template<typename Functor, typename... Combinations, size_t... I, typename... Args>
+void apply_with_index(TList<Combinations...>, std::index_sequence<I...>, Functor&& f, Args... args)
+{
+    (f(TList<Combinations>{}, I, std::forward<Args...>(args)...), ...);
+}
+
+
+/**
+ * Applies `f` on each element of `combinations` (passed to `f` in a TList singleton) alongside their index.
+ * `f` is called as `f(TList<Element>{}, i, args...)`.
+ */
+template<typename Functor, typename... Combinations, typename... Args>
+void apply_with_index(TList<Combinations...> combinations, Functor&& f, Args... args)
+{
+    apply_with_index(combinations, std::index_sequence_for<Combinations...>{}, f, std::forward<Args...>(args)...);
 }
 
 
