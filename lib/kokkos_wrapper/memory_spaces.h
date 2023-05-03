@@ -3,6 +3,7 @@
 #define KOKKOS_WRAPPER_MEMORY_SPACES_H
 
 #include "spaces.h"
+#include "utils.h"
 
 #include "Kokkos_Core.hpp"
 
@@ -69,14 +70,10 @@ struct SpaceInfo<Kokkos_HIP::HIPManagedSpace>
 #endif // KOKKOS_ENABLE_HIP
 
 
-template<typename... MemorySpace>
-struct MemorySpaces {};
-
-
 /**
  * Template list of all enabled Kokkos memory spaces
  */
-using MemorySpacesList = MemorySpaces<
+using MemorySpacesList = TList<
           Kokkos::HostSpace
 
 #ifdef KOKKOS_ENABLE_CUDA

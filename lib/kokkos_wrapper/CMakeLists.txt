@@ -21,7 +21,11 @@ if(NOT DEFINED VIEW_DIMENSIONS)
 endif()
 
 if(NOT DEFINED VIEW_TYPES)
-    set(VIEW_TYPES "double,float,int64_t")
+    set(VIEW_TYPES "double,int64_t")
+endif()
+
+if (NOT DEFINED VIEW_LAYOUTS)
+    set(VIEW_LAYOUTS "deviceDefault,hostDefault")
 endif()
 
 
@@ -31,6 +35,7 @@ add_library(KokkosWrapper SHARED
         memory_spaces.h
         spaces.cpp spaces.h
         space_specific_methods.cpp
+        layouts.cpp layouts.h
         views.cpp views.h
         copy.cpp copy.h
         mirrors.cpp mirrors.h
@@ -40,6 +45,7 @@ target_link_libraries(KokkosWrapper PRIVATE Kokkos::kokkos)
 target_compile_definitions(KokkosWrapper PRIVATE
         VIEW_DIMENSIONS=${VIEW_DIMENSIONS}
         VIEW_TYPES=${VIEW_TYPES}
+        VIEW_LAYOUTS=${VIEW_LAYOUTS}
 )
 target_compile_options(KokkosWrapper PRIVATE
         $<$<CONFIG:Debug>:-Wall -Wextra -Wpedantic>

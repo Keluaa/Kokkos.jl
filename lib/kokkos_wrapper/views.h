@@ -4,6 +4,8 @@
 
 #include "kokkos_wrapper.h"
 
+#include "layouts.h"
+
 
 #ifndef VIEW_DIMENSIONS
 /**
@@ -24,7 +26,7 @@
  * Controls which `Kokkos::View` types are instantiated.
  * Types are specified as comma separated list of type names.
  *
- * One `Kokkos::View` will be instantiated for each combination of type, dimensions, and memory spaces.
+ * One `Kokkos::View` will be instantiated for each combination of type, dimensions, layout, and memory spaces.
  *
  * The registered method `compiled_types` returns a tuple of all compiled types.
  */
@@ -54,13 +56,16 @@ struct add_pointers<T, 0> { using type = T; };
  * It is this type that is registered with CxxWrap, not Kokkos::View, therefore all Julia methods defined with CxxWrap
  * should use this type in their arguments / return type, not Kokkos::View.
  */
-template<typename T, typename DimCst, typename MemSpace,
+template<typename T, typename DimCst, typename LayoutType, typename MemSpace,
+         typename MemTraits = Kokkos::MemoryTraits<0>,
          typename T_Ptr = typename add_pointers<T, DimCst::value>::type,
-         typename KokkosViewT = typename Kokkos::View<T_Ptr, MemSpace>>
+         typename KokkosViewT = typename Kokkos::View<T_Ptr, LayoutType, MemSpace, MemTraits>>
 struct ViewWrap : public KokkosViewT
 {
     using type = T;
+    using layout_t = LayoutType;
     using mem_space = MemSpace;
+    using mem_traits = MemTraits;
     using kokkos_view_t = KokkosViewT;
 
     static constexpr size_t dim = DimCst::value;
@@ -68,7 +73,7 @@ struct ViewWrap : public KokkosViewT
     using IdxTuple [[maybe_unused]] = decltype(std::tuple_cat(std::array<Idx, dim>()));
 
     // Should be 'using typename KokkosViewT::View;' but compiler incompatibilities make this impossible
-    using Kokkos::View<T_Ptr, MemSpace>::View;
+    using Kokkos::View<T_Ptr, LayoutType, MemSpace, MemTraits>::View;
 
     explicit ViewWrap(const KokkosViewT& other) : KokkosViewT(other) {};
     explicit ViewWrap(KokkosViewT&& other) : KokkosViewT(std::move(other)) {};
