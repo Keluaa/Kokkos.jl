@@ -47,7 +47,7 @@ auto build_julia_layouts_tuple()
 
     apply_with_index(LayoutList{}, [&](auto type, size_t i) {
         using T = typename decltype(type)::template Arg<0>;
-        array[i] = (jl_value_t*) jlcxx::julia_base_type<T>();
+        array[i] = (jl_value_t*) jlcxx::julia_type<T>();
     });
 
     return std::tuple_cat(array);
