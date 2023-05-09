@@ -20,8 +20,8 @@ All Kokkos backends should be supported by this package, but not all of them wer
 
 ### Supported functionalities
  * :heavy_check_mark: `Kokkos::initialize`, `Kokkos::finalize`, `Kokkos::InitializationSettings`
- * :heavy_check_mark: `Kokkos::View`, `Kokkos::View<T, SomeMemorySpace>`, `Kokkos::view_alloc`
- * :x: `Kokkos::View<T, MyLayout, MyMemoryTraits>` (planned)
+ * :heavy_check_mark: `Kokkos::View`, `Kokkos::View<T, MyLayout, SomeMemorySpace>`, `Kokkos::view_alloc`
+ * :x: `Kokkos::MemoryTraits` (planned)
  * :heavy_check_mark: `Kokkos::create_mirror`, `Kokkos::create_mirror_view`
  * :heavy_check_mark: `Kokkos::deep_copy`
  * :x: `Kokkos::resize`, `Kokkos::realloc` (planned)

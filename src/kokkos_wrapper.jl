@@ -9,7 +9,8 @@ import ..Kokkos: run_cmd_print_on_error, load_lib, lib_path, build_dir, pretty_c
 import ..Kokkos: ensure_kokkos_wrapper_loaded, configuration_changed!
 import ..Kokkos: LOCAL_KOKKOS_DIR, LOCAL_KOKKOS_VERSION_STR
 import ..Kokkos: KOKKOS_PATH, KOKKOS_CMAKE_OPTIONS, KOKKOS_LIB_OPTIONS, KOKKOS_BACKENDS
-import ..Kokkos: KOKKOS_VIEW_DIMS, KOKKOS_VIEW_TYPES, KOKKOS_BUILD_TYPE, KOKKOS_BUILD_DIR
+import ..Kokkos: KOKKOS_VIEW_DIMS, KOKKOS_VIEW_TYPES, KOKKOS_VIEW_LAYOUTS
+import ..Kokkos: KOKKOS_BUILD_TYPE, KOKKOS_BUILD_DIR
 
 export get_jlcxx_root, get_kokkos_dir, get_kokkos_build_dir, get_kokkos_install_dir
 export load_wrapper_lib, get_impl_module
@@ -45,7 +46,6 @@ get_kokkos_dir() = KOKKOS_PATH
 
 julia_type_to_c(::Type{Float64}) = "double"
 julia_type_to_c(::Type{Float32}) = "float"
-julia_type_to_c(::Type{Float16}) = "_Float16"  # Not exactly standard, but in C++23 we will have std::float16_t through #include <stdfloat>
 julia_type_to_c(::Type{Int64})   = "int64_t"
 julia_type_to_c(::Type{Int32})   = "int32_t"
 julia_type_to_c(::Type{Int16})   = "int16_t"
@@ -119,10 +119,13 @@ function create_kokkos_lib_project(; no_git=false)
         "-DJulia_EXECUTABLE=$julia_exe_path",
         "-DJlCxx_ROOT=$jlcxx_root",
         "-DVIEW_DIMENSIONS='" * join(KOKKOS_VIEW_DIMS, ",") * "'",
-        "-DVIEW_TYPES='" * join(c_view_types, ",") * "'"
+        "-DVIEW_TYPES='" * join(c_view_types, ",") * "'",
+        "-DVIEW_LAYOUTS='" * join(KOKKOS_VIEW_LAYOUTS, ",") * "'"
     ]
     append!(cmake_options, KOKKOS_CMAKE_OPTIONS)
 
+    # TODO: also add all other backends, but switched to OFF. Also do this for all CMake switches,
+    #  preventing it to use the cache and destroy the beautiful set of options we want to give it
     kokkos_options = Dict{String, String}()
     for backend in KOKKOS_BACKENDS
         kokkos_options["Kokkos_ENABLE_" * uppercase(backend)] = "ON"

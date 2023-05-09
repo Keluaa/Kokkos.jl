@@ -50,6 +50,54 @@ const MemSpace* unbox_memory_space_arg(jl_value_t* boxed_memory_space)
 }
 
 
+template<typename Layout, typename... Dims>
+Layout unbox_layout_arg(jl_value_t* boxed_layout, const std::array<size_t, KOKKOS_MAX_DIMENSIONS>& dims_array)
+{
+    auto [N0, N1, N2, N3, N4, N5, N6, N7] = dims_array;
+
+    if constexpr (std::is_same_v<Layout, Kokkos::LayoutLeft>) {
+        if (!jl_is_nothing(boxed_layout)
+            && !jl_isa(boxed_layout, (jl_value_t*) jlcxx::julia_type<Kokkos::LayoutLeft>())) {
+            jl_errorf("unexpected layout kwarg type, expected `Nothing` or `LayoutLeft`, got: %s",
+                      jl_typeof_str(boxed_layout));
+        }
+        return Layout{N0, N1, N2, N3, N4, N5, N6, N7};
+    } else if constexpr (std::is_same_v<Layout, Kokkos::LayoutRight>) {
+        if (!jl_is_nothing(boxed_layout)
+            && !jl_isa(boxed_layout, (jl_value_t*) jlcxx::julia_type<Kokkos::LayoutRight>())) {
+            jl_errorf("unexpected layout kwarg type, expected `Nothing` or `LayoutRight`, got: %s",
+                      jl_typeof_str(boxed_layout));
+        }
+        return Layout{N0, N1, N2, N3, N4, N5, N6, N7};
+    } else if constexpr (std::is_same_v<Layout, Kokkos::LayoutStride>) {
+        if (!jl_isa(boxed_layout, (jl_value_t*) jlcxx::julia_type<Kokkos::LayoutStride>())) {
+            jl_errorf("unexpected layout kwarg type, expected `LayoutStride`, got: %s",
+                      jl_typeof_str(boxed_layout));
+        }
+
+        jl_value_t* strides = jl_get_nth_field(boxed_layout, 0);
+        jl_value_t* strides_type = jl_field_type((jl_datatype_t*) jl_typeof(boxed_layout), 0);
+        if (((jl_datatype_t*) strides_type)->name != jl_tuple_typename) {
+            jl_errorf("unexpected `stride` type in LayoutStride: expected NTuple{%d, Int64}, got %s",
+                      sizeof...(Dims), jl_typename_str(strides_type));
+        } else if (jl_datatype_nfields(strides_type) != sizeof...(Dims)) {
+            jl_errorf("unexpected `stride` tuple length in LayoutStride: expected %d, got %d",
+                      sizeof...(Dims), jl_datatype_nfields(strides_type));
+        } else if (jl_datatype_size(strides_type) != sizeof(std::tuple<Dims...>)) {
+            jl_errorf("incompatible tuple type byte size, expected %d, got %d",
+                      sizeof(std::tuple<Dims...>), jl_datatype_size(strides_type));
+        }
+
+        // Cast from a Julia NTuple{D, Int64} to a C++ std::tuple<Dims...>. From the checks above, this should be valid.
+        auto [S0, S1, S2, S3, S4, S5, S6, S7] =
+                unpack_dims(*reinterpret_cast<std::tuple<Dims...>*>(strides));
+        return Layout{N0, S0, N1, S1, N2, S2, N3, S3, N4, S4, N5, S5, N6, S6, N7, S7};
+    } else {
+        static_assert(std::is_same_v<Layout, void>, "Unknown layout");
+    }
+}
+
+
 template<typename Dimension, typename Layout, typename MemSpace>
 struct RegisterUtils
 {
@@ -147,49 +195,63 @@ struct RegisterUtils
      * `boxed_memory_space` is a Julia value:
      *  - `nothing`: default construct the memory space object in-place
      *  - an instance of `MemorySpace`: use the boxed C++ instance
+     *
+     * 'boxed_layout' is a Julia value:
+     *  - `nothing`: default construct the layout, only possible for `LayoutLeft` and `LayoutRight`
+     *  - an instance of one of the `Layout` sub-types, only `LayoutStride` instances are useful in this case
      */
     template<typename T, typename... Dims>
     static ViewWrap<T, Dimension, Layout, MemSpace> create_view(const std::tuple<Dims...>& dims,
                                                                 jl_value_t* boxed_memory_space,
+                                                                jl_value_t* boxed_layout,
                                                                 const char* label, bool init, bool pad)
     {
         static_assert(D == sizeof...(Dims));
 
-        auto [N0, N1, N2, N3, N4, N5, N6, N7] = unpack_dims(dims);
+        constexpr bool allow_pad = !std::is_same_v<Layout, Kokkos::LayoutStride>;
+        if constexpr (!allow_pad) if (pad) {
+            jl_error("in View constructor: `pad=true` but layout is `LayoutStride`");
+        }
+
         const std::string label_str(label);
 
         const auto* mem_space_p = unbox_memory_space_arg<MemSpace>(boxed_memory_space);
         const auto& mem_space = (mem_space_p == nullptr) ? MemSpace{} : *mem_space_p;
 
-        // TODO: LayoutStride case
+        auto dims_array = unpack_dims(dims);
+        auto layout = unbox_layout_arg<Layout, Dims...>(boxed_layout, dims_array);
+
+        if constexpr (allow_pad) if (pad) {
+            if (init) {
+                auto ctor_prop = Kokkos::view_alloc(label_str, mem_space, Kokkos::AllowPadding);
+                return ViewWrap<T, Dimension, Layout, MemSpace>(ctor_prop, layout);
+            } else {
+                auto ctor_prop = Kokkos::view_alloc(label_str, mem_space, Kokkos::WithoutInitializing, Kokkos::AllowPadding);
+                return ViewWrap<T, Dimension, Layout, MemSpace>(ctor_prop, layout);
+            }
+        }
 
         if (init) {
-            if (pad) {
-                auto ctor_prop = Kokkos::view_alloc(label_str, mem_space, Kokkos::AllowPadding);
-                return ViewWrap<T, Dimension, Layout, MemSpace>(ctor_prop, N0, N1, N2, N3, N4, N5, N6, N7);
-            } else {
-                auto ctor_prop = Kokkos::view_alloc(label_str, mem_space);
-                return ViewWrap<T, Dimension, Layout, MemSpace>(ctor_prop, N0, N1, N2, N3, N4, N5, N6, N7);
-            }
+            auto ctor_prop = Kokkos::view_alloc(label_str, mem_space);
+            return ViewWrap<T, Dimension, Layout, MemSpace>(ctor_prop, layout);
         } else {
-            if (pad) {
-                auto ctor_prop = Kokkos::view_alloc(label_str, mem_space, Kokkos::WithoutInitializing, Kokkos::AllowPadding);
-                return ViewWrap<T, Dimension, Layout, MemSpace>(ctor_prop, N0, N1, N2, N3, N4, N5, N6, N7);
-            } else {
-                auto ctor_prop = Kokkos::view_alloc(label_str, mem_space, Kokkos::WithoutInitializing);
-                return ViewWrap<T, Dimension, Layout, MemSpace>(ctor_prop, N0, N1, N2, N3, N4, N5, N6, N7);
-            }
+            auto ctor_prop = Kokkos::view_alloc(label_str, mem_space, Kokkos::WithoutInitializing);
+            return ViewWrap<T, Dimension, Layout, MemSpace>(ctor_prop, layout);
         }
     }
 
 
     template<typename T, typename... Dims>
-    static ViewWrap<T, Dimension, Layout, MemSpace> view_wrap(const std::tuple<Dims...>& dims, T* data_ptr)
+    static ViewWrap<T, Dimension, Layout, MemSpace> view_wrap(const std::tuple<Dims...>& dims,
+                                                              jl_value_t* boxed_layout, T* data_ptr)
     {
         static_assert(D == sizeof...(Dims));
-        auto [N0, N1, N2, N3, N4, N5, N6, N7] = unpack_dims(dims);
+
+        auto dims_array = unpack_dims(dims);
+        auto layout = unbox_layout_arg<Layout, Dims...>(boxed_layout, dims_array);
+
         auto ctor_prop = Kokkos::view_wrap(data_ptr);
-        return ViewWrap<T, Dimension, Layout, MemSpace>(ctor_prop, N0, N1, N2, N3, N4, N5, N6, N7);
+        return ViewWrap<T, Dimension, Layout, MemSpace>(ctor_prop, layout);
     }
 
 
@@ -259,16 +321,17 @@ struct RegisterUtils
         using DimsTuple = decltype(std::tuple_cat(std::array<int64_t, D>()));
 
         mod.method("alloc_view",
-        [](jlcxx::SingletonType<ctor_type>, const DimsTuple& dims, jl_value_t* boxed_memory_space,
+        [](jlcxx::SingletonType<ctor_type>, const DimsTuple& dims,
+                jl_value_t* boxed_memory_space, jl_value_t* boxed_layout,
                 const char* label, bool init, bool pad)
         {
-            return create_view<type>(dims, boxed_memory_space, label, init, pad);
+            return create_view<type>(dims, boxed_memory_space, boxed_layout, label, init, pad);
         });
 
         mod.method("view_wrap",
-        [](jlcxx::SingletonType<ctor_type>, const DimsTuple& dims, type* data_ptr)
+        [](jlcxx::SingletonType<ctor_type>, const DimsTuple& dims, jl_value_t* boxed_layout, type* data_ptr)
         {
-            return view_wrap<type>(dims, data_ptr);
+            return view_wrap<type>(dims, boxed_layout, data_ptr);
         });
     }
 };
@@ -316,6 +379,7 @@ void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_modul
             wrapped.method("label", &Wrapped_t::label);
             wrapped.method("memory_span", [](const Wrapped_t& view) { return view.impl_map().memory_span(); });
             wrapped.method("get_dims", [](const Wrapped_t& view) { return std::tuple_cat(view.get_dims()); });
+            wrapped.method("get_strides", [](const Wrapped_t& view) { return std::tuple_cat(view.get_strides()); });
             wrapped.method("get_tracker", [](const Wrapped_t& view) {
                 if (view.impl_track().has_record()) {
                     return reinterpret_cast<void*>(view.impl_track().template get_record<void>()->data());
@@ -359,7 +423,7 @@ void import_all_views_methods(jl_module_t* impl_module, jl_module_t* views_modul
         "memory_span",
         "label",
         "get_dims",
-        "get_tracker"
+        "get_strides"
     };
 
     for (auto& method : declared_methods) {

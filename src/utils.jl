@@ -25,6 +25,7 @@ function set_omp_vars(; places = "cores", bind = "close", num_threads = Base.Thr
     ENV["OMP_PLACES"] = places
     ENV["OMP_PROC_BIND"] = bind
     ENV["OMP_NUM_THREADS"] = num_threads
+    # TODO: check if setting JULIA_EXCLUSIVE also messes up the OpenMP affinities
 end
 
 
@@ -161,6 +162,37 @@ fence() = ensure_kokkos_wrapper_loaded()
 
 
 """
+    configinfo(io::IO = stdout)
+
+Print information about all configuration options.
+"""
+function configinfo(io::IO = stdout)
+    if HAS_CONFIGURATION_CHANGED
+        println(io, "Configuration changed! \
+                     Those values are not the ones the loaded Kokkos library is using.\n")
+    end
+
+    print(io, "Kokkos path: '", KOKKOS_PATH, "'")
+    if KOKKOS_PATH == LOCAL_KOKKOS_DIR
+        println(io, " (installation of Kokkos.jl)")
+        println(io, "Kokkos version: ", LOCAL_KOKKOS_VERSION_STR)
+    else
+        println(io)
+    end
+
+    println(io, "CMake options: ", `$KOKKOS_CMAKE_OPTIONS`)
+    println(io, "CMake build type: ", KOKKOS_BUILD_TYPE)
+    println(io, "CMake build dir: '", KOKKOS_BUILD_DIR, "'")
+    println(io, "Kokkos options: ", `$KOKKOS_LIB_OPTIONS`)
+    println(io, "Enabled Kokkos backends: ", join(KOKKOS_BACKENDS, ", "))
+    println(io, "Views:")
+    println(io, " - dimensions: ", join(KOKKOS_VIEW_DIMS, ", "))
+    println(io, " - types: ", join(KOKKOS_VIEW_TYPES, ", "))
+    println(io, " - layouts: ", join(KOKKOS_VIEW_LAYOUTS, ", "))
+end
+
+
+"""
     versioninfo(io::IO = stdout; internal=true, verbose=false)
 
 Print the version and various information about the underlying Kokkos library.
@@ -185,12 +217,14 @@ function versioninfo(io::IO = stdout; internal=true, verbose=false)
     for space in COMPILED_EXEC_SPACES
         println(io, " - $(nameof(space)) (default memory space: $(nameof(memory_space(space))))")
     end
-    println(io, "Compiled memory spaces:")
+    println(io, "\nCompiled memory spaces:")
     for space in COMPILED_MEM_SPACES
         println(io, " - $(nameof(space)) (associated execution space: $(nameof(execution_space(space))))")
     end
-    println(io, "Compiled view types: ", join(COMPILED_TYPES, ", ", " and "))
-    println(io, "Compiled view dimensions: ", join(string.(COMPILED_DIMS) .* "D", ", ", " and "))
+    println(io, "\nCompiled view options:")
+    println(io, " - types:      ", join(COMPILED_TYPES, ", ", " and "))
+    println(io, " - dimensions: ", join(string.(COMPILED_DIMS) .* "D", ", ", " and "))
+    println(io, " - layouts:    ", join(nameof.(COMPILED_LAYOUTS), ", ", " and "))
 
     if internal
         println(io, "\nKokkos internal configuration:")
@@ -208,7 +242,8 @@ requirement_fail(msg, args...) = "$msg"
 """
     require(;
         version=nothing,
-        dims=nothing, types=nothing, idx=nothing,
+        dims=nothing, types=nothing, layouts=nothing,
+        idx=nothing,
         exec_spaces=nothing, mem_spaces=nothing,
         no_error=false
     )
@@ -225,10 +260,10 @@ An argument with a value of `nothing` is considered to have no requirements.
 respectively a `VersionNumber` and a `Type`, e.g. passing `version = >=(v"4.0.0")` will match all
 Kokkos versions including `v4.0.0` and above.
 
-`dims`, `types`, `exec_spaces` and `mem_spaces` are lists of the required values. 
+`dims`, `types`, `layouts`, `exec_spaces` and `mem_spaces` are lists of the required values. 
 
-`dims` and `types` check the available dimensions and types of views, while `exec_spaces` and
-`mem_spaces` do the same for execution and memory spaces.
+`dims`, `types` and `layouts` check the available dimensions, types and layouts of views, while
+`exec_spaces` and `mem_spaces` do the same for execution and memory spaces.
 
 If `no_error` is true, then this function will return `false` if any requirement is not met.
 
@@ -238,11 +273,13 @@ loaded.
 # Examples
 
 ```julia
-# Require Kokkos version 4.0.0 (exactly), and for 1D and 2D views of Float64 to be compiled:  
+# Require Kokkos version 4.0.0 (exactly), and for 1D and 2D views of Float64 to be compiled with
+# a column or row major layout:
 Kokkos.require(;
     version = ==(v"4.0.0"),
     types = [Float64],
-    dims = [1, 2]
+    dims = [1, 2],
+    layouts = [Kokkos.LayoutLeft, Kokkos.LayoutRight]    
 )
 
 # Require an index type of 8 bytes, the Cuda and OpenMP backends of Kokkos, as well as the Cuda UVM
@@ -256,7 +293,8 @@ Kokkos.require(;
 """
 function require(;
     version=nothing,
-    dims=nothing, types=nothing, idx=nothing,
+    dims=nothing, types=nothing, layouts=nothing,
+    idx=nothing,
     exec_spaces=nothing, mem_spaces=nothing,
     no_error=false
 )
@@ -278,6 +316,10 @@ function require(;
 
     if !isnothing(types) && !issubset(types, COMPILED_TYPES)
         push!(failures, requirement_fail("view types", "⊆", tuple(types...), COMPILED_TYPES))
+    end
+
+    if !isnothing(layouts) && !issubset(layouts, COMPILED_LAYOUTS)
+        push!(failures, requirement_fail("view layouts", "⊆", tuple(layouts...), COMPILED_LAYOUTS))
     end
 
     if !isnothing(exec_spaces) && !issubset(exec_spaces, COMPILED_EXEC_SPACES)

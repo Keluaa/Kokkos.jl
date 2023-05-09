@@ -55,17 +55,17 @@ struct add_pointers<T, 0> { using type = T; };
  *
  * It is this type that is registered with CxxWrap, not Kokkos::View, therefore all Julia methods defined with CxxWrap
  * should use this type in their arguments / return type, not Kokkos::View.
+ *
+ * Importantly, the `Kokkos::View` type is complete: it has the same parameters as the type returned by `Kokkos::subview`.
  */
 template<typename T, typename DimCst, typename LayoutType, typename MemSpace,
          typename MemTraits = Kokkos::MemoryTraits<0>,
          typename T_Ptr = typename add_pointers<T, DimCst::value>::type,
-         typename KokkosViewT = typename Kokkos::View<T_Ptr, LayoutType, MemSpace, MemTraits>>
+         typename Device = typename MemSpace::device_type,
+         typename KokkosViewT = typename Kokkos::View<T_Ptr, LayoutType, Device, MemTraits>>
 struct ViewWrap : public KokkosViewT
 {
     using type = T;
-    using layout_t = LayoutType;
-    using mem_space = MemSpace;
-    using mem_traits = MemTraits;
     using kokkos_view_t = KokkosViewT;
 
     static constexpr size_t dim = DimCst::value;
@@ -73,7 +73,7 @@ struct ViewWrap : public KokkosViewT
     using IdxTuple [[maybe_unused]] = decltype(std::tuple_cat(std::array<Idx, dim>()));
 
     // Should be 'using typename KokkosViewT::View;' but compiler incompatibilities make this impossible
-    using Kokkos::View<T_Ptr, LayoutType, MemSpace, MemTraits>::View;
+    using Kokkos::View<T_Ptr, LayoutType, Device, MemTraits>::View;
 
     explicit ViewWrap(const KokkosViewT& other) : KokkosViewT(other) {};
     explicit ViewWrap(KokkosViewT&& other) : KokkosViewT(std::move(other)) {};
@@ -84,6 +84,14 @@ struct ViewWrap : public KokkosViewT
             dims.at(i) = this->extent_int(i);
         }
         return dims;
+    }
+
+    [[nodiscard]] std::array<int64_t, dim> get_strides() const {
+        std::array<int64_t, dim> strides{};
+        for (size_t i = 0; i < dim; i++) {
+            strides.at(i) = this->stride(i);
+        }
+        return strides;
     }
 };
 

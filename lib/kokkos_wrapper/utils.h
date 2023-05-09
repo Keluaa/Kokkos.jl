@@ -5,13 +5,11 @@
 /**
  * Template list where the N-th argument can be accessed with 'TList<...>::Arg<N>', and which can be combined with other
  * template lists.
- *
- * Will not work with reference types.
  */
 template<typename... Args>
 struct TList {
     template<std::size_t I>
-    using Arg = std::remove_reference_t<decltype(std::get<I>(std::tuple<Args...>{}))>;
+    using Arg = std::tuple_element_t<I, std::tuple<Args...>>;
 
     static constexpr auto size = sizeof...(Args);
 
@@ -22,7 +20,7 @@ struct TList {
 
 /**
  * Helper function to transform a 'std::integer_sequence<int, 1, 2, ...>' into a
- * 'jlcxx::ParameterList<std::integral_constant<std::size_t, 1>, ...>'
+ * 'TList<std::integral_constant<std::size_t, 1>, ...>'
  * This way each dimension is stored into its own type, instead of a single sequence type.
  */
 template<typename I, I... Dims>
@@ -42,6 +40,7 @@ constexpr bool is_element_unique(TList<Args...>)
 template<typename... Unique, typename Element, typename... Args>
 constexpr auto remove_duplicates(TList<Unique...>, TList<Element, Args...>)
 {
+    // If Element is present in the remaining Args, do not add it to the stack, then recurse with the remaining Args
     if constexpr (sizeof...(Args) == 0) {
         return TList<Unique..., Element>{};
     } else if constexpr (is_element_unique<Element>(TList<Args...>{})) {
@@ -72,6 +71,7 @@ constexpr auto build_all_combinations(TList<Stack...>, TList<List...>)
 template<typename NextList, typename... NextLists, typename... Stack, typename... List>
 constexpr auto build_all_combinations(TList<Stack...>, TList<List...>)
 {
+    // Add to N copies of the stack one of the N elements of List, then recurse to the next lists (if there is any)
     if constexpr (sizeof...(NextLists) == 0) {
         return (build_all_combinations<>(TList<Stack..., List>{}, NextList{}) + ...);
     } else {

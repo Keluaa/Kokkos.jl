@@ -4,17 +4,78 @@ using CxxWrap
 import ..Kokkos: ExecutionSpace, MemorySpace
 import ..Kokkos: COMPILED_MEM_SPACES, DEFAULT_DEVICE_MEM_SPACE, DEFAULT_HOST_MEM_SPACE
 import ..Kokkos: ensure_kokkos_wrapper_loaded, get_impl_module
-import ..Kokkos: memory_space, accessible, main_space_type, finalize
+import ..Kokkos: memory_space, execution_space, accessible, array_layout, main_space_type, finalize
 
-export View, Idx
-export COMPILED_TYPES, COMPILED_DIMS
+export Layout, LayoutLeft, LayoutRight, LayoutStride, View, Idx
+export COMPILED_TYPES, COMPILED_DIMS, COMPILED_LAYOUTS
 export label, view_wrap, view_data, memory_span, deep_copy, create_mirror, create_mirror_view
 
 
 """
-    View{T, D, MemSpace} <: AbstractArray{T, D}
+    Layout
 
-Wrapper around a `Kokkos::View` of `D` dimensions of type `T`, stored in `MemSpace`.
+Abstract super-type of all view layouts.
+
+Sub-types:
+ - [`LayoutLeft`](@ref)
+ - [`LayoutRight`](@ref)
+ - [`LayoutStride`](@ref)
+"""
+abstract type Layout end
+
+
+"""
+    LayoutLeft
+
+Fortran-style column major array layout. This is also the layout of Julia arrays.
+
+Equivalent to [`Kokkos::LayoutLeft`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/layoutLeft.html).
+"""
+struct LayoutLeft <: Layout end
+
+
+"""
+    LayoutRight
+
+C-style row major array layout.
+
+Equivalent to [`Kokkos::LayoutRight`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/layoutRight.html).
+"""
+struct LayoutRight <: Layout end
+
+
+"""
+    LayoutStride
+
+Arbitrary array layout, mostly used for sub-views.
+
+Equivalent to [`Kokkos::LayoutStride`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/layoutStride.html).
+
+When building a new view with a `LayoutStride`, the strides of each dimension must be given to the
+view constructor:
+```julia
+# A 7×11 matrix with column-major layout
+v = Kokkos.View{Float64}(undef, 7, 11; layout=LayoutStride(1, 11))
+
+# A 7×11 matrix with row-major layout
+v = Kokkos.View{Float64}(undef, 7, 11; layout=LayoutStride(7, 1))
+```
+
+This differs slightly from the C++ Kokkos constructor, where dimensions and strides are interleaved.
+"""
+struct LayoutStride <: Layout
+    strides::Dims
+end
+
+LayoutStride() = LayoutStride(())
+LayoutStride(strides::Integer...) = LayoutStride(convert(Tuple{Vararg{Int}}, strides))
+
+
+"""
+    View{T, D, Layout, MemSpace} <: AbstractArray{T, D}
+
+Wrapper around a `Kokkos::View` of `D` dimensions of type `T`, stored in `MemSpace` using the
+`Layout`.
 
 Behaves like a normal `Array`. Indexing is done by calling the `Kokkos::View::operator()` function
 of the view, and is therefore not highly performant. The best performance with Kokkos views is
@@ -33,13 +94,13 @@ It is important to understand that for a view to be properly disposed of, there 
    will always meet this requirement.
  - [`finalize`](@ref) wasn't called.
 """
-abstract type View{T, D, MemSpace} <: Base.AbstractArray{T, D} end
+abstract type View{T, D, L <: Layout, M <: MemorySpace} <: Base.AbstractArray{T, D} end
 
 
 # Internal functions, defined for each view in 'views.cpp', in 'register_view_types'
 function get_ptr end
 function get_dims end
-function get_tracker end
+function get_strides end
 
 
 """
@@ -72,15 +133,33 @@ COMPILED_DIMS = nothing
 
 List of all View element types which are compiled
 
-By default, the following types are compiled: Float64 (double), Float32 (float) and Int64 (int64_t).
+By default, the following types are compiled: Float64 (double), and Int64 (int64_t).
 
 `nothing` if Kokkos is not yet loaded.
 """
 COMPILED_TYPES = nothing
 
 
-function error_view_not_compiled(::Type{View{T, D, S}}) where {T, D, S}
+"""
+    COMPILED_LAYOUTS::Tuple{Vararg{DataType}}
+
+List of all [`Layouts`](@ref) types which are compiled.
+
+By default, the default array layout for the device and host execution spaces are compiled.
+
+`nothing` if Kokkos is not yet loaded.
+"""
+COMPILED_LAYOUTS = nothing
+
+
+function error_view_not_compiled(::Type{View{T, D, L, S}}) where {T, D, L, S}
     ensure_kokkos_wrapper_loaded()
+
+    if !(T in COMPILED_TYPES)
+        types_str = join(COMPILED_TYPES, ", ", " and ")
+        pluralized_str = length(COMPILED_TYPES) > 1 ? "are" : "is"
+        error("view type `$T` is not compiled. Only $types_str $pluralized_str compiled.")
+    end
 
     if !(D in COMPILED_DIMS)
         dims_str = join(string.(COMPILED_DIMS) .* 'D', ", ", " and ")
@@ -89,10 +168,10 @@ function error_view_not_compiled(::Type{View{T, D, S}}) where {T, D, S}
                 Only $dims_str $pluralized_str compiled.")
     end
 
-    if !(T in COMPILED_TYPES)
-        types_str = join(COMPILED_TYPES, ", ", " and ")
-        pluralized_str = length(COMPILED_TYPES) > 1 ? "are" : "is"
-        error("view type `$T` is not compiled. Only $types_str $pluralized_str compiled.")
+    if !(L in COMPILED_LAYOUTS)
+        layout_str = join(COMPILED_LAYOUTS, ", ", " and ")
+        pluralized_str = length(COMPILED_LAYOUTS) > 1 ? "are" : "is"
+        error("view layout `$L` is not compiled. Only $layout_str $pluralized_str compiled.") 
     end
 
     if !(S in COMPILED_MEM_SPACES)
@@ -101,15 +180,16 @@ function error_view_not_compiled(::Type{View{T, D, S}}) where {T, D, S}
         error("memory space `$S` is not compiled. The only compiled $pluralized_str $spaces_str.")
     end
 
-    error("$(D)D views of type $T stored in $S are not compiled.")
+    error("$(D)D views of type $T stored in $S with a $L are not compiled.")
 end
 
 
-# Instances of `alloc_view` for each compiled type, dimension and memory space are defined in
-# 'views.cpp', in 'register_constructor'.
-function alloc_view(::Type{View{T, D, S}}, dims::Dims{D}, mem_space, label, zero_fill, dim_pad) where {T, D, S}
+# Instances of `alloc_view` for each compiled type, dimension, layout and memory space are defined
+# in 'views.cpp', in 'register_constructor'.
+function alloc_view(::Type{View{T, D, L, S}},
+        dims::Dims{D}, mem_space, layout, label, zero_fill, dim_pad) where {T, D, L, S}
     # Fallback: error handler
-    error_view_not_compiled(View{T, D, S})
+    error_view_not_compiled(View{T, D, L, S})
 end
 
 
@@ -118,7 +198,15 @@ end
 
 Return `true` if the view is accessible from the default host execution space.
 """
-accessible(::View{T, D, MemSpace}) where {T, D, MemSpace} = accessible(MemSpace)
+accessible(::View{T, D, L, MemSpace}) where {T, D, L, MemSpace} = accessible(MemSpace)
+
+
+"""
+    array_layout(::View)
+
+Return the [`Layout`](@ref) type of the view.
+"""
+array_layout(::View{T, D, L, M}) where {T, D, L, M} = L
 
 
 """
@@ -137,7 +225,7 @@ julia> memory_space(v)
 Kokkos.Spaces.CudaSpace
 ```
 """
-memory_space(::View{T, D, MemSpace}) where {T, D, MemSpace} = main_space_type(MemSpace)
+memory_space(::View{T, D, L, MemSpace}) where {T, D, L, MemSpace} = main_space_type(MemSpace)
 
 
 """
@@ -217,8 +305,9 @@ end
 # === Constructors ===
 
 """
-    View{T, D, S}(dims;
+    View{T, D, Layout, MemSpace}(dims;
         mem_space = DEFAULT_DEVICE_MEM_SPACE,
+        layout = nothing,
         label = "",
         zero_fill = true,
         dim_pad = false
@@ -228,10 +317,15 @@ Construct an N-dimensional `View{T}`.
 
 `D` can be deduced from `dims`, which can either be a `NTuple{D, Integer}` or `D` integers.
 
-`S` defaults to the type of `mem_space`. `mem_space` can be an [`ExecutionSpace`](@ref), in which
-case it is converted to a [`MemorySpace`](@ref) with [`memory_space`](@ref). `mem_space` can be
-either an instance of a [`MemorySpace`](@ref) or one of the main types of memory spaces, in which
-case an instance of a [`MemorySpace`](@ref) is default constructed (behaviour of Kokkos by default).
+`Layout` defaults to the type of `layout`. `layout` can be a [`Layout`](@ref) instance or type.
+If `layout` is `nothing` it defaults to [`array_layout(execution_space(mem_space))`](@ref array_layout)
+after `mem_space` is converted to a `MemorySpace`.
+
+`MemSpace` defaults to the type of `mem_space`. `mem_space` can be an [`ExecutionSpace`](@ref), in
+which case it is converted to a [`MemorySpace`](@ref) with [`memory_space`](@ref). `mem_space` can
+be either an instance of a [`MemorySpace`](@ref), or one of the main types of memory spaces, in
+which case an instance of a [`MemorySpace`](@ref) is default constructed (behaviour of Kokkos by
+default).
 
 The `label` is the debug label of the view.
 
@@ -243,48 +337,80 @@ then a view might not have a layout identical to a classic `Array`, for better m
 See [the Kokkos documentation about `Kokkos::view_alloc()`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/view_alloc.html)
 for more info.
 """
-function View{T, D, S}(dims::Dims{D};
+function View{T, D, L, S}(dims::Dims{D};
     mem_space = DEFAULT_DEVICE_MEM_SPACE,
+    layout = nothing,
     label = "",
     zero_fill = true,
     dim_pad = false
-) where {T, D, S}
+) where {T, D, L, S}
     mem_space_t = mem_space isa DataType ? mem_space : typeof(mem_space)
     if !(main_space_type(mem_space_t) <: S)
-        error("Conficting types for View constructor typing `$S` and `mem_space` kwarg: $mem_space \
-               (a $(main_space_type(mem_space_t)))")
+        error("Conficting types for `View` constructor typing `$S` and `mem_space` kwarg: $mem_space \
+               (type: $(main_space_type(mem_space_t)))")
+    end
+
+    if isnothing(layout)
+        # ok
+    elseif layout isa DataType
+        layout !== L && error("expected `layout` to be a $L type or an instance, got: $layout")
+    elseif !(layout isa L)
+        error("Conficting types for `View` constructor typing `$L` and `layout` kwargs: $layout \
+               (type: $(typeof(layout)))")
+    end
+
+    if L === LayoutStride && !(layout isa LayoutStride)
+        error("the `View` constructor with a `LayoutStride` requires a instance of the layout")
     end
 
     if mem_space isa DataType
         # Let `alloc_view` call the memory space constructor
-        return alloc_view(View{T, D, S}, dims, nothing, label, zero_fill, dim_pad)
+        return alloc_view(View{T, D, L, S}, dims, nothing, layout, label, zero_fill, dim_pad)
     else
-        return alloc_view(View{T, D, S}, dims, mem_space, label, zero_fill, dim_pad)
+        return alloc_view(View{T, D, L, S}, dims, mem_space, layout, label, zero_fill, dim_pad)
     end
 end
 
-View{T, D, S}(::UndefInitializer, dims::Dims{D}; kwargs...) where {T, D, S} =
-    View{T, D, S}(dims; kwargs..., zero_fill=false)
+View{T, D, L, S}(::UndefInitializer, dims::Dims{D}; kwargs...) where {T, D, L, S} =
+    View{T, D, L, S}(dims; kwargs..., zero_fill=false)
 
 
-# View{T, D} to View{T, D, S}
+# View{T, D} to View{T, D, L, S}
 function View{T, D}(dims::Dims{D};
     mem_space = DEFAULT_DEVICE_MEM_SPACE,
+    layout = nothing,
     label = "",
     zero_fill = true,
     dim_pad = false
 ) where {T, D}
+    mem_space_t::DataType = Nothing
     if mem_space isa DataType
         # Default construction of the memory space (delegated to `alloc_view`)
-        (mem_space <: ExecutionSpace) && (mem_space = memory_space(mem_space))
-        return View{T, D, mem_space}(dims; mem_space, label, zero_fill, dim_pad)
+        if mem_space <: ExecutionSpace
+            mem_space_t = memory_space(mem_space)
+        else
+            mem_space_t = mem_space
+        end
     elseif mem_space isa MemorySpace
         mem_space_t = main_space_type(typeof(mem_space))
-        return View{T, D, mem_space_t}(dims; mem_space, label, zero_fill, dim_pad)
     else
         ensure_kokkos_wrapper_loaded()
-        throw(TypeError(:View, "constructor", MemorySpace, mem_space))
+        throw(TypeError(:View, "constructor", Union{DataType, MemorySpace}, mem_space))
     end
+
+    layout_t::DataType = Nothing
+    if layout isa DataType
+        layout_t = layout
+    elseif layout isa Layout
+        layout_t = typeof(layout)
+    elseif layout === nothing
+        layout_t = array_layout(execution_space(mem_space_t))
+    else
+        ensure_kokkos_wrapper_loaded()
+        throw(TypeError(:View, "constructor", Union{DataType, Layout}, layout))
+    end
+
+    return View{T, D, layout_t, mem_space_t}(dims; mem_space, layout, label, zero_fill, dim_pad)
 end
 
 View{T, D}(::UndefInitializer, dims::Dims{D}; kwargs...) where {T, D} =
@@ -293,18 +419,27 @@ View{T, D}(::UndefInitializer, dims::Dims{D}; kwargs...) where {T, D} =
 
 # Int... to Dims{D}
 """
-    View{T, D, S}(undef, dims; kwargs...)
+    View{T, D, L, S}(undef, dims; kwargs...)
+    View{T, D, L}(undef, dims; kwargs...)
+    View{T, D}(undef, dims; kwargs...)
+    View{T}(undef, dims; kwargs...)
 
 Construct an N-dimensional `View{T}`, without initialization of its elements.
 
 Strictly equivalent to passing `zero_fill=false` to the `kwargs`.
 """
-View{T, D, S}(::UndefInitializer, dims::Integer...; kwargs...) where {T, D, S} =
-    View{T, D, S}(convert(Tuple{Vararg{Int}}, dims); kwargs..., zero_fill=false)
+View{T, D, L, S}(::UndefInitializer, dims::Integer...; kwargs...) where {T, D, L, S} =
+    View{T, D, L, S}(convert(Tuple{Vararg{Int}}, dims); kwargs..., zero_fill=false)
+View{T, D, L}(::UndefInitializer, dims::Integer...; kwargs...) where {T, D, L} =
+    View{T, D, L}(convert(Tuple{Vararg{Int}}, dims); kwargs..., zero_fill=false)
 View{T, D}(::UndefInitializer, dims::Integer...; kwargs...) where {T, D} =
     View{T, D}(convert(Tuple{Vararg{Int}}, dims); kwargs..., zero_fill=false)
-View{T, D, S}(dims::Integer...; kwargs...) where {T, D, S} =
-    View{T, D, S}(convert(Tuple{Vararg{Int}}, dims); kwargs...)
+
+# Int... to Dims{D} but without the UndefInitializer
+View{T, D, L, S}(dims::Integer...; kwargs...) where {T, D, L, S} =
+    View{T, D, L, S}(convert(Tuple{Vararg{Int}}, dims); kwargs...)
+View{T, D, L}(dims::Integer...; kwargs...) where {T, D, L} =
+    View{T, D, L}(convert(Tuple{Vararg{Int}}, dims); kwargs...)
 View{T, D}(dims::Integer...; kwargs...) where {T, D} =
     View{T, D}(convert(Tuple{Vararg{Int}}, dims); kwargs...)
 
@@ -319,33 +454,38 @@ View{T}(dims::Integer...; kwargs...) where {T} =
     View{T}(convert(Tuple{Vararg{Int}}, dims); kwargs...)
 
 # Empty constructors
-View{T, D, S}(; kwargs...) where {T, D, S} =
-    View{T, D, S}(ntuple(Returns(0), D); kwargs..., zero_fill=false)
+View{T, D, L, S}(; kwargs...) where {T, D, L, S} =
+    View{T, D, L, S}(ntuple(Returns(0), D); kwargs..., zero_fill=false)
+View{T, D, L}(; kwargs...) where {T, D, L} =
+    View{T, D, L}(ntuple(Returns(0), D); kwargs..., zero_fill=false)
 View{T, D}(; kwargs...) where {T, D} =
     View{T, D}(ntuple(Returns(0), D); kwargs..., zero_fill=false)
 View{T}(; kwargs...) where {T} =
     View{T}((0,); kwargs..., zero_fill=false)
 
 
-# TODO: add an array layout parameter
 # Instances of `view_wrap` for each compiled type, dimension and memory space are defined in
 # 'views.cpp', in 'register_constructor'.
 """
     view_wrap(array::DenseArray{T, D})
-    view_wrap(::Type{View{T, D, S}}, array::DenseArray{T, D})
-    view_wrap(::Type{View{T, D, S}}, d::NTuple{D, Int}, p::Ptr{T})
+    view_wrap(::Type{View{T, D, L, S}}, array::DenseArray{T, D})
+    view_wrap(::Type{View{T, D, L, S}}, d::NTuple{D, Int}, p::Ptr{T}; layout = nothing)
 
 Construct a new [`View`](@ref) from the data of a Julia-allocated array.
 The returned view does not own the data, and no copy is made.
 
-The memory space `S` defaults to [`DEFAULT_HOST_MEM_SPACE`](@ref).
+The memory space `S` defaults to [`DEFAULT_HOST_MEM_SPACE`](@ref), and the layout `L` to
+[`array_layout(S)`](@ref array_layout).
+
+If `L` is `LayoutStride`, then the kwarg `layout` should be an instance of a `LayoutStride` which
+specifies the stride of each dimension.
 
 !!! warning
 
-    Julia arrays have a column-major layout.
-    Kokkos can handle both row and column major array layouts, but it is imposed by the memory
-    space. If the layouts don't match the view behaviour is unpredictable.
-    This only affects 2D arrays and above.
+    Julia arrays have a column-major layout by default. This correspond to a [`LayoutLeft`](@ref),
+    while Kokkos prefers [`LayoutRight`](@ref) for CPU allocated arrays.
+    If `strides(array) ≠ strides(view_wrap(array))` then it might lead to segfaults.
+    This only concerns 2D arrays and above.
 
 !!! warning
 
@@ -353,12 +493,14 @@ The memory space `S` defaults to [`DEFAULT_HOST_MEM_SPACE`](@ref).
     It is the responsability of the user to make sure the original array is kept alive as long as
     the view should be accessed.
 """
-view_wrap(::Type{View{T, D, S}}, ::Dims{D}, ::Ptr{T}) where {T, D, S} =
-    error_view_not_compiled(View{T, D, S})
-view_wrap(::Type{View{T, D, S}}, a::DenseArray{T, D}) where {T, D, S} =
-    view_wrap(View{T, D, main_space_type(S)}, size(a), pointer(a))
+view_wrap(::Type{View{T, D, L, S}}, ::Dims{D}, layout, ::Ptr{T}) where {T, D, L, S} =
+    error_view_not_compiled(View{T, D, L, S})
+view_wrap(::Type{View{T, D, L, S}}, d::Dims{D}, p::Ptr{T}; layout=nothing) where {T, D, L, S} =
+    view_wrap(View{T, D, L, S}, d, layout, p)
+view_wrap(::Type{View{T, D, L, S}}, a::DenseArray{T, D}; kwargs...) where {T, D, L, S} =
+    view_wrap(View{T, D, L, main_space_type(S)}, size(a), pointer(a); kwargs...)
 view_wrap(::Type{View{T, D}}, a::DenseArray{T, D}) where {T, D} =
-    view_wrap(View{T, D, DEFAULT_HOST_MEM_SPACE}, a)
+    view_wrap(View{T, D, array_layout(DEFAULT_HOST_MEM_SPACE), DEFAULT_HOST_MEM_SPACE}, a)
 view_wrap(::Type{View{T}}, a::DenseArray{T, D}) where {T, D} =
     view_wrap(View{T, D}, a)
 view_wrap(a::DenseArray{T, D}) where {T, D} =
@@ -381,25 +523,39 @@ Base.@propagate_inbounds Base.getindex(v::View{T, D}, I::Vararg{Int, D}) where {
 Base.@propagate_inbounds Base.setindex!(v::View{T, D}, val, I::Vararg{Int, D}) where {T, D} =
     (elem_ptr(v, I...)[] = convert(T, val))
 
+Base.similar(a::View{T, D, L, M}) where {T, D, L, M} =
+    View{T, D, L, main_space_type(M)}(size(a);
+        zero_fill=false, layout=L <: LayoutStride ? LayoutStride(strides(a)) : nothing)
+Base.similar(::View{T, <:Any, L, M}, dims::Dims{D}) where {T, D, L, M} =
+    View{T, D, L, main_space_type(M)}(dims; zero_fill=false)
+Base.similar(::View{<:Any, <:Any, L, M}, ::Type{T}, dims::Dims{D}) where {T, D, L, M} =
+    View{T, D, L, main_space_type(M)}(dims; zero_fill=false)
 
-# TODO: copy 'dim_pad' too (and LayoutType in the future), use `create_mirror`?
-Base.similar(a::View{T, D, M}) where {T, D, M} =
-    View{T, D, main_space_type(M)}(size(a); zero_fill=false)
-Base.similar(::View{T, <:Any, M}, dims::Dims{D}) where {T, D, M} =
-    View{T, D, main_space_type(M)}(dims; zero_fill=false)
-Base.similar(::View{<:Any, <:Any, M}, ::Type{T}, dims::Dims{D}) where {T, D, M} =
-    View{T, D, main_space_type(M)}(dims; zero_fill=false)
 
-
-Base.copyto!(dest::View{DT, Dim, DM}, src::View{ST, Dim, SM}) where {DT, ST, DM, SM, Dim} =
+Base.copyto!(dest::View{DT, Dim, DL, DM}, src::View{ST, Dim, SL, SM}) where {DT, ST, DL, SL, DM, SM, Dim} =
     deep_copy(dest, src)
+
+
+Base.sizeof(v::View) = Int(memory_span(v))
 
 
 # === Pointer conversion ===
 
+# Pointer to the array data
 Base.pointer(v::V) where {T, V <: View{T}} = Ptr{T}(view_data(v).cpp_object)
 
+
+# Pointer to the view object, for ccalls
 Base.cconvert(::Type{Ref{V}}, v::V) where {V <: View} = Ptr{Nothing}(v.cpp_object)
+
+
+# === Strided Array interface ===
+
+Base.strides(v::View) = get_strides(v)
+
+Base.unsafe_convert(::Type{Ptr{T}}, v::V) where {T, V <: View{T}} = pointer(v)
+
+Base.elsize(::Type{<:View{T}}) where {T} = sizeof(T)
 
 
 function __init_vars()
@@ -407,6 +563,7 @@ function __init_vars()
     global Idx = Base.invokelatest(impl.__idx_type)
     global COMPILED_DIMS = Base.invokelatest(impl.__compiled_dims)
     global COMPILED_TYPES = Base.invokelatest(impl.__compiled_types)
+    global COMPILED_LAYOUTS = Base.invokelatest(impl.__compiled_layouts)
 end
 
 end
