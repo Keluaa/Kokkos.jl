@@ -2,6 +2,8 @@
 using Kokkos
 using Test
 
+import Kokkos: View
+
 
 !Kokkos.is_initialized() && Kokkos.initialize()
 Kokkos.require(; dims=[1, 2], types=[Float64], exec_spaces=[Kokkos.Serial, Kokkos.OpenMP])
