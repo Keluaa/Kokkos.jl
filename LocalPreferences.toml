@@ -1,4 +1,0 @@
-[Kokkos]
-backends = ["Serial", "OpenMP"]
-view_dims = [1, 2]
-view_types = ["Float64", "Int64"]

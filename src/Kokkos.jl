@@ -24,7 +24,7 @@ const __DEFAULT_KOKKOS_LIB_OPTIONS   = []
 const __DEFAULT_KOKKOS_BACKENDS      = ["Serial", "OpenMP"]
 const __DEFAULT_KOKKOS_VIEW_DIMS     = [1, 2]
 const __DEFAULT_KOKKOS_VIEW_TYPES    = ["Float64", "Float32"]
-const __DEFAUlT_KOKKOS_VIEW_LAYOUTS  = ["right"]
+const __DEFAULT_KOKKOS_VIEW_LAYOUTS  = ["right"]
 const __DEFAULT_KOKKOS_BUILD_TYPE    = "Release"
 const __DEFAULT_KOKKOS_BUILD_DIR     = joinpath(pwd(), ".kokkos-build")
 
@@ -37,7 +37,7 @@ KOKKOS_LIB_OPTIONS   = @load_preference("kokkos_options", __DEFAULT_KOKKOS_LIB_O
 KOKKOS_BACKENDS      = @load_preference("backends",       __DEFAULT_KOKKOS_BACKENDS)
 KOKKOS_VIEW_DIMS     = @load_preference("view_dims",      __DEFAULT_KOKKOS_VIEW_DIMS)
 KOKKOS_VIEW_TYPES    = @load_preference("view_types",     __DEFAULT_KOKKOS_VIEW_TYPES)
-KOKKOS_VIEW_LAYOUTS  = @load_preference("view_layouts",   __DEFAUlT_KOKKOS_VIEW_LAYOUTS)
+KOKKOS_VIEW_LAYOUTS  = @load_preference("view_layouts",   __DEFAULT_KOKKOS_VIEW_LAYOUTS)
 KOKKOS_BUILD_TYPE    = @load_preference("build_type",     __DEFAULT_KOKKOS_BUILD_TYPE)
 KOKKOS_BUILD_DIR     = @load_preference("build_dir",      __DEFAULT_KOKKOS_BUILD_DIR)
 

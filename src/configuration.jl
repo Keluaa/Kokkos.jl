@@ -117,7 +117,7 @@ set_view_types(types::Vector{DataType}) = set_view_types(string.(nameof.(types))
 function set_view_layouts(layouts::Union{Nothing, Missing, Vector{String}})
     @set_preferences!("view_layouts" => layouts)
     if !is_kokkos_wrapper_loaded()
-        global KOKKOS_VIEW_LAYOUTS = @load_preference("view_layouts", __DEFAUlT_KOKKOS_VIEW_LAYOUTS)
+        global KOKKOS_VIEW_LAYOUTS = @load_preference("view_layouts", __DEFAULT_KOKKOS_VIEW_LAYOUTS)
     else
         global HAS_CONFIGURATION_CHANGED = true
         @info "New view layouts set to $layouts.\n\

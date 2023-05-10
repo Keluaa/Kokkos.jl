@@ -1,4 +1,5 @@
 /**/Manifest.toml
+LocalPreferences.toml
 /**/.kokkos-build/
 /docs/build/
 /lib/kokkos_wrapper/.idea/
