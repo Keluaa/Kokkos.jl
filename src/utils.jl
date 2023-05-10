@@ -239,6 +239,91 @@ requirement_fail(msg, constraint::String, expected, value) = "$msg: $expected $c
 requirement_fail(msg, args...) = "$msg"
 
 
+function require_config(version, dims, types, layouts, idx, exec_spaces, mem_spaces)
+    failures = []
+
+    if !isnothing(version)
+        if KOKKOS_PATH != LOCAL_KOKKOS_DIR
+            @warn "Cannot check the Kokkos version of a custom installation when Kokkos is not loaded" maxlog=1
+        elseif !version(VersionNumber(LOCAL_KOKKOS_VERSION_STR))
+            push!(failures, requirement_fail("Kokkos version $LOCAL_KOKKOS_VERSION_STR", version, "VERSION"))
+        end
+    end
+
+    if !isnothing(idx)
+        @warn "Cannot check the index type when Kokkos is not loaded" maxlog=1
+    end
+
+    if !isnothing(dims) && !issubset(dims, KOKKOS_VIEW_DIMS)
+        push!(failures, requirement_fail("view dimensions", "⊈", tuple(dims...), KOKKOS_VIEW_DIMS))
+    end
+
+    if !isnothing(types)
+        types_str = string.(nameof.(types))
+        if !issubset(types_str, KOKKOS_VIEW_TYPES)
+            push!(failures, requirement_fail("view types", "⊈", tuple(types_str...), KOKKOS_VIEW_TYPES))
+        end
+    end
+
+    if !isnothing(layouts)
+        layouts_str = layouts .|> nameof .|> string .|> lowercase
+        layouts_str = chop.(layouts_str; head=length("Layout"), tail=0)
+        layouts_str = string.(layouts_str)
+        if !issubset(layouts_str, KOKKOS_VIEW_LAYOUTS)
+            push!(failures, requirement_fail("view layouts", "⊈", tuple(layouts...), KOKKOS_VIEW_LAYOUTS))
+        end
+    end
+
+    if !isnothing(exec_spaces)
+        backends_str = string.(nameof.(exec_spaces))
+        if !issubset(backends_str, KOKKOS_BACKENDS)
+            push!(failures, requirement_fail("execution spaces", "⊈", tuple(backends_str...), KOKKOS_BACKENDS))
+        end
+    end
+
+    if !isnothing(mem_spaces)
+        @warn "Cannot check available memory spaces when Kokkos is not loaded" maxlog=1
+    end
+
+    return failures
+end
+
+
+function require_compiled(version, dims, types, layouts, idx, exec_spaces, mem_spaces)
+    failures = []
+
+    if !isnothing(version) && !version(KOKKOS_VERSION)
+        push!(failures, requirement_fail("Kokkos version $KOKKOS_VERSION", version, "VERSION"))
+    end
+
+    if !isnothing(idx) && !idx(Idx)
+        push!(failures, requirement_fail("index type $Idx", idx, "Idx"))
+    end
+
+    if !isnothing(dims) && !issubset(dims, COMPILED_DIMS)
+        push!(failures, requirement_fail("view dimensions", "⊈", tuple(dims...), COMPILED_DIMS))
+    end
+
+    if !isnothing(types) && !issubset(types, COMPILED_TYPES)
+        push!(failures, requirement_fail("view types", "⊈", tuple(types...), COMPILED_TYPES))
+    end
+
+    if !isnothing(layouts) && !issubset(layouts, COMPILED_LAYOUTS)
+        push!(failures, requirement_fail("view layouts", "⊈", tuple(layouts...), COMPILED_LAYOUTS))
+    end
+
+    if !isnothing(exec_spaces) && !issubset(exec_spaces, COMPILED_EXEC_SPACES)
+        push!(failures, requirement_fail("execution spaces", "⊈", tuple(exec_spaces...), COMPILED_EXEC_SPACES))
+    end
+
+    if !isnothing(mem_spaces) && !issubset(mem_spaces, COMPILED_MEM_SPACES)
+        push!(failures, requirement_fail("memory spaces", "⊈", tuple(mem_spaces...), COMPILED_MEM_SPACES))
+    end
+
+    return failures
+end
+
+
 """
     require(;
         version=nothing,
@@ -269,6 +354,10 @@ If `no_error` is true, then this function will return `false` if any requirement
 
 This function does not require for Kokkos to be initialized, but for the wrapper library to be
 loaded.
+If the wrapper is not loaded, the configuration options will be checked instead, however they cannot
+cover all possible requirements (`idx` and `mem_spaces` do not work and `version` works only if the
+packaged Kokkos installation is used).
+
 
 # Examples
 
@@ -298,42 +387,17 @@ function require(;
     exec_spaces=nothing, mem_spaces=nothing,
     no_error=false
 )
-    ensure_kokkos_wrapper_loaded()
-
-    failures = []
-
-    if !isnothing(version) && !version(KOKKOS_VERSION)
-        push!(failures, requirement_fail("Kokkos version $KOKKOS_VERSION", version, "VERSION"))
-    end
-
-    if !isnothing(idx) && !idx(Idx)
-        push!(failures, requirement_fail("index type $Idx", idx, "Idx"))
-    end
-
-    if !isnothing(dims) && !issubset(dims, COMPILED_DIMS)
-        push!(failures, requirement_fail("view dimensions", "⊆", tuple(dims...), COMPILED_DIMS))
-    end
-
-    if !isnothing(types) && !issubset(types, COMPILED_TYPES)
-        push!(failures, requirement_fail("view types", "⊆", tuple(types...), COMPILED_TYPES))
-    end
-
-    if !isnothing(layouts) && !issubset(layouts, COMPILED_LAYOUTS)
-        push!(failures, requirement_fail("view layouts", "⊆", tuple(layouts...), COMPILED_LAYOUTS))
-    end
-
-    if !isnothing(exec_spaces) && !issubset(exec_spaces, COMPILED_EXEC_SPACES)
-        push!(failures, requirement_fail("execution spaces", "⊆", tuple(exec_spaces...), COMPILED_EXEC_SPACES))
-    end
-
-    if !isnothing(mem_spaces) && !issubset(mem_spaces, COMPILED_MEM_SPACES)
-        push!(failures, requirement_fail("memory spaces", "⊆", tuple(mem_spaces...), COMPILED_MEM_SPACES))
+    if is_kokkos_wrapper_loaded()
+        failures = require_compiled(version, dims, types, layouts, idx, exec_spaces, mem_spaces)
+    else
+        failures = require_config(version, dims, types, layouts, idx, exec_spaces, mem_spaces)
     end
 
     if !isempty(failures)
         no_error && return false
-        length(failures) == 1 && error("requirement not met for $(first(failures))")
-        error("requirements not met for:\n" * join(" - " .* failures, "\n"))
+        config_str = is_kokkos_wrapper_loaded() ? "" : "configuration"
+        length(failures) == 1 && error("$config_str requirement not met for $(first(failures))")
+        error("$config_str requirements not met for:\n" * join(" - " .* failures, "\n"))
     end
 
     return true
