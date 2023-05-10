@@ -29,6 +29,8 @@ abstract type Layout end
 
 Fortran-style column major array layout. This is also the layout of Julia arrays.
 
+While indexing, the first index is the contiguous one: `v[i0, i1, i2]`.
+
 Equivalent to [`Kokkos::LayoutLeft`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/layoutLeft.html).
 """
 struct LayoutLeft <: Layout end
@@ -38,6 +40,8 @@ struct LayoutLeft <: Layout end
     LayoutRight
 
 C-style row major array layout.
+
+While indexing, the last index is the contiguous one: `v[i2, i1, i0]`.
 
 Equivalent to [`Kokkos::LayoutRight`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/layoutRight.html).
 """
@@ -304,6 +308,41 @@ end
 
 # === Constructors ===
 
+function get_mem_space_type(mem_space)
+    mem_space_t::DataType = Nothing
+    if mem_space isa DataType
+        # Default construction of the memory space (delegated to `alloc_view`)
+        if mem_space <: ExecutionSpace
+            mem_space_t = memory_space(mem_space)
+        else
+            mem_space_t = mem_space
+        end
+    elseif mem_space isa MemorySpace
+        mem_space_t = main_space_type(typeof(mem_space))
+    else
+        ensure_kokkos_wrapper_loaded()
+        throw(TypeError(:View, "constructor", Union{DataType, MemorySpace}, mem_space))
+    end
+    return mem_space_t
+end
+
+
+function get_layout_type(layout, mem_space_t)
+    layout_t::DataType = Nothing
+    if layout isa DataType
+        layout_t = layout
+    elseif layout isa Layout
+        layout_t = typeof(layout)
+    elseif layout === nothing
+        layout_t = array_layout(execution_space(mem_space_t))
+    else
+        ensure_kokkos_wrapper_loaded()
+        throw(TypeError(:View, "constructor", Union{DataType, Layout}, layout))
+    end
+    return layout_t
+end
+
+
 """
     View{T, D, Layout, MemSpace}(dims;
         mem_space = DEFAULT_DEVICE_MEM_SPACE,
@@ -375,42 +414,28 @@ View{T, D, L, S}(::UndefInitializer, dims::Dims{D}; kwargs...) where {T, D, L, S
     View{T, D, L, S}(dims; kwargs..., zero_fill=false)
 
 
+# View{T, D, L} to View{T, D, L, S}
+function View{T, D, L}(dims::Dims{D};
+    mem_space = DEFAULT_DEVICE_MEM_SPACE,
+    kwargs...
+) where {T, D, L}
+    mem_space_t = get_mem_space_type(mem_space)
+    return View{T, D, L, mem_space_t}(dims; mem_space, kwargs...)
+end
+
+View{T, D, L}(::UndefInitializer, dims::Dims{D}; kwargs...) where {T, D, L} =
+    View{T, D, L}(dims; kwargs..., zero_fill=false)
+
+
 # View{T, D} to View{T, D, L, S}
 function View{T, D}(dims::Dims{D};
     mem_space = DEFAULT_DEVICE_MEM_SPACE,
     layout = nothing,
-    label = "",
-    zero_fill = true,
-    dim_pad = false
+    kwargs...
 ) where {T, D}
-    mem_space_t::DataType = Nothing
-    if mem_space isa DataType
-        # Default construction of the memory space (delegated to `alloc_view`)
-        if mem_space <: ExecutionSpace
-            mem_space_t = memory_space(mem_space)
-        else
-            mem_space_t = mem_space
-        end
-    elseif mem_space isa MemorySpace
-        mem_space_t = main_space_type(typeof(mem_space))
-    else
-        ensure_kokkos_wrapper_loaded()
-        throw(TypeError(:View, "constructor", Union{DataType, MemorySpace}, mem_space))
-    end
-
-    layout_t::DataType = Nothing
-    if layout isa DataType
-        layout_t = layout
-    elseif layout isa Layout
-        layout_t = typeof(layout)
-    elseif layout === nothing
-        layout_t = array_layout(execution_space(mem_space_t))
-    else
-        ensure_kokkos_wrapper_loaded()
-        throw(TypeError(:View, "constructor", Union{DataType, Layout}, layout))
-    end
-
-    return View{T, D, layout_t, mem_space_t}(dims; mem_space, layout, label, zero_fill, dim_pad)
+    mem_space_t = get_mem_space_type(mem_space)
+    layout_t = get_layout_type(layout, mem_space_t)
+    return View{T, D, layout_t, mem_space_t}(dims; mem_space, layout, kwargs...)
 end
 
 View{T, D}(::UndefInitializer, dims::Dims{D}; kwargs...) where {T, D} =
@@ -500,7 +525,7 @@ view_wrap(::Type{View{T, D, L, S}}, d::Dims{D}, p::Ptr{T}; layout=nothing) where
 view_wrap(::Type{View{T, D, L, S}}, a::DenseArray{T, D}; kwargs...) where {T, D, L, S} =
     view_wrap(View{T, D, L, main_space_type(S)}, size(a), pointer(a); kwargs...)
 view_wrap(::Type{View{T, D}}, a::DenseArray{T, D}) where {T, D} =
-    view_wrap(View{T, D, array_layout(DEFAULT_HOST_MEM_SPACE), DEFAULT_HOST_MEM_SPACE}, a)
+    view_wrap(View{T, D, array_layout(execution_space(DEFAULT_HOST_MEM_SPACE)), DEFAULT_HOST_MEM_SPACE}, a)
 view_wrap(::Type{View{T}}, a::DenseArray{T, D}) where {T, D} =
     view_wrap(View{T, D}, a)
 view_wrap(a::DenseArray{T, D}) where {T, D} =

@@ -169,6 +169,12 @@ Return the default array layout type of the given execution space.
 """
 array_layout(::S) where {S <: Space} = array_layout(S)
 
+function array_layout(S::Type{<:ExecutionSpace})
+    main_S_type = main_space_type(S)
+    main_S_type !== S && return array_layout(main_S_type)
+    error("execution space $S is not compiled")
+end
+
 
 """
     main_space_type(space::Union{<:Space, Type{<:Space}})

@@ -57,40 +57,60 @@ Layout unbox_layout_arg(jl_value_t* boxed_layout, const std::array<size_t, KOKKO
 
     if constexpr (std::is_same_v<Layout, Kokkos::LayoutLeft>) {
         if (!jl_is_nothing(boxed_layout)
-            && !jl_isa(boxed_layout, (jl_value_t*) jlcxx::julia_type<Kokkos::LayoutLeft>())) {
-            jl_errorf("unexpected layout kwarg type, expected `Nothing` or `LayoutLeft`, got: %s",
+                && boxed_layout != (jl_value_t*) jlcxx::julia_type<Kokkos::LayoutLeft>()
+                && !jl_isa(boxed_layout, (jl_value_t*) jlcxx::julia_type<Kokkos::LayoutLeft>())) {
+            jl_errorf("unexpected layout kwarg type, expected `nothing` or `LayoutLeft` (type or instance), got: %s",
                       jl_typeof_str(boxed_layout));
         }
         return Layout{N0, N1, N2, N3, N4, N5, N6, N7};
     } else if constexpr (std::is_same_v<Layout, Kokkos::LayoutRight>) {
         if (!jl_is_nothing(boxed_layout)
-            && !jl_isa(boxed_layout, (jl_value_t*) jlcxx::julia_type<Kokkos::LayoutRight>())) {
-            jl_errorf("unexpected layout kwarg type, expected `Nothing` or `LayoutRight`, got: %s",
+                && boxed_layout != (jl_value_t*) jlcxx::julia_type<Kokkos::LayoutRight>()
+                && !jl_isa(boxed_layout, (jl_value_t*) jlcxx::julia_type<Kokkos::LayoutRight>())) {
+            jl_errorf("unexpected layout kwarg type, expected `nothing` or `LayoutRight` (type or instance), got: %s",
                       jl_typeof_str(boxed_layout));
         }
         return Layout{N0, N1, N2, N3, N4, N5, N6, N7};
     } else if constexpr (std::is_same_v<Layout, Kokkos::LayoutStride>) {
         if (!jl_isa(boxed_layout, (jl_value_t*) jlcxx::julia_type<Kokkos::LayoutStride>())) {
-            jl_errorf("unexpected layout kwarg type, expected `LayoutStride`, got: %s",
+            jl_errorf("unexpected layout kwarg type, expected `LayoutStride` instance, got: %s",
                       jl_typeof_str(boxed_layout));
         }
 
-        jl_value_t* strides = jl_get_nth_field(boxed_layout, 0);
-        jl_value_t* strides_type = jl_field_type((jl_datatype_t*) jl_typeof(boxed_layout), 0);
-        if (((jl_datatype_t*) strides_type)->name != jl_tuple_typename) {
+        // 'strides' is a 'Dims', which is an incomplete type, therefore it is stored in the LayoutStride struct as a
+        // jl_value_t* with its type next to it
+        jl_value_t* strides = jl_get_nth_field_noalloc(boxed_layout, 0);
+        jl_value_t* strides_type = jl_typeof(strides);
+
+        if (!jl_is_tuple_type(strides_type)) {
             jl_errorf("unexpected `stride` type in LayoutStride: expected NTuple{%d, Int64}, got %s",
                       sizeof...(Dims), jl_typename_str(strides_type));
-        } else if (jl_datatype_nfields(strides_type) != sizeof...(Dims)) {
+        } else if (jl_nparams(strides_type) != sizeof...(Dims)) {
             jl_errorf("unexpected `stride` tuple length in LayoutStride: expected %d, got %d",
-                      sizeof...(Dims), jl_datatype_nfields(strides_type));
+                      sizeof...(Dims), jl_nparams(strides_type));
         } else if (jl_datatype_size(strides_type) != sizeof(std::tuple<Dims...>)) {
             jl_errorf("incompatible tuple type byte size, expected %d, got %d",
                       sizeof(std::tuple<Dims...>), jl_datatype_size(strides_type));
         }
 
-        // Cast from a Julia NTuple{D, Int64} to a C++ std::tuple<Dims...>. From the checks above, this should be valid.
-        auto [S0, S1, S2, S3, S4, S5, S6, S7] =
-                unpack_dims(*reinterpret_cast<std::tuple<Dims...>*>(strides));
+        std::array<size_t, KOKKOS_MAX_DIMENSIONS> S = {
+                KOKKOS_IMPL_CTOR_DEFAULT_ARG,
+                KOKKOS_IMPL_CTOR_DEFAULT_ARG,
+                KOKKOS_IMPL_CTOR_DEFAULT_ARG,
+                KOKKOS_IMPL_CTOR_DEFAULT_ARG,
+                KOKKOS_IMPL_CTOR_DEFAULT_ARG,
+                KOKKOS_IMPL_CTOR_DEFAULT_ARG,
+                KOKKOS_IMPL_CTOR_DEFAULT_ARG,
+                KOKKOS_IMPL_CTOR_DEFAULT_ARG
+        };
+
+        // Copy the values of the NTuple{D, Int64} to the array. From the checks above, this should be valid.
+        // We can't use 'unpack_dims' for this since std::tuple is stored in reverse.
+        for (size_t i = 0; i < sizeof...(Dims); i++) {
+            S.at(i) = ((size_t*) strides)[i];
+        }
+
+        auto [S0, S1, S2, S3, S4, S5, S6, S7] = S;
         return Layout{N0, S0, N1, S1, N2, S2, N3, S3, N4, S4, N5, S5, N6, S6, N7, S7};
     } else {
         static_assert(std::is_same_v<Layout, void>, "Unknown layout");
