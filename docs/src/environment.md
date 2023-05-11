@@ -15,6 +15,7 @@ load_wrapper_lib
 is_kokkos_wrapper_loaded
 require
 set_omp_vars
+configinfo
 versioninfo
 print_configuration
 fence()

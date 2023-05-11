@@ -73,10 +73,12 @@ function map_device_id_by! end
         tools_libs=nothing, tools_args=nothing
     )
 
-Initializes Kokkos by calling `Kokkos::initialize()`.
+Initializes Kokkos by calling [`Kokkos::initialize()`](https://kokkos.github.io/kokkos-core-wiki/API/core/initialize_finalize/initialize.html).
 
-The keyword arguments build are passed to the `InitializationSettings` constructor which is then
-passed to `Kokkos::initialize()`. A value of `nothing` keeps the default behaviour of Kokkos.
+The keyword arguments build are passed to the
+[`InitializationSettings`](https://kokkos.github.io/kokkos-core-wiki/API/core/initialize_finalize/InitializationSettings.html)
+constructor which is then passed to `Kokkos::initialize()`. A value of `nothing` keeps the default
+behaviour of Kokkos.
 
 The Kokkos wrapper library is loaded (and recompiled if needed) if it is not already the case.
 This locks the current [Configuration Options](@ref) until the end of the current Julia session.
@@ -118,11 +120,11 @@ function print_configuration end
 """
     finalize()
 
-Calls `Kokkos::finalize()`.
+Calls [`Kokkos::finalize()`](https://kokkos.github.io/kokkos-core-wiki/API/core/initialize_finalize/finalize.html).
 
 !!! warning
 
-    Kokkos requires that all view destructors should be called __before__ calling `finalize`.
+    Kokkos requires that all view destructors should be called **before** calling `finalize`.
 """
 function finalize end
 

@@ -38,33 +38,38 @@ To achieve this you have two options:
 In both cases, this is how you can configure `Kokkos.jl` for:
  - the element type: must be present in [view_types](@ref)
  - the dimension: must be present in [view_dims](@ref)
- - the layout type (not yet implemented)
+ - the [`Layout`](@ref): must be present in [view_layouts](@ref)
  - the [`MemorySpace`](@ref): configured through the [backends](@ref) options
- - the memory traits (not yet implemented)
+ - the memory traits: not yet implemented
 
 All possible combinations of those parameters are compiled when loading `Kokkos.jl`.
-For example, if `view_types = [Float64, Float32]`, `view_dims = [1, 2]` and
-`backends = [Serial, Cuda]`, there will be a total of `2×2×2 = 8` different views compiled.
+For example, if `view_types = [Float64, Float32]`, `view_dims = [1, 2]`,
+`view_layouts = ["left", "right"]` and `backends = [Serial, Cuda]`, there will be a total of
+`2×2×2×2 = 16` different views compiled.
 
 !!! note
 
-    Your project is not affected by the [view_dims](@ref) and [view_types](@ref) options.
+    Your project is not affected by the [view_dims](@ref), [view_types](@ref) and
+    [view_layouts](@ref) options.
     You only need to make sure that the combination of those options cover all usages of views in
     your project.
+
 
 ## Your CMake project
 
 The CMake project shouldn't need extra handling:
 
 ```cmake
-// CMakeLists.txt
+# CMakeLists.txt
 cmake_minimum_required(VERSION 3.20)
 project(MyLib)
+
+set(CMAKE_CXX_EXTENSIONS OFF)  # Kokkos will warn you if this is not set to OFF
 
 find_package(Kokkos REQUIRED)
 
 add_library(MyLib SHARED my_lib.cpp)
-target_link_libraries(MyLib PRIVATE Kokkos::kokkos) // or PUBLIC, it doesn't matter
+target_link_libraries(MyLib PRIVATE Kokkos::kokkos)  # or PUBLIC, it doesn't matter
 ```
 
 `find_package` requires the `Kokkos_ROOT` (or `Kokkos_DIR`) variable to be set when configuring the
@@ -75,7 +80,8 @@ installation, reducing the compilation time.
 If your project uses Kokkos in-tree, you have several options: 
  - keep the call to `add_subdirectory` the same, and configure [kokkos_path](@ref) to use the same
    path
- - change it to `add_subdirectory(${Kokkos_ROOT} lib/kokkos)` (the second argument is arbitrairy)
+ - change it to `add_subdirectory(${Kokkos_ROOT} lib/kokkos)` (the second argument is arbitrary)
+
 
 ## Loading the wrapper library of `Kokkos.jl`
 
@@ -84,7 +90,7 @@ If your project uses Kokkos in-tree, you have several options:
 [`ExecutionSpace`](@ref), [`MemorySpace`](@ref) needed and [other functions](@ref Environment).
 
 Upon loading `Kokkos.jl`, this wrapper library is not loaded (and maybe not compiled).
-Therefore most Kokkos functions will not work (some methods might be missing, others will raise an
+Therefore, most Kokkos functions will not work (some methods might be missing, others will raise an
 error).
 
 To load the wrapper library you can use [`Kokkos.load_wrapper_lib`](@ref) or
@@ -178,7 +184,7 @@ julia> ccall(get_symbol(my_lib, :fill_view),
              v, 0.1)
 ```
 
-The library is opened in a way which allows it to be unloaded afterwards using [`unload_lib`](@ref):
+The library is opened in a way which allows it to be unloaded afterward using [`unload_lib`](@ref):
 
 ```julia-repl
 julia> unload_lib(my_lib)
@@ -192,3 +198,23 @@ This can be useful in order to reconfigure and recompile the project in the same
 compilation parameters exploration for example.
 As long as all views are allocated through `Kokkos.jl`, they can be safely re-used after a library
 reload.
+
+!!! warning
+
+    If any view which has been allocated by an external library is owned by Julia, it *must* be
+    finalized before unloading the library (i.e. either
+    [`finalize`](https://docs.julialang.org/en/v1/base/base/#Base.finalize) must be called on the
+    view, or the garbage collector did so automatically beforehand).
+
+    Failure to do so will result in nasty segfaults when the GC tries to call the finalizer on the
+    view, which also happens when Julia is exiting.
+
+    The segfault could look like this:
+    ```
+    signal (11): Segmentation error
+    in expression starting at /home/Kokkos/test/runtests.jl:19
+    unknown function (ip: 0x7f928f488090)
+    _ZN6Kokkos4Impl22SharedAllocationRecordIvvE9decrementEPS2_ at /home/Kokkos/.kokkos-build/wrapper-build-release/lib/kokkos/core/src/libkokkoscore.so.4.0 (unknown line)
+    ```
+    The main clue that it is a finalizer error is the fact it happens in
+    `Kokkos::Impl::SharedAllocationRecord::decrement`.

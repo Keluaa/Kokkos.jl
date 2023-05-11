@@ -9,6 +9,7 @@ Space
 ExecutionSpace
 MemorySpace
 accessible(::Space)
+array_layout(::Space)
 enabled
 execution_space
 memory_space(::Space)
