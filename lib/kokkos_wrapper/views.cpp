@@ -330,10 +330,9 @@ struct RegisterUtils
     }
 
 
-    template<typename Wrapped>
+    template<typename Wrapped, typename ctor_type>
     static void register_constructor(jlcxx::Module& mod, jl_module_t* views_module) {
         using type = typename Wrapped::type;
-        using ctor_type = TList<Wrapped>;
 
         jl_datatype_t* view_ctor_type = build_array_constructor_type<type>(views_module);
         jlcxx::set_julia_type<ctor_type>(view_ctor_type);
@@ -391,10 +390,12 @@ void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_modul
                     jlcxx::ParameterList<MemSpace>
         >([&](auto wrapped) {
             using Wrapped_t = typename decltype(wrapped)::type;
+            using ctor_type = TList<Wrapped_t>;
 
-            RegUtils::template register_constructor<Wrapped_t>(mod, views_module);
+            RegUtils::template register_constructor<Wrapped_t, ctor_type>(mod, views_module);
             RegUtils::register_access_operator(wrapped);
 
+            wrapped.method("impl_view_type", [](jlcxx::SingletonType<ctor_type>) { return jlcxx::julia_type<Wrapped_t>(); });
             wrapped.method("view_data", &Wrapped_t::data);
             wrapped.method("label", &Wrapped_t::label);
             wrapped.method("memory_span", [](const Wrapped_t& view) { return view.impl_map().memory_span(); });
@@ -443,7 +444,8 @@ void import_all_views_methods(jl_module_t* impl_module, jl_module_t* views_modul
         "memory_span",
         "label",
         "get_dims",
-        "get_strides"
+        "get_strides",
+        "impl_view_type"
     };
 
     for (auto& method : declared_methods) {

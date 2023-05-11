@@ -8,7 +8,8 @@ import ..Kokkos: memory_space, execution_space, accessible, array_layout, main_s
 
 export Layout, LayoutLeft, LayoutRight, LayoutStride, View, Idx
 export COMPILED_TYPES, COMPILED_DIMS, COMPILED_LAYOUTS
-export label, view_wrap, view_data, memory_span, deep_copy, create_mirror, create_mirror_view
+export impl_view_type, label, view_wrap, view_data, memory_span
+export deep_copy, create_mirror, create_mirror_view
 
 
 """
@@ -147,7 +148,7 @@ COMPILED_TYPES = nothing
 """
     COMPILED_LAYOUTS::Tuple{Vararg{DataType}}
 
-List of all [`Layouts`](@ref) types which are compiled.
+List of all [`Layouts`](@ref Layout) types which are compiled.
 
 By default, the default array layout for the device and host execution spaces are compiled.
 
@@ -192,6 +193,31 @@ end
 # in 'views.cpp', in 'register_constructor'.
 function alloc_view(::Type{View{T, D, L, S}},
         dims::Dims{D}, mem_space, layout, label, zero_fill, dim_pad) where {T, D, L, S}
+    # Fallback: error handler
+    error_view_not_compiled(View{T, D, L, S})
+end
+
+
+"""
+    impl_view_type(::Type{View{T, D, L, S}})
+
+Returns the internal [`View`](@ref) type for the given complete View type.
+
+```julia-repl
+julia> view_t = Kokkos.View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}
+Kokkos.Views.View{Float64, 2, Kokkos.Views.LayoutRight, Kokkos.Spaces.HostSpace}
+
+julia> view_impl_t = Kokkos.impl_view_type(view_t)
+Kokkos.KokkosWrapper.Impl.View2D_R_HostAllocated{Float64}
+
+julia> supertype(supertype(view_impl_t))
+Kokkos.Views.View{Float64, 2, Kokkos.Views.LayoutRight, Kokkos.KokkosWrapper.Impl.HostSpaceImplAllocated}
+
+julia> view_impl_t <: view_t  # Julia types are contra-variant
+false
+```
+"""
+function impl_view_type(::Type{View{T, D, L, S}}) where {T, D, L, S}
     # Fallback: error handler
     error_view_not_compiled(View{T, D, L, S})
 end
@@ -570,8 +596,20 @@ Base.sizeof(v::View) = Int(memory_span(v))
 Base.pointer(v::V) where {T, V <: View{T}} = Ptr{T}(view_data(v).cpp_object)
 
 
-# Pointer to the view object, for ccalls
+# Pointer to the view object, for ccalls:
+
+# For the case `my_func(v::V) where V = ccall(my_c_func, (Ref{V},), v)`
 Base.cconvert(::Type{Ref{V}}, v::V) where {V <: View} = Ptr{Nothing}(v.cpp_object)
+
+# For the case `my_func(v) = ccall(my_c_func, (Ref{View{...}},), v)`
+function Base.cconvert(::Type{Ref{View{T, D, L, S}}}, v::View) where {T, D, L, S}
+    impl_view_t = impl_view_type(View{T, D, L, S})
+    if v isa impl_view_t
+        return Ptr{Nothing}(v.cpp_object)
+    else
+        error("Expected a view of type `$impl_view_t` (aka `View{$T, $D, $L, $S}`), got: `$(typeof(v))`")
+    end
+end
 
 
 # === Strided Array interface ===
