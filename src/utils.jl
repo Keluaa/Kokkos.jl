@@ -19,13 +19,18 @@ Julia on OpenMP threads: there can be as many threads as needed.
 !!! warning
 
     Pinning the Julia threads with [ThreadPinning.jl](https://github.com/carstenbauer/ThreadPinning.jl)
-    can have an impact on OpenMP thread affinities, making the environment variables useless.
+    or with the `JULIA_EXCLUSIVE` environment variable can have an impact on OpenMP thread
+    affinities, making the OpenMP variables useless.
 """
 function set_omp_vars(; places = "cores", bind = "close", num_threads = Base.Threads.nthreads())
     ENV["OMP_PLACES"] = places
     ENV["OMP_PROC_BIND"] = bind
     ENV["OMP_NUM_THREADS"] = num_threads
-    # TODO: check if setting JULIA_EXCLUSIVE also messes up the OpenMP affinities
+
+    julia_exclusive = get(ENV, "JULIA_EXCLUSIVE", "0")
+    if !isempty(julia_exclusive) && julia_exclusive != "0"
+        @warn "Environment variable 'JULIA_EXCLUSIVE' is set, which can affect OpenMP thread affinities"
+    end
 end
 
 
