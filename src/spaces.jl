@@ -74,6 +74,9 @@ abstract type HPX            <: ExecutionSpace end
 abstract type SYCL           <: ExecutionSpace end
 
 
+const ALL_BACKENDS = [Serial, OpenMP, OpenACC, OpenMPTarget, Threads, Cuda, HIP, HPX, SYCL]
+
+
 """
     MemorySpace <: Space
 

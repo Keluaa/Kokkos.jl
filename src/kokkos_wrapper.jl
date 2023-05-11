@@ -124,11 +124,17 @@ function create_kokkos_lib_project(; no_git=false)
     ]
     append!(cmake_options, KOKKOS_CMAKE_OPTIONS)
 
-    # TODO: also add all other backends, but switched to OFF. Also do this for all CMake switches,
-    #  preventing it to use the cache and destroy the beautiful set of options we want to give it
     kokkos_options = Dict{String, String}()
-    for backend in KOKKOS_BACKENDS
-        kokkos_options["Kokkos_ENABLE_" * uppercase(backend)] = "ON"
+
+    enabled_backends = uppercase.(KOKKOS_BACKENDS)
+    for backend in enabled_backends
+        kokkos_options["Kokkos_ENABLE_" * backend] = "ON"
+    end
+
+    # Disable all other Kokkos backends, to make sure no cached variable keeps one of them enabled
+    all_backends = parentmodule(@__MODULE__).Spaces.ALL_BACKENDS .|> nameof .|> string .|> uppercase
+    for backend in setdiff(all_backends, enabled_backends)
+        kokkos_options["Kokkos_ENABLE_" * backend] = "OFF"
     end
 
     for option in KOKKOS_LIB_OPTIONS
