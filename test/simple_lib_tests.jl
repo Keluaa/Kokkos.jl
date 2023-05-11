@@ -2,7 +2,7 @@
 using Kokkos
 using Test
 
-import Kokkos: View
+import Kokkos: View, Idx
 
 
 !Kokkos.is_initialized() && Kokkos.initialize()
@@ -50,6 +50,36 @@ function call_perfect_gas(lib_2D, range_x, range_y, γ, ρ::V, u::V, v::V, E::V,
 end
 
 
+function call_create_view_by_reference(lib, nx)
+    view_t = View{Float64, 1, array_layout(Kokkos.DEFAULT_HOST_SPACE), Kokkos.DEFAULT_DEVICE_MEM_SPACE}
+    v_ref = view_t()  # Default empty view constructor
+    # void create_view(view& v, int nx)
+    ccall(Kokkos.get_symbol(lib, :create_view),
+        Cvoid,
+        # Julia disallows ccall arg types depending on local variables
+        # A workaround would be to use a @generated function
+        (Ref{View{Float64, 1, array_layout(Kokkos.DEFAULT_HOST_SPACE), Kokkos.DEFAULT_DEVICE_MEM_SPACE}}, Cint),
+        v_ref, nx
+    )
+    return v_ref
+end
+
+
+@generated function call_create_view_by_reference(lib, nx, ny)
+    view_t = View{Float64, 2, array_layout(Kokkos.DEFAULT_HOST_SPACE), Kokkos.DEFAULT_DEVICE_MEM_SPACE}
+    return quote
+        v_ref = $view_t()  # Default empty view constructor
+        # void create_view(view& v, int nx, int ny)
+        ccall(Kokkos.get_symbol(lib, :create_view),
+            Cvoid,
+            (Ref{$view_t}, Cint, Cint),
+            v_ref, nx, ny
+        )
+        return v_ref
+    end 
+end
+
+
 function test_lib(lib, dims)
     ρ = View{Float64}(undef, dims)
     u = View{Float64}(undef, dims)
@@ -79,6 +109,21 @@ function test_lib(lib, dims)
 
     @test all(p .≈ p_expected)
     @test all(c .≈ c_expected)
+
+    if length(dims) == 1
+        created_view = call_create_view_by_reference(lib, first(dims))
+    else
+        created_view = call_create_view_by_reference(lib, first(dims), last(dims))
+    end
+    @test created_view.cpp_object != C_NULL
+    @test size(created_view) == dims
+    @test all(created_view .== 0)
+    @test label(created_view) == (length(dims) == 1 ? "test_ref_1D" : "test_ref_2D")
+
+    # Very important: finalize the view manually, since we unload the library right after, which
+    # contains the view deallocation function. Not doing so will segfault at the next GC pass (or
+    # when Julia calls all finalizers before exiting).
+    finalize(created_view)
 end
 
 
@@ -94,7 +139,7 @@ project_2D = CMakeKokkosProject(project_1D, "SimpleKokkosLib2D", "libSimpleKokko
 
         @test handle(lib_1D) != C_NULL
 
-        test_lib(lib_1D, Nx)
+        test_lib(lib_1D, (Nx,))
 
         Kokkos.unload_lib(lib_1D)
         @test !Kokkos.is_lib_loaded(lib_1D)

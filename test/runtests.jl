@@ -36,4 +36,7 @@ end
     include("simple_lib_tests.jl")
     include("misc.jl")
     include("mpi.jl")
+
+    GC.gc(true)  # Call the finalizers of all created views
+    Kokkos.finalize()
 end
