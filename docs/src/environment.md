@@ -4,7 +4,7 @@ CurrentModule = Kokkos
 
 # Environment
 
-## Functions
+## Initialization
 
 ```@docs
 initialize
@@ -13,11 +13,24 @@ finalize
 is_finalized
 load_wrapper_lib
 is_kokkos_wrapper_loaded
+```
+
+## Configuration
+
+```@docs
+build_in_scratch
+build_in_tmp
+build_in_project
 require
-set_omp_vars
 configinfo
 versioninfo
 print_configuration
+set_omp_vars
+```
+
+## Synchronization
+
+```@docs
 fence()
 ```
 

@@ -17,6 +17,11 @@ export memory_space, execution_space, array_layout, enabled, main_space_type
 export accessible, label, view_wrap
 
 
+__get_scratch_build_dir() = joinpath(@get_scratch!("kokkos-build"), string(hash(Base.active_project()), base=16))
+__get_tmp_build_dir() = mktempdir(; prefix="jl_kokkos_build_")
+__get_project_build_dir(name) = joinpath(dirname(Base.active_project()), name)
+
+
 # Configuration options
 const __DEFAULT_KOKKOS_VERSION_STR   = "4.0.00"  # Must be a valid tag in the Kokkos repo
 const __DEFAULT_KOKKOS_CMAKE_OPTIONS = []
@@ -26,7 +31,7 @@ const __DEFAULT_KOKKOS_VIEW_DIMS     = [1, 2]
 const __DEFAULT_KOKKOS_VIEW_TYPES    = ["Float64", "Float32"]
 const __DEFAULT_KOKKOS_VIEW_LAYOUTS  = ["right"]
 const __DEFAULT_KOKKOS_BUILD_TYPE    = "Release"
-const __DEFAULT_KOKKOS_BUILD_DIR     = joinpath(pwd(), ".kokkos-build")
+const __DEFAULT_KOKKOS_BUILD_DIR     = __get_scratch_build_dir()
 
 LOCAL_KOKKOS_VERSION_STR = @load_preference("kokkos_version", __DEFAULT_KOKKOS_VERSION_STR)
 LOCAL_KOKKOS_DIR = @get_scratch!("kokkos-" * LOCAL_KOKKOS_VERSION_STR)

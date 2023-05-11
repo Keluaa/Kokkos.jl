@@ -159,3 +159,28 @@ function set_build_dir(build_dir::Union{Nothing, Missing, String})
     end
     return KOKKOS_BUILD_DIR
 end
+
+
+"""
+    build_in_scratch()
+
+Sets the `build_dir` configuration option to a scratch directory (the default).
+"""
+build_in_scratch() = set_build_dir(__get_scratch_build_dir())
+
+
+"""
+    build_in_tmp()
+
+Sets the `build_dir` configuration option to a temporary directory, cleaned at the end of the Julia
+session.
+"""
+build_in_tmp() = set_build_dir(__get_tmp_build_dir())
+
+
+"""
+    build_in_project(name = ".kokkos-build")
+
+Sets the `build_dir` configuration option to the directory `name` in the active project directory.
+"""
+build_in_project(name = ".kokkos-build") = set_build_dir(__get_project_build_dir(name))

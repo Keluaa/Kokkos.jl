@@ -19,6 +19,8 @@ end
 @testset "Kokkos.jl" begin
     include("pre_wrapper_load.jl")
 
+    Kokkos.build_in_project()  # Use the same directory as Pkg.test uses
+
     Kokkos.set_omp_vars()
     @test_logs min_level=Logging.Warn @test_nowarn Kokkos.load_wrapper_lib()
     @test_nowarn Kokkos.initialize()

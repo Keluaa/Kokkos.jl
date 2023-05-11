@@ -1,7 +1,4 @@
 
-cd(joinpath(@__DIR__, ".."))
-pushfirst!(LOAD_PATH, joinpath(@__DIR__, ".."))
-
 using MPI
 using Kokkos
 using Test
@@ -14,6 +11,8 @@ MPI.Init()
 
 @test MPI.Comm_size(MPI.COMM_WORLD) == N_PROC
 rank = MPI.Comm_rank(MPI.COMM_WORLD)
+
+Kokkos.build_in_project()  # Options must be the same on all processes 
 
 # Important: make sure that all compilation occurs on the root process
 if rank == 0

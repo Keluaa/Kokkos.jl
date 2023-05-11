@@ -118,9 +118,9 @@ julia> Kokkos.initialize()  # Will also call `Kokkos.load_wrapper_lib()` if need
 
 ## Compiling and loading the library
 
-By default, when loading `Kokkos.jl` the build files will be stored in "./.kokkos-build/", this can
+By default, when loading `Kokkos.jl` the build files will be stored in a scratch directory, this can
 be configured with [build_dir](@ref).
-It is recommended to build the project files to same directory, by using the
+It is recommended to build the project files to the same directory, by using the
 `Kokkos.KOKKOS_BUILD_DIR` variable.
 In order for the [Configuration Options](@ref) to be passed correctly, you should use a
 `CMakeKokkosProject`:
@@ -130,12 +130,12 @@ julia> my_lib_path = "./path/to/mylib/project"
 "./path/to/mylib/project"
 
 julia> my_lib_build_path = joinpath(Kokkos.KOKKOS_BUILD_DIR, "mylib")
-"./.kokkos-build/mylib"
+"/path/to/scratch/.kokkos-build/mylib"
 
 julia> project = CMakeKokkosProject(my_lib_path, "libMyLib";
                                     target="MyLib", build_dir=my_lib_build_path)
 Kokkos project from sources located at './path/to/mylib/project'
-Building in './.kokkos-build/mylib'
+Building in '/path/to/scratch.kokkos-build/mylib'
 ...
 ```
 

@@ -119,5 +119,6 @@ The value for the current Julia session is stored in `Kokkos.KOKKOS_BUILD_TYPE`.
 Main building directory for the current session.
 The wrapping library is built in `$(build_dir)/wrapper-build-$(build_type)/`.
 
-Can be set using `Kokkos.set_build_dir()`.
+Can be set using `Kokkos.set_build_dir()`, [`Kokkos.build_in_scratch`](@ref build_in_scratch),
+[`Kokkos.build_in_tmp`](@ref build_in_tmp) or [`Kokkos.build_in_project`](@ref build_in_project).
 The value for the current Julia session is stored in `Kokkos.KOKKOS_BUILD_DIR`.
