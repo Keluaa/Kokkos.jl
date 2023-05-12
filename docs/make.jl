@@ -20,8 +20,11 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "Usage" => [
+            "Calling a Kokkos library" => "calling_c.md",
+            "Using views in an inaccessible memory space" => "inaccessible_views.md",
+        ],
         "Environment" => "environment.md",
-        "Calling a Kokkos library" => "calling_c.md",
         "Execution & Memory Spaces" => "spaces.md",
         "Views" => "views.md",
         "Compilation" => "compilation.md",
