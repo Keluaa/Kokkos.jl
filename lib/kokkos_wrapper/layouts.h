@@ -35,6 +35,22 @@ namespace LayoutListHelper {
 using LayoutListHelper::LayoutList;
 
 
+template<typename Layout>
+constexpr std::string_view layout_name()
+{
+    if constexpr (std::is_same_v<Layout, Kokkos::LayoutLeft>) {
+        return "LayoutLeft";
+    } else if constexpr (std::is_same_v<Layout, Kokkos::LayoutRight>) {
+        return "LayoutRight";
+    } else if constexpr (std::is_same_v<Layout, Kokkos::LayoutStride>) {
+        return "LayoutStride";
+    } else {
+        static_assert(std::is_same_v<Layout, void>, "Unknown layout type");
+        return "";
+    }
+}
+
+
 void define_all_layouts(jlcxx::Module& mod);
 
 #endif //KOKKOS_WRAPPER_LAYOUTS_H

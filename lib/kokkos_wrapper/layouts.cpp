@@ -6,17 +6,7 @@
 template<typename Layout>
 void register_layout(jl_module_t* views_module)
 {
-    std::string name;
-    if constexpr (std::is_same_v<Layout, Kokkos::LayoutLeft>) {
-        name = "LayoutLeft";
-    } else if constexpr (std::is_same_v<Layout, Kokkos::LayoutRight>) {
-        name = "LayoutRight";
-    } else if constexpr (std::is_same_v<Layout, Kokkos::LayoutStride>) {
-        name = "LayoutStride";
-    } else {
-        static_assert(std::is_same_v<Layout, void>, "Unknown layout type");
-    }
-
+    std::string name(layout_name<Layout>());
     // Equivalent to 'mod.map_type<Layout>(name)', but by using a type defined in another module.
 
     auto* dt = (jl_datatype_t*) jlcxx::julia_type(name, views_module);

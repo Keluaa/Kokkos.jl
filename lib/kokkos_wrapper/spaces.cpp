@@ -2,6 +2,8 @@
 #include "spaces.h"
 #include "execution_spaces.h"
 #include "memory_spaces.h"
+#include "utils.h"
+#include "layouts.h"
 
 
 template<typename Space>
@@ -41,17 +43,21 @@ void post_register_space(jlcxx::Module& mod)
     // type, defined in Julia independently of Kokkos flags) : this way we make sure that the original 'main types'
     // defined on the Julia side are returned, and not the one of the types defined internally by JlCxx.
     if constexpr (Kokkos::is_memory_space<Space>::value) {
-        mod.method("execution_space", [=](jlcxx::SingletonType<SpaceInfo<Space>>) {
+        mod.method("execution_space", [](jlcxx::SingletonType<SpaceInfo<Space>>) {
             return jlcxx::julia_type<typename Space::execution_space>()->super->super;
         });
         mod.method("accessible", [](jlcxx::SingletonType<SpaceInfo<Space>>) {
             return (bool) Kokkos::SpaceAccessibility<Kokkos::DefaultHostExecutionSpace, Space>::accessible;
         });
     } else if constexpr (Kokkos::is_execution_space<Space>::value) {
-        mod.method("memory_space", [=](jlcxx::SingletonType<SpaceInfo<Space>>) {
+        mod.method("memory_space", [](jlcxx::SingletonType<SpaceInfo<Space>>) {
             return jlcxx::julia_type<typename Space::memory_space>()->super->super;
         });
         mod.method("array_layout", [](jlcxx::SingletonType<SpaceInfo<Space>>) {
+            if constexpr (!is_element_in_list<typename Space::array_layout>(LayoutList{})) {
+                jl_errorf("Space `%s` has `%s` as default layout, but it is not compiled",
+                          Space::name(), layout_name<typename Space::array_layout>().data());
+            }
             return jlcxx::julia_type<typename Space::array_layout>();
         });
     } else {

@@ -30,14 +30,15 @@ struct SpaceInfo<Kokkos::CudaHostPinnedSpace>
     static constexpr const char* julia_name = "CudaHostPinnedSpace";
 };
 
-#ifdef KOKKOS_ENABLE_CUDA_UVM
+#if (KOKKOS_VERSION >= 40000) || defined(KOKKOS_ENABLE_CUDA_UVM)
+// KOKKOS_ENABLE_CUDA_UVM is implicitly ON after version 4
 template<>
 struct SpaceInfo<Kokkos::CudaUVMSpace>
 {
     using space = Kokkos::CudaUVMSpace;
     static constexpr const char* julia_name = "CudaUVMSpace";
 };
-#endif // KOKKOS_ENABLE_CUDA_UVM
+#endif // (KOKKOS_VERSION >= 40000) || defined(KOKKOS_ENABLE_CUDA_UVM)
 #endif // KOKKOS_ENABLE_CUDA
 
 #if KOKKOS_ENABLE_HIP
@@ -79,9 +80,9 @@ using MemorySpacesList = TList<
 #ifdef KOKKOS_ENABLE_CUDA
         , Kokkos::CudaSpace
         , Kokkos::CudaHostPinnedSpace
-#ifdef KOKKOS_ENABLE_CUDA_UVM
+#if (KOKKOS_VERSION >= 40000) || defined(KOKKOS_ENABLE_CUDA_UVM)
         , Kokkos::CudaUVMSpace
-#endif // KOKKOS_ENABLE_CUDA_UVM
+#endif // (KOKKOS_VERSION >= 40000) || defined(KOKKOS_ENABLE_CUDA_UVM)
 #endif // KOKKOS_ENABLE_CUDA
 
 #if KOKKOS_ENABLE_HIP

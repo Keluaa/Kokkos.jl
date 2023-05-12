@@ -31,9 +31,9 @@ constexpr auto wrap_dims(std::integer_sequence<I, Dims...>)
 
 
 template<typename Element, typename... Args>
-constexpr bool is_element_unique(TList<Args...>)
+constexpr bool is_element_in_list(TList<Args...>)
 {
-    return !(std::is_same_v<Element, Args> || ...);
+    return (std::is_same_v<Element, Args> || ...);
 }
 
 
@@ -43,7 +43,7 @@ constexpr auto remove_duplicates(TList<Unique...>, TList<Element, Args...>)
     // If Element is present in the remaining Args, do not add it to the stack, then recurse with the remaining Args
     if constexpr (sizeof...(Args) == 0) {
         return TList<Unique..., Element>{};
-    } else if constexpr (is_element_unique<Element>(TList<Args...>{})) {
+    } else if constexpr (!is_element_in_list<Element>(TList<Args...>{})) {
         return remove_duplicates(TList<Unique..., Element>{}, TList<Args...>{});
     } else {
         return remove_duplicates(TList<Unique...>{}, TList<Args...>{});
