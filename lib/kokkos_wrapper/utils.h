@@ -139,4 +139,25 @@ void apply_with_index(TList<Combinations...> combinations, Functor&& f, Args... 
 }
 
 
+template<typename T>
+TList<T> repeat_type(std::size_t) { return {}; }
+
+
+template<typename T, std::size_t... I>
+auto repeat_type(std::index_sequence<I...>)
+{
+    return (repeat_type<T>(I) + ...);
+}
+
+
+/**
+ * Returns a TList containing `N` copies of the type `T`, without recursion.
+ */
+template<typename T, std::size_t N>
+auto repeat_type()
+{
+    return repeat_type<T>(std::make_index_sequence<N>{});
+}
+
+
 #endif //KOKKOS_WRAPPER_UTILS_H

@@ -123,9 +123,6 @@ struct RegisterUtils
 {
     static constexpr size_t D = Dimension::value;
 
-    template<std::size_t>
-    using inner_type = Idx;
-
 
     static std::string build_view_type_name()
     {
@@ -293,26 +290,26 @@ struct RegisterUtils
     }
 
 
-    template<typename Wrapped, std::size_t... S>
-    static void register_access_operator(Wrapped wrapped, std::index_sequence<S...>)
+    template<typename Wrapped, typename... Indices, std::size_t... I>
+    static void register_access_operator(Wrapped wrapped, TList<Indices...>, std::index_sequence<I...>)
     {
         using WrappedT = typename decltype(wrapped)::type;
         // Add a method for integer indexing: `get_ptr(i::Idx)` in 1D, `get_ptr(i::Idx, j::Idx)` in 2D, etc
-        wrapped.method("get_ptr", &WrappedT::template operator()<inner_type<S>...>);
+        wrapped.method("get_ptr", &WrappedT::template operator()<Indices...>);
         // Add a method for tuple indexing: `get_ptr(t::Tuple{Idx})` in 1D, `get_ptr(t::Tuple{Idx, Idx})` in 2D, etc
-        wrapped.method("get_ptr", [](WrappedT& view, const typename WrappedT::IdxTuple* I)
+        wrapped.method("get_ptr", [](WrappedT& view, const typename WrappedT::IdxTuple* idx_tuple)
         {
-            return view(std::get<S>(*I)...);
+            return view(std::get<I>(*idx_tuple)...);
         });
     }
 
 
-    template<typename Wrapped, std::size_t... S>
-    static void register_inaccessible_operator(Wrapped wrapped, std::index_sequence<S...>)
+    template<typename Wrapped, typename... Indices>
+    static void register_inaccessible_operator(Wrapped wrapped, TList<Indices...>)
     {
         using WrappedT = typename decltype(wrapped)::type;
 
-        wrapped.method("get_ptr", &inaccessible_view<WrappedT, inner_type<S>...>);
+        wrapped.method("get_ptr", &inaccessible_view<WrappedT, Indices...>);
         wrapped.method("get_ptr", [](WrappedT& view, const typename WrappedT::IdxTuple*)
         {
             throw_inaccessible_error(view);
@@ -322,10 +319,11 @@ struct RegisterUtils
 
     template<typename Wrapped>
     static void register_access_operator(Wrapped wrapped) {
+        // Some template parameter packs shenanigans are required for nvcc
         if constexpr (Kokkos::SpaceAccessibility<Kokkos::DefaultHostExecutionSpace, MemSpace>::accessible) {
-            register_access_operator(wrapped, std::make_index_sequence<D>{});
+            register_access_operator(wrapped, repeat_type<Idx, D>(), std::make_index_sequence<D>{});
         } else {
-            register_inaccessible_operator(wrapped, std::make_index_sequence<D>{});
+            register_inaccessible_operator(wrapped, repeat_type<Idx, D>());
         }
     }
 
