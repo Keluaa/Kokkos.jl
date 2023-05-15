@@ -12,7 +12,6 @@ MPI.Init()
 @test MPI.Comm_size(MPI.COMM_WORLD) == N_PROC
 rank = MPI.Comm_rank(MPI.COMM_WORLD)
 
-Kokkos.build_in_project()  # Options must be the same on all processes 
 
 # Important: make sure that all compilation occurs on the root process
 if rank == 0
@@ -38,25 +37,32 @@ Kokkos.initialize()
 
 fill_func(n, r) = (1:n) .+ (n * 10 * r)
 
-function test_send_loop(n, v, r)
+function test_send_loop(s, mem_space)
+    v = Kokkos.View{Float64}(undef, s; mem_space)
+    r = Kokkos.View{Float64}(s; mem_space)
+
+    n = length(v)
+
+    v_host = Kokkos.create_mirror_view(v)
+    v_host[1:end] .= fill_func(n, rank)
+    copyto!(v, v_host)
+
     prev_rank = (rank + N_PROC - 1) % N_PROC
     next_rank = (rank + 1) % N_PROC
-
-    v[1:end] .= fill_func(n, rank)
-
     MPI.Sendrecv!(v, r, MPI.COMM_WORLD; dest=next_rank, source=prev_rank)
 
-    @test all(r[1:end] .== fill_func(n, prev_rank))
+    r_host = Kokkos.create_mirror_view(r)
+    copyto!(r_host, r)
+    @test all(r_host[1:end] .== fill_func(n, prev_rank))
 end
 
+
 # 1D
-n = 10
-v = Kokkos.View{Float64}(undef, n)
-r = Kokkos.View{Float64}(n)
-test_send_loop(n, v, r)
+s = 10
+test_send_loop(s, Kokkos.DEFAULT_HOST_MEM_SPACE)  # Host to Host
+test_send_loop(s, Kokkos.DEFAULT_DEVICE_MEM_SPACE)  # Device to Device
 
 # 2D
-n = 100
-v = Kokkos.View{Float64}(undef, (10, 10))
-r = Kokkos.View{Float64}((10, 10))
-test_send_loop(n, v, r)
+s = (10, 10)
+test_send_loop(s, Kokkos.DEFAULT_HOST_MEM_SPACE)  # Host to Host
+test_send_loop(s, Kokkos.DEFAULT_DEVICE_MEM_SPACE)  # Device to Device

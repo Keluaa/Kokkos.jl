@@ -8,8 +8,8 @@
 @test !Kokkos.require(; dims = [1, 2, 3], no_error = true)
 @test !Kokkos.require(; dims = [3], no_error = true)
 
-@test Kokkos.require(; exec_spaces = [Kokkos.OpenMP], no_error = true)
-@test !Kokkos.require(; exec_spaces = [Kokkos.Cuda], no_error = true)
+@test Kokkos.require(; exec_spaces = [TEST_BACKEND_DEVICE], no_error = true)
+@test !Kokkos.require(; exec_spaces = [TEST_UNAVAILABLE_BACKEND], no_error = true)
 
 @test Kokkos.require(; idx = (==(8) ∘ sizeof), no_error = true)
 

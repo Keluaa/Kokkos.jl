@@ -4,7 +4,7 @@ io = IOBuffer()
 Kokkos.versioninfo(io; verbose=true)
 str = String(take!(io))
 @test occursin(string(Kokkos.KOKKOS_VERSION), str)
-@test occursin("OpenMP Runtime Configuration", str)
+@test occursin("$(Kokkos.kokkos_name(TEST_BACKEND_DEVICE)) Runtime Configuration", str)
 @test occursin("Serial Runtime Configuration", str)
 
 io = IOBuffer()

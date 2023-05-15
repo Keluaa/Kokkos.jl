@@ -1,4 +1,18 @@
-@testset "Views" begin
+@testset "Views (inaccessible)" begin
+# Same as 'test/views.jl', but with all view accesses removed, as they are inaccessible from the host.
+
+const TEST_VIEW_MEM_SPACES = if TEST_CUDA
+    (Kokkos.CudaSpace, Kokkos.CudaUVMSpace)
+else
+    (Kokkos.HIPSpace, Kokkos.HIPManagedSpace)
+end
+
+const TEST_DEFAULT_VIEW_TYPE = if TEST_CUDA
+    Kokkos.KokkosWrapper.Impl.View1D_L_CudaAllocated
+else
+    Kokkos.KokkosWrapper.Impl.View1D_L_HIPAllocated
+end
+
 
 import Kokkos: Idx, View
 
@@ -23,12 +37,12 @@ v1 = View{Float64}(n1)
 @test v1 isa View{Float64, 1, <:Kokkos.Layout}
 @test v1 isa View{Float64, 1, Kokkos.LayoutRight}
 @test v1 isa View{Float64, 1, Kokkos.LayoutRight, <:Kokkos.HostSpace}
-@test v1 isa Kokkos.KokkosWrapper.Impl.View1D_R_HostAllocated{Float64}
+@test v1 isa TEST_DEFAULT_VIEW_TYPE{Float64}
 @test v1 isa AbstractArray
 @test v1 isa AbstractArray{Float64}
 @test v1 isa AbstractArray{Float64, 1}
 
-@test accessible(v1)
+@test !accessible(v1)
 @test label(v1) == ""
 
 @test size(v1) == (n1,)
@@ -36,30 +50,10 @@ v1 = View{Float64}(n1)
 @test ndims(v1) == 1
 @test strides(v1) == (1,)
 @test Base.elsize(v1) == sizeof(Float64)
+@test memory_space(v1) in TEST_VIEW_MEM_SPACES
 
-v1_ptr = Kokkos.Views.get_ptr(v1, 0).cpp_object
-@test Kokkos.Views.elem_ptr(v1, 1) == v1_ptr
-@test Kokkos.Views.elem_ptr(v1, 2) == (v1_ptr + sizeof(Float64))
-@test v1[1] == unsafe_load(v1_ptr, 1)
-@test v1[2] == unsafe_load(v1_ptr + sizeof(Float64), 1)
-
-@test_throws BoundsError v1[n1+1]
-@test_throws BoundsError v1[0]
-
-@test all(v1 .== 0)
-v1 .= 1:n1
-@test all(v1 .== eachindex(v1))
-
-v2 = v1
-v2[1] = 5
-@test v1[1] == v2[1]
-
-n2 = n1 + 10
-v2 = View{Float64}(undef, n2; label="v2")
+v2 = View{Float64}(undef, n1; label="v2")
 @test label(v2) == "v2"
-
-v2[1:n1] .= v1
-@test all(v1 .== v2[1:n1])
 
 n3 = (n1, n1)
 v3 = View{Int64, 2, Kokkos.LayoutRight}(n3)
@@ -70,26 +64,7 @@ v3 = View{Int64, 2, Kokkos.LayoutRight}(n3)
 @test strides(v3) == (n1, 1)
 @test Base.elsize(v3) == sizeof(Float64)
 @test sizeof(v3) == sizeof(Float64) * prod(n3)
-
-v3_ptr = Kokkos.Views.get_ptr(v3, 0, 0).cpp_object
-@test Kokkos.Views.elem_ptr(v3, 1, 1) == v3_ptr
-@test Kokkos.Views.elem_ptr(v3, 1, 2) == (v3_ptr + sizeof(Int64))
-@test Kokkos.Views.elem_ptr(v3, 2, 1) == (v3_ptr + sizeof(Int64) * n3[1])
-@test Kokkos.Views.elem_ptr(v3, 2, 2) == (v3_ptr + sizeof(Int64) * (n3[1] + 1))
-
-@test all(v3 .== 0)
-
-a3 = reshape(collect(1:prod(n3)), n3)'
-v3 .= LinearIndices(a3)'
-
-@test v3[1, 1] == unsafe_load(v3_ptr, 1)
-@test v3[1, 2] == unsafe_load(v3_ptr + sizeof(Int64), 1)
-@test all(v3 .== a3)
-
-@test_throws BoundsError v3[0, 0]
-@test_throws BoundsError v3[0, 1]
-@test_throws BoundsError v3[(n3 .+ (1, 0))...]
-@test_throws BoundsError v3[(n3 .+ (0, 1))...]
+@test memory_space(v3) in TEST_VIEW_MEM_SPACES
 
 @testset "LayoutLeft" begin
     v3_l = View{Int64, 2, Kokkos.LayoutLeft}(n3)
@@ -100,12 +75,7 @@ v3 .= LinearIndices(a3)'
     @test strides(v3_l) == (1, n1)
     @test Base.elsize(v3_l) == sizeof(Float64)
     @test sizeof(v3_l) == sizeof(Float64) * prod(n3)
-
-    v3_l_ptr = Kokkos.Views.get_ptr(v3_l, 0, 0).cpp_object
-    @test Kokkos.Views.elem_ptr(v3_l, 1, 1) == v3_l_ptr
-    @test Kokkos.Views.elem_ptr(v3_l, 1, 2) == (v3_l_ptr + sizeof(Int64) * n3[1])
-    @test Kokkos.Views.elem_ptr(v3_l, 2, 1) == (v3_l_ptr + sizeof(Int64))
-    @test Kokkos.Views.elem_ptr(v3_l, 2, 2) == (v3_l_ptr + sizeof(Int64) * (n3[1] + 1))
+    @test memory_space(v3_l) in TEST_VIEW_MEM_SPACES
 end
 
 @testset "LayoutStride" begin
@@ -118,24 +88,14 @@ end
     @test strides(v3_s) == s
     @test Base.elsize(v3_s) == sizeof(Float64)
     @test sizeof(v3_s) == sizeof(Float64) * s[2] * n3[2]
-
-    v3_s_ptr = Kokkos.Views.get_ptr(v3_s, 0, 0).cpp_object
-    @test Kokkos.Views.elem_ptr(v3_s, 1, 1) == v3_s_ptr
-    @test Kokkos.Views.elem_ptr(v3_s, 2, 1) == (v3_s_ptr + sizeof(Int64) * s[1])
-    @test Kokkos.Views.elem_ptr(v3_s, 1, 2) == (v3_s_ptr + sizeof(Int64) * s[2])
-    @test Kokkos.Views.elem_ptr(v3_s, 2, 2) == (v3_s_ptr + sizeof(Int64) * (s[1] + s[2]))        
+    @test memory_space(v3_s) in TEST_VIEW_MEM_SPACES
 end
 
 v4 = similar(v3)
 @test size(v4) == size(v3)
 @test typeof(v4) == typeof(v3)
 @test strides(v4) == strides(v3)
-
-v5 = copy(v3')
-@test typeof(v5) == typeof(v3)
-@test all(v5 .== v3')
-
-@test memory_space(v5) === Kokkos.HostSpace
+@test memory_space(v4) == memory_space(v3)
 
 # View constructors
 v6 = View{Float64, 2}(undef, (1, 2))
@@ -162,10 +122,10 @@ v6_simili = [
     View{Float64}(1, 2),
     View{Float64}(1, 2; dim_pad=true),
     View{Float64}(1, 2; label=""),
-    View{Float64}(1, 2; mem_space=Kokkos.HostSpace),
-    View{Float64}(1, 2; mem_space=Kokkos.HostSpace()),
-    View{Float64}(1, 2; mem_space=Kokkos.HostSpace, layout=Kokkos.LayoutRight),
-    View{Float64}(1, 2; mem_space=Kokkos.HostSpace, layout=Kokkos.LayoutRight())
+    View{Float64}(1, 2; mem_space=TEST_MEM_SPACE),
+    View{Float64}(1, 2; mem_space=TEST_MEM_SPACE()),
+    View{Float64}(1, 2; mem_space=TEST_MEM_SPACE, layout=Kokkos.LayoutRight),
+    View{Float64}(1, 2; mem_space=TEST_MEM_SPACE, layout=Kokkos.LayoutRight())
 ]
 for v6_s in v6_simili
     @test typeof(v6) == typeof(v6_s)
@@ -180,35 +140,13 @@ end
 
 @test_throws @error_match("`Int32` is not compiled") View{Int32}(undef, n1)
 @test_throws @error_match("`Kokkos.View3D` cannot") View{Int64}(undef, (2, 2, 2))
-@test_throws @error_match("CudaSpace is not compiled") View{Int64}(undef, n1; mem_space=Kokkos.CudaSpace)
+@test_throws @error_match("$(nameof(TEST_UNAVAILABLE_MEM_SPACE)) is not compiled") View{Int64}(undef, n1; mem_space=TEST_UNAVAILABLE_MEM_SPACE)
 @test_throws @error_match("`mem_space` kwarg") View{Float64, 1, Kokkos.LayoutLeft, Kokkos.KokkosWrapper.Impl.HostSpaceImplDereferenced}(undef, n1; mem_space=Kokkos.HostSpace)
 @test_throws @error_match("Kokkos.Views.LayoutLeft type") View{Float64, 1, Kokkos.LayoutLeft}(undef, n1; layout=Kokkos.LayoutRight)
 @test_throws @error_match("requires a instance") View{Float64}(undef, n1; layout=Kokkos.LayoutStride)
 
 
-@testset "view_wrap" begin
-    a7 = rand(Float64, 43)
-    v7 = view_wrap(a7)
-    @test all(v7 .== a7)
-    @test pointer(a7) == Kokkos.view_data(v7)
-    @test Base.unsafe_convert(Ptr{Float64}, v7) == pointer(a7)
-
-    a8 = rand(Float64, 16)
-    v8 = view_wrap(View{Float64, 2, Kokkos.LayoutRight, Kokkos.DEFAULT_HOST_MEM_SPACE}, (4, 4), pointer(a8))
-    @test v8[4, 4] == a8[16]
-    @test all(reshape(v8', 16) .== a8)  # HostSpace defaults to row-major, hence the transposition
-    @test pointer(a8) == Kokkos.view_data(v8)
-    @test Base.unsafe_convert(Ptr{Float64}, v8) == pointer(a8)
-
-    v8_corners = view_wrap(
-        View{Float64, 2, Kokkos.LayoutStride, Kokkos.DEFAULT_HOST_MEM_SPACE},
-        (2, 2), pointer(a8);
-        layout=Kokkos.LayoutStride(3, 12)  # Column-major layout
-    )
-    @test v8_corners == reshape(a8, (4, 4))[1:3:end, 1:3:end]  # No transposition needed
-    @test pointer(a8) == Kokkos.view_data(v8_corners)
-end
-
+# TODO: view_wrap test, but for each backend, from the respective packages CUDA.jl and AMDGPU.jl
 
 @testset "Deep copy on $exec_space_type in $(dim)D with $type" for 
         exec_space_type in (:no_exec_space, Kokkos.COMPILED_EXEC_SPACES...),
@@ -222,6 +160,26 @@ end
             src_space in Kokkos.COMPILED_MEM_SPACES, dst_space in Kokkos.COMPILED_MEM_SPACES,
             src_layout in Kokkos.COMPILED_LAYOUTS, dst_layout in Kokkos.COMPILED_LAYOUTS
 
+        src_view_t = View{type, dim, src_layout, src_space}
+        dst_view_t = View{type, dim, dst_layout, dst_space}
+        if !((src_layout == dst_layout) || exec_space === :no_exec_space ||
+                (accessible(exec_space_type, src_space) && accessible(exec_space, dst_scapce)))
+            # As per the Kokkos::deep_copy docs, there should not be a valid deep_copy method
+            # See https://kokkos.github.io/kokkos-core-wiki/API/core/view/deep_copy.html#requirements
+            if exec_space === :no_exec_space
+                @test isempty(methods(Kokkos.deep_copy, (src_view_t, dst_view_t)))
+            else
+                @test isempty(methods(Kokkos.deep_copy, (exec_space_type, src_view_t, dst_view_t)))
+            end
+            continue
+        else
+            if exec_space === :no_exec_space
+                @test !isempty(methods(Kokkos.deep_copy, (src_view_t, dst_view_t)))
+            else
+                @test !isempty(methods(Kokkos.deep_copy, (exec_space_type, src_view_t, dst_view_t)))
+            end
+        end
+
         if src_layout == Kokkos.LayoutStride
             src_layout = Kokkos.LayoutStride(Base.size_to_strides(1, n...))
         end
@@ -233,16 +191,12 @@ end
         v_src = View{type}(undef, n; mem_space=src_space, layout=src_layout)
         v_dst = View{type}(n; mem_space=dst_space, layout=dst_layout)
 
-        v_src .= rand(type, n) * 10
-
         if isnothing(exec_space)
             Kokkos.deep_copy(v_dst, v_src)
         else
             Kokkos.deep_copy(exec_space, v_dst, v_src)
             Kokkos.fence(exec_space)
         end
-
-        @test v_dst == v_src
     end
 end
 
@@ -264,28 +218,12 @@ end
         end
 
         v_src = View{src_type}(undef, n; mem_space=src_space, layout=src_layout)
-        v_src .= reshape(collect(1:length(v_src)), n)
         v_src_m = Kokkos.create_mirror(v_src; mem_space=dst_mem_space, zero_fill=true)
-
-        @test all(v_src_m .== 0)
 
         if isnothing(dst_mem_space)
             @test Kokkos.accessible(Kokkos.memory_space(v_src_m))
         else
             @test Kokkos.memory_space(v_src_m) == Kokkos.main_space_type(dst_mem_space)
-        end
-
-        v_src_m2 = Kokkos.create_mirror_view(v_src; mem_space=dst_mem_space, zero_fill=true)
-
-        if isnothing(dst_mem_space)
-            @test Kokkos.accessible(Kokkos.memory_space(v_src_m2))
-        elseif Kokkos.memory_space(v_src) == Kokkos.main_space_type(dst_mem_space)
-            @test v_src_m2 == v_src
-            @test pointer(v_src_m2) == pointer(v_src)
-        else
-            @test v_src_m2 != v_src
-            @test pointer(v_src_m2) != pointer(v_src)
-            @test all(v_src_m2 .== 0)
         end
     end
 end

@@ -6,7 +6,7 @@ import Kokkos: View, Idx
 
 
 !Kokkos.is_initialized() && Kokkos.initialize()
-Kokkos.require(; dims=[1, 2], types=[Float64], exec_spaces=[Kokkos.Serial, Kokkos.OpenMP])
+Kokkos.require(; dims=[1, 2], types=[Float64], exec_spaces=[TEST_BACKEND_HOST, TEST_BACKEND_DEVICE])
 
 
 const lib_src = joinpath(@__DIR__, "lib", "simple_lib")
@@ -51,14 +51,14 @@ end
 
 
 function call_create_view_by_reference(lib, nx)
-    view_t = View{Float64, 1, array_layout(Kokkos.DEFAULT_HOST_SPACE), Kokkos.DEFAULT_DEVICE_MEM_SPACE}
+    view_t = View{Float64, 1, array_layout(Kokkos.DEFAULT_DEVICE_SPACE), Kokkos.DEFAULT_DEVICE_MEM_SPACE}
     v_ref = view_t()  # Default empty view constructor
     # void create_view(view& v, int nx)
     ccall(Kokkos.get_symbol(lib, :create_view),
         Cvoid,
         # Julia disallows ccall arg types depending on local variables
         # A workaround would be to use a @generated function
-        (Ref{View{Float64, 1, array_layout(Kokkos.DEFAULT_HOST_SPACE), Kokkos.DEFAULT_DEVICE_MEM_SPACE}}, Cint),
+        (Ref{View{Float64, 1, array_layout(Kokkos.DEFAULT_DEVICE_SPACE), Kokkos.DEFAULT_DEVICE_MEM_SPACE}}, Cint),
         v_ref, nx
     )
     return v_ref
@@ -66,7 +66,7 @@ end
 
 
 @generated function call_create_view_by_reference(lib, nx, ny)
-    view_t = View{Float64, 2, array_layout(Kokkos.DEFAULT_HOST_SPACE), Kokkos.DEFAULT_DEVICE_MEM_SPACE}
+    view_t = View{Float64, 2, array_layout(Kokkos.DEFAULT_DEVICE_SPACE), Kokkos.DEFAULT_DEVICE_MEM_SPACE}
     return quote
         v_ref = $view_t()  # Default empty view constructor
         # void create_view(view& v, int nx, int ny)
@@ -88,15 +88,25 @@ function test_lib(lib, dims)
     p = View{Float64}(undef, dims)
     c = View{Float64}(undef, dims)
 
-    ρ .= ρ₀
-    u .= u₀
-    v .= v₀
-    E .= E₀
+    ρ_host = Kokkos.create_mirror_view(ρ)
+    u_host = Kokkos.create_mirror_view(u)
+    v_host = Kokkos.create_mirror_view(v)
+    E_host = Kokkos.create_mirror_view(E)
 
-    @test all(ρ .== ρ₀)
-    @test all(u .== u₀)
-    @test all(v .== v₀)
-    @test all(E .== E₀)
+    ρ_host .= ρ₀
+    u_host .= u₀
+    v_host .= v₀
+    E_host .= E₀
+
+    @test all(ρ_host .== ρ₀)
+    @test all(u_host .== u₀)
+    @test all(v_host .== v₀)
+    @test all(E_host .== E₀)
+
+    copyto!(ρ, ρ_host)
+    copyto!(u, u_host)
+    copyto!(v, v_host)
+    copyto!(E, E_host)
 
     if length(dims) == 1
         call_perfect_gas(lib, 1:Nx, γ, ρ, u, v, E, p, c)
@@ -105,10 +115,16 @@ function test_lib(lib, dims)
     end
 
     p_expected = (γ - 1) * ρ₀ * (E₀ - (u₀^2 + v₀^2))
-    c_expected = √(γ * p_expected / ρ₀);
+    c_expected = √(γ * p_expected / ρ₀)
 
-    @test all(p .≈ p_expected)
-    @test all(c .≈ c_expected)
+    p_host = Kokkos.create_mirror_view(p)
+    c_host = Kokkos.create_mirror_view(c)
+
+    copyto!(p_host, p)
+    copyto!(c_host, c)
+
+    @test all(p_host .≈ p_expected)
+    @test all(c_host .≈ c_expected)
 
     if length(dims) == 1
         created_view = call_create_view_by_reference(lib, first(dims))
@@ -117,7 +133,7 @@ function test_lib(lib, dims)
     end
     @test created_view.cpp_object != C_NULL
     @test size(created_view) == dims
-    @test all(created_view .== 0)
+    TEST_DEVICE_ACCESSIBLE && @test all(created_view .== 0)
     @test label(created_view) == (length(dims) == 1 ? "test_ref_1D" : "test_ref_2D")
 
     # Very important: finalize the view manually, since we unload the library right after, which
@@ -130,6 +146,10 @@ end
 project_1D = CMakeKokkosProject(lib_src, "libSimpleKokkosLib1D";
     target="SimpleKokkosLib1D", build_dir=lib_build)
 project_2D = CMakeKokkosProject(project_1D, "SimpleKokkosLib2D", "libSimpleKokkosLib2D")
+
+if isdir(Kokkos.build_dir(project_1D))
+    Kokkos.clean(project_1D)
+end
 
 
 @testset "Simple lib" begin
