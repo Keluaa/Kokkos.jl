@@ -104,6 +104,9 @@ abstract type HIPHostPinnedSpace    <: MemorySpace end
 abstract type HIPManagedSpace       <: MemorySpace end
 
 
+const ALL_MEM_SPACES = [HostSpace, CudaSpace, CudaHostPinnedSpace, CudaUVMSpace, HIPSpace, HIPHostPinnedSpace, HIPManagedSpace]
+
+
 # Defined in 'spaces.cpp', in 'post_register_space'
 """
     execution_space(space::Union{<:MemorySpace, Type{<:MemorySpace}})
@@ -147,20 +150,31 @@ Equivalent to `Kokkos::space::name()`
 kokkos_name(::Type{<:Space}) = error("space $S is not compiled")
 
 
-# Defined in 'spaces.cpp', in 'post_register_space'
+# Defined in 'spaces.cpp', in 'post_register_all'
 """
-    accessible(::Union{<:MemorySpace, Type{<:MemorySpace}})
+    accessible([S1::Union{<:Space, Type{<:Space}},] S2::Union{<:MemorySpace, Type{<:MemorySpace}})
 
-Return `true` if the memory space is accessible from the default host execution space.
+Return `true` if the memory space `S2` is accessible from `S1` (a memory or execution space).
 
-Equivalent to `Kokkos::SpaceAccessibility<Kokkos::DefaultHostExecutionSpace, Space>::accessible`
+If only `S2` is specified, `S1` defaults to [`DEFAULT_HOST_SPACE`](@ref).
+
+Equivalent to [`Kokkos::SpaceAccessibility<S1, S2>::accessible`](https://kokkos.github.io/kokkos-core-wiki/API/core/SpaceAccessibility.html)
 """
-accessible(::S) where {S <: Space} = accessible(S)
+accessible(::S1, ::S2) where {S1 <: Space, S2 <: MemorySpace} = accessible(S1, S2)
+accessible(::Type{S1}, ::S2) where {S1 <: Space, S2 <: MemorySpace} = accessible(S1, S2)
+accessible(::S1, ::Type{S2}) where {S1 <: Space, S2 <: MemorySpace} = accessible(S1, S2)
 
-function accessible(S::Type{<:MemorySpace})
-    main_S_type = main_space_type(S)
-    main_S_type !== S && return accessible(main_S_type)
-    error("space $S is not compiled")
+function accessible(S1::Type{<:Space}, S2::Type{<:MemorySpace})
+    main_S1_type = main_space_type(S1)
+    main_S2_type = main_space_type(S2)
+    return accessible(main_S1_type, main_S2_type)
+end
+
+function accessible(space::Union{<:MemorySpace, Type{<:MemorySpace}})
+    if DEFAULT_HOST_SPACE === nothing
+        ensure_kokkos_wrapper_loaded()
+    end
+    return accessible(DEFAULT_HOST_SPACE, space)
 end
 
 

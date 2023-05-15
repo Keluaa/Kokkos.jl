@@ -35,7 +35,15 @@ skip_shared_mem = Kokkos.KOKKOS_VERSION < v"4.0.0"
 @test Kokkos.memory_space(Kokkos.Serial) === Kokkos.HostSpace
 @test Kokkos.memory_space(Kokkos.OpenMP) === Kokkos.HostSpace
 
-@test Kokkos.accessible(Kokkos.HostSpace)
+@testset "accessible" begin
+    @test Kokkos.accessible(TEST_MEM_SPACE_HOST)
+    @test Kokkos.accessible(TEST_BACKEND_HOST, TEST_MEM_SPACE_HOST)
+    @test Kokkos.accessible(TEST_MEM_SPACE_HOST, TEST_MEM_SPACE_HOST)
+    for mem_space in TEST_MEM_SPACES_DEVICE
+        @test Kokkos.accessible(TEST_BACKEND_DEVICE, mem_space)
+    end
+end
+
 
 @test Kokkos.array_layout(Kokkos.Serial) === Kokkos.LayoutRight
 

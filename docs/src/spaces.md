@@ -8,7 +8,7 @@ CurrentModule = Kokkos.Spaces
 Space
 ExecutionSpace
 MemorySpace
-accessible(::Space)
+accessible(::Serial, ::HostSpace)
 array_layout(::Space)
 enabled
 execution_space
