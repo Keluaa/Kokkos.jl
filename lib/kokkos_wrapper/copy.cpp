@@ -34,41 +34,40 @@ struct DeepCopyDetectorNoExecSpace
 
 void register_all_deep_copy_combinations(jlcxx::Module& mod)
 {
-    using DimsList = decltype(wrap_dims(DimensionsToInstantiate{}))::ParameterList;
-    using MemSpacesList = decltype(to_parameter_list(MemorySpacesList{}));
-    using ExecSpacesList = decltype(to_parameter_list<NoExecSpaceArg>(ExecutionSpaceList{}));
+    auto combinations = build_all_combinations<
+            decltype(TList<NoExecSpaceArg>{} + ExecutionSpaceList{}),
+            decltype(wrap_dims(DimensionsToInstantiate{})),
+            TList<VIEW_TYPES>,
+            LayoutList,
+            MemorySpacesList
+    >();
 
-    MyApplyTypes{}.apply_combination<
-            TList,
-            ExecSpacesList,
-            DimsList,
-            jlcxx::ParameterList<VIEW_TYPES>,
-            MemSpacesList
-        >(
-    [&](auto wrapped)
+    auto src_combinations = build_all_combinations<
+            LayoutList,
+            MemorySpacesList
+    >();
+
+    apply_to_all(combinations, [&](auto combination)
     {
-        using ExecSpace = typename decltype(wrapped)::template Arg<0>;
-        using Dimension = typename decltype(wrapped)::template Arg<1>;
-        using DestType = typename decltype(wrapped)::template Arg<2>;
-        using DestMemSpace = typename decltype(wrapped)::template Arg<3>;
+        using ExecSpace = typename decltype(combination)::template Arg<0>;
+        using Dimension = typename decltype(combination)::template Arg<1>;
+        using Type = typename decltype(combination)::template Arg<2>;
 
-        using DestView = ViewWrap<DestType, Dimension, DestMemSpace>;
+        using DestLayout = typename decltype(combination)::template Arg<3>;
+        using DestMemSpace = typename decltype(combination)::template Arg<4>;
+
+        using DestView = ViewWrap<Type, Dimension, DestLayout, DestMemSpace>;
 
         using Detector = std::conditional_t<std::is_same_v<ExecSpace, NoExecSpaceArg>,
                 DeepCopyDetectorNoExecSpace<typename DestView::kokkos_view_t>,
                 DeepCopyDetector<ExecSpace, typename DestView::kokkos_view_t>>;
 
-        MyApplyTypes{}.apply_combination<
-                TList,
-                jlcxx::ParameterList<VIEW_TYPES>,
-                MemSpacesList
-            >(
-        [&](auto src_view_info)
+        apply_to_all(src_combinations, [&](auto src_combination)
         {
-            using SrcType = typename decltype(src_view_info)::template Arg<0>;
-            using SrcMemSpace = typename decltype(src_view_info)::template Arg<1>;
+            using SrcLayout = typename decltype(src_combination)::template Arg<0>;
+            using SrcMemSpace = typename decltype(src_combination)::template Arg<1>;
 
-            using SrcView = ViewWrap<SrcType, Dimension, SrcMemSpace>;
+            using SrcView = ViewWrap<Type, Dimension, SrcLayout, SrcMemSpace>;
 
             if constexpr (Detector::template is_deep_copyable<typename SrcView::kokkos_view_t>::value) {
                 if constexpr (std::is_same_v<ExecSpace, NoExecSpaceArg>) {

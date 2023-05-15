@@ -44,7 +44,7 @@ jl_value_t* capture_affinity(const char* format)
 
 
 template<>
-void space_methods<SpaceInfo<Kokkos::OpenMP>>(jlcxx::Module& mod, jl_module_t* spaces_module)
+void space_methods<SpaceInfo<Kokkos::OpenMP>>(jlcxx::Module& mod, jl_module_t*)
 {
     mod.method("omp_set_num_threads", [](int num){ omp_set_num_threads(num); });
     mod.method("omp_get_max_threads", [](){ return omp_get_max_threads(); });
@@ -63,18 +63,18 @@ void space_methods<SpaceInfo<Kokkos::OpenMP>>(jlcxx::Module& mod, jl_module_t* s
 #endif
 
 
-template<template<typename> typename Container, typename... T>
-void register_all(jlcxx::Module& mod, jl_module_t* spaces_module, Container<T...>)
+template<typename... T>
+void register_all(jlcxx::Module& mod, jl_module_t* spaces_module, TList<T...>)
 {
-    ([&](){ space_methods<SpaceInfo<T>>(mod, spaces_module); }(), ...);
+    (space_methods<SpaceInfo<T>>(mod, spaces_module), ...);
 }
 
 
 void import_all_backend_methods(jl_module_t* impl_module, jl_module_t* backend_funcs_module)
 {
     // In order to override the methods in the Kokkos.Spaces.BackendFunctions module, we must have them imported
-    const std::array declared_methods = {
 #ifdef KOKKOS_ENABLE_OPENMP
+    const std::array declared_methods = {
             "omp_set_num_threads",
             "omp_get_max_threads",
             "omp_get_proc_bind",
@@ -82,8 +82,10 @@ void import_all_backend_methods(jl_module_t* impl_module, jl_module_t* backend_f
             "omp_get_place_num_procs",
             "omp_get_place_proc_ids",
             "omp_capture_affinity"
-#endif
     };
+#else
+    const std::array<const char*, 0> declared_methods{};
+#endif
 
     for (auto& method : declared_methods) {
         jl_module_import(impl_module, backend_funcs_module, jl_symbol(method));
@@ -100,6 +102,6 @@ void define_space_specific_methods(jlcxx::Module& mod)
     import_all_backend_methods(mod.julia_module(), backend_funcs_module);
 
     mod.set_override_module(backend_funcs_module);
-    register_all<ExecutionSpaces>(mod, backend_funcs_module, ExecutionSpaceList{});
+    register_all(mod, backend_funcs_module, ExecutionSpaceList{});
     mod.unset_override_module();
 }

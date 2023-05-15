@@ -2,6 +2,8 @@
 #include "spaces.h"
 #include "execution_spaces.h"
 #include "memory_spaces.h"
+#include "utils.h"
+#include "layouts.h"
 
 
 template<typename Space>
@@ -41,15 +43,22 @@ void post_register_space(jlcxx::Module& mod)
     // type, defined in Julia independently of Kokkos flags) : this way we make sure that the original 'main types'
     // defined on the Julia side are returned, and not the one of the types defined internally by JlCxx.
     if constexpr (Kokkos::is_memory_space<Space>::value) {
-        mod.method("execution_space", [=](jlcxx::SingletonType<SpaceInfo<Space>>) {
+        mod.method("execution_space", [](jlcxx::SingletonType<SpaceInfo<Space>>) {
             return jlcxx::julia_type<typename Space::execution_space>()->super->super;
         });
         mod.method("accessible", [](jlcxx::SingletonType<SpaceInfo<Space>>) {
             return (bool) Kokkos::SpaceAccessibility<Kokkos::DefaultHostExecutionSpace, Space>::accessible;
         });
     } else if constexpr (Kokkos::is_execution_space<Space>::value) {
-        mod.method("memory_space", [=](jlcxx::SingletonType<SpaceInfo<Space>>) {
+        mod.method("memory_space", [](jlcxx::SingletonType<SpaceInfo<Space>>) {
             return jlcxx::julia_type<typename Space::memory_space>()->super->super;
+        });
+        mod.method("array_layout", [](jlcxx::SingletonType<SpaceInfo<Space>>) {
+            if constexpr (!is_element_in_list<typename Space::array_layout>(LayoutList{})) {
+                jl_errorf("Space `%s` has `%s` as default layout, but it is not compiled",
+                          Space::name(), layout_name<typename Space::array_layout>().data());
+            }
+            return jlcxx::julia_type<typename Space::array_layout>();
         });
     } else {
         static_assert(std::is_void_v<Space>, "'Space' is not an execution or memory space");
@@ -64,10 +73,10 @@ jl_datatype_t* get_julia_main_type(jl_module_t* spaces_module)
 }
 
 
-template<template<typename> typename Container, typename... T>
-void register_all(jlcxx::Module& mod, jl_module_t* spaces_module, Container<T...>, const std::string& spaces_name)
+template<typename... T>
+void register_all(jlcxx::Module& mod, jl_module_t* spaces_module, TList<T...>, const std::string& spaces_name)
 {
-    ([&](){ register_space<T>(mod, spaces_module); }(), ...);
+    (register_space<T>(mod, spaces_module), ...);
 
     mod.unset_override_module();
     const auto spaces_tuple = std::make_tuple(get_julia_main_type<T>(spaces_module)...);
@@ -76,10 +85,10 @@ void register_all(jlcxx::Module& mod, jl_module_t* spaces_module, Container<T...
 }
 
 
-template<template<typename> typename Container, typename... T>
-void post_register_all(jlcxx::Module& mod, Container<T...>)
+template<typename... T>
+void post_register_all(jlcxx::Module& mod, TList<T...>)
 {
-    ([&](){ post_register_space<T>(mod); }(), ...);
+    (post_register_space<T>(mod), ...);
 }
 
 
@@ -142,7 +151,8 @@ void import_all_spaces_methods(jl_module_t* impl_module, jl_module_t* spaces_mod
         "impl_space_type",
         "execution_space",
         "accessible",
-        "memory_space"
+        "memory_space",
+        "array_layout"
     };
 
     for (auto& method : declared_methods) {
@@ -160,12 +170,12 @@ void define_all_spaces(jlcxx::Module& mod)
 
     mod.set_override_module(spaces_module);
 
-    register_all<MemorySpaces>(mod, spaces_module, MemorySpacesList{}, "mem_spaces");
-    register_all<ExecutionSpaces>(mod, spaces_module, ExecutionSpaceList{}, "exec_spaces");
+    register_all(mod, spaces_module, MemorySpacesList{}, "mem_spaces");
+    register_all(mod, spaces_module, ExecutionSpaceList{}, "exec_spaces");
 
     // Those functions need all execution and memory spaces to be registered
-    post_register_all<MemorySpaces>(mod, MemorySpacesList{});
-    post_register_all<ExecutionSpaces>(mod, ExecutionSpaceList{});
+    post_register_all(mod, MemorySpacesList{});
+    post_register_all(mod, ExecutionSpaceList{});
 
     mod.unset_override_module();
 

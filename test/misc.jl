@@ -7,6 +7,11 @@ str = String(take!(io))
 @test occursin("OpenMP Runtime Configuration", str)
 @test occursin("Serial Runtime Configuration", str)
 
+io = IOBuffer()
+Kokkos.configinfo(io) === nothing
+str = String(take!(io))
+@test occursin(string(Kokkos.KOKKOS_VERSION), str)
+
 prev_view_dims = Kokkos.KOKKOS_VIEW_DIMS
 @test_logs (:info, r"Restart your Julia session") Kokkos.set_view_dims([5, 6])
 @test Kokkos.KOKKOS_VIEW_DIMS == prev_view_dims

@@ -36,3 +36,10 @@ void perfect_gas(
         c(i, j) = std::sqrt(gamma * p(i, j) / r(i, j));
     });
 }
+
+
+extern "C"
+void create_view(view& v, int nx, int ny)
+{
+    v = view("test_ref_2D", nx, ny);
+}

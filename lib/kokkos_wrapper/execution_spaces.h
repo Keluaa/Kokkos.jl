@@ -3,6 +3,7 @@
 #define KOKKOS_WRAPPER_EXECUTION_SPACES_H
 
 #include "spaces.h"
+#include "utils.h"
 
 #include "Kokkos_Core.hpp"
 
@@ -88,12 +89,8 @@ struct SpaceInfo<Kokkos::Experimental::SYCL> {
 #endif
 
 
-template<typename... ExecutionSpace>
-struct ExecutionSpaces {};
-
-
 template<typename, typename... ES>
-using BuildExecutionSpacesList = ExecutionSpaces<ES...>;
+using BuildExecutionSpacesList = TList<ES...>;
 
 
 /**

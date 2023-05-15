@@ -2,6 +2,7 @@
 #include "kokkos_wrapper.h"
 
 #include "spaces.h"
+#include "layouts.h"
 #include "views.h"
 #include "copy.h"
 #include "mirrors.h"
@@ -190,6 +191,7 @@ JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
 
     mod.method("__kokkos_version", &kokkos_version);
 
+    define_all_layouts(mod);
     define_all_spaces(mod);
     define_kokkos_views(mod);
     define_kokkos_deep_copy(mod);

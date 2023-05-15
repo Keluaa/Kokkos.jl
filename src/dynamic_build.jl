@@ -65,7 +65,7 @@ Sets the configuration state of `project` to `val`.
 function configuration_changed! end
 
 
-function read_stdout_file(file)
+function read_file(file)
     flush(file)
     seekstart(file)
     return read(file, String)
@@ -73,15 +73,21 @@ end
 
 
 function run_cmd_print_on_error(cmd::Cmd)
-    mktemp() do _, file
-        @debug "Running `$cmd`"
-        try
-            run(pipeline(cmd, stdout=file#= , stderr=file =#))
-        catch
-            println("Command failed. Standard output:\n", read_stdout_file(file))
-            rethrow()
+    mktemp() do _, file_stdout
+        mktemp() do _, file_stderr
+            @debug "Running `$cmd`"
+            try
+                run(pipeline(cmd, stdout=file_stdout, stderr=file_stderr))
+            catch
+                println("Command failed:\n", cmd, "\n")
+                println(" ====== Standard output ======\n", read_file(file_stdout))
+                println(" ====== Standard error ======\n", read_file(file_stderr))
+                rethrow()
+            end
+            @debug "Command stdout:\n$(read_file(file_stdout))"
+            print(stderr, read_file(file_stderr))
+            flush(stderr)
         end
-        @debug "Command stdout:\n$(read_stdout_file(file))"
     end
 end
 

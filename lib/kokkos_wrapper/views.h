@@ -4,6 +4,8 @@
 
 #include "kokkos_wrapper.h"
 
+#include "layouts.h"
+
 
 #ifndef VIEW_DIMENSIONS
 /**
@@ -24,7 +26,7 @@
  * Controls which `Kokkos::View` types are instantiated.
  * Types are specified as comma separated list of type names.
  *
- * One `Kokkos::View` will be instantiated for each combination of type, dimensions, and memory spaces.
+ * One `Kokkos::View` will be instantiated for each combination of type, dimensions, layout, and memory spaces.
  *
  * The registered method `compiled_types` returns a tuple of all compiled types.
  */
@@ -53,14 +55,17 @@ struct add_pointers<T, 0> { using type = T; };
  *
  * It is this type that is registered with CxxWrap, not Kokkos::View, therefore all Julia methods defined with CxxWrap
  * should use this type in their arguments / return type, not Kokkos::View.
+ *
+ * Importantly, the `Kokkos::View` type is complete: it has the same parameters as the type returned by `Kokkos::subview`.
  */
-template<typename T, typename DimCst, typename MemSpace,
+template<typename T, typename DimCst, typename LayoutType, typename MemSpace,
+         typename MemTraits = Kokkos::MemoryTraits<0>,
          typename T_Ptr = typename add_pointers<T, DimCst::value>::type,
-         typename KokkosViewT = typename Kokkos::View<T_Ptr, MemSpace>>
+         typename Device = typename MemSpace::device_type,
+         typename KokkosViewT = typename Kokkos::View<T_Ptr, LayoutType, Device, MemTraits>>
 struct ViewWrap : public KokkosViewT
 {
     using type = T;
-    using mem_space = MemSpace;
     using kokkos_view_t = KokkosViewT;
 
     static constexpr size_t dim = DimCst::value;
@@ -68,7 +73,7 @@ struct ViewWrap : public KokkosViewT
     using IdxTuple [[maybe_unused]] = decltype(std::tuple_cat(std::array<Idx, dim>()));
 
     // Should be 'using typename KokkosViewT::View;' but compiler incompatibilities make this impossible
-    using Kokkos::View<T_Ptr, MemSpace>::View;
+    using Kokkos::View<T_Ptr, LayoutType, Device, MemTraits>::View;
 
     explicit ViewWrap(const KokkosViewT& other) : KokkosViewT(other) {};
     explicit ViewWrap(KokkosViewT&& other) : KokkosViewT(std::move(other)) {};
@@ -79,6 +84,14 @@ struct ViewWrap : public KokkosViewT
             dims.at(i) = this->extent_int(i);
         }
         return dims;
+    }
+
+    [[nodiscard]] std::array<int64_t, dim> get_strides() const {
+        std::array<int64_t, dim> strides{};
+        for (size_t i = 0; i < dim; i++) {
+            strides.at(i) = this->stride(i);
+        }
+        return strides;
     }
 };
 

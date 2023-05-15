@@ -37,6 +37,8 @@ skip_shared_mem = Kokkos.KOKKOS_VERSION < v"4.0.0"
 
 @test Kokkos.accessible(Kokkos.HostSpace)
 
+@test Kokkos.array_layout(Kokkos.Serial) === Kokkos.LayoutRight
+
 @test Kokkos.kokkos_name(Kokkos.Serial) == "Serial"
 @test Kokkos.kokkos_name(Kokkos.OpenMP) == "OpenMP"
 @test Kokkos.kokkos_name(Kokkos.HostSpace) == "Host"
@@ -60,6 +62,7 @@ serial = Kokkos.Serial()
 @test Kokkos.main_space_type(serial) === Kokkos.Serial
 @test Kokkos.memory_space(serial) === Kokkos.HostSpace
 @test Kokkos.enabled(serial)
+@test Kokkos.array_layout(serial) === Kokkos.LayoutRight
 
 host_space = Kokkos.HostSpace()
 @test Kokkos.main_space_type(host_space) === Kokkos.HostSpace

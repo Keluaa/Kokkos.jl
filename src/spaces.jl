@@ -9,7 +9,8 @@ export HostSpace, CudaSpace, CudaHostPinnedSpace, CudaUVMSpace, HIPSpace, HIPHos
 export COMPILED_EXEC_SPACES, COMPILED_MEM_SPACES
 export DEFAULT_DEVICE_SPACE, DEFAULT_HOST_SPACE, DEFAULT_DEVICE_MEM_SPACE, DEFAULT_HOST_MEM_SPACE
 export SHARED_MEMORY_SPACE, SHARED_HOST_PINNED_MEMORY_SPACE
-export memory_space, execution_space, enabled, kokkos_name, accessible, main_space_type, impl_space_type
+export memory_space, execution_space, enabled, kokkos_name
+export accessible, array_layout, main_space_type, impl_space_type
 export fence, concurrency, allocate, deallocate
 
 
@@ -71,6 +72,9 @@ abstract type Cuda           <: ExecutionSpace end
 abstract type HIP            <: ExecutionSpace end
 abstract type HPX            <: ExecutionSpace end
 abstract type SYCL           <: ExecutionSpace end
+
+
+const ALL_BACKENDS = [Serial, OpenMP, OpenACC, OpenMPTarget, Threads, Cuda, HIP, HPX, SYCL]
 
 
 """
@@ -157,6 +161,21 @@ function accessible(S::Type{<:MemorySpace})
     main_S_type = main_space_type(S)
     main_S_type !== S && return accessible(main_S_type)
     error("space $S is not compiled")
+end
+
+
+# Defined in 'spaces.cpp', in 'post_register_space'
+"""
+    array_layout(exec_space::Union{<:ExecutionSpace, Type{<:ExecutionSpace}})
+
+Return the default array layout type of the given execution space.
+"""
+array_layout(::S) where {S <: Space} = array_layout(S)
+
+function array_layout(S::Type{<:ExecutionSpace})
+    main_S_type = main_space_type(S)
+    main_S_type !== S && return array_layout(main_S_type)
+    error("execution space $S is not compiled")
 end
 
 

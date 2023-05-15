@@ -8,25 +8,26 @@
 
 void register_mirror_methods(jlcxx::Module& mod)
 {
-    using DimsList = decltype(wrap_dims(DimensionsToInstantiate{}))::ParameterList;
-    using MemSpacesList = decltype(to_parameter_list(MemorySpacesList{}));
-    using DstMemSpacesList = decltype(to_parameter_list<jl_value_t*>(MemorySpacesList{}));
+    using DimsList = decltype(wrap_dims(DimensionsToInstantiate{}));
+    using DstMemSpacesList = decltype(TList<jl_value_t*>{} + MemorySpacesList{});
 
-    MyApplyTypes{}.apply_combination<
-            TList,
+    auto combinations = build_all_combinations<
             DimsList,
-            jlcxx::ParameterList<VIEW_TYPES>,
-            MemSpacesList,
+            TList<VIEW_TYPES>,
+            LayoutList,
+            MemorySpacesList,
             DstMemSpacesList
-        >(
-    [&](auto wrapped)
-    {
-        using Dimension = typename decltype(wrapped)::template Arg<0>;
-        using Type = typename decltype(wrapped)::template Arg<1>;
-        using SrcMemSpace = typename decltype(wrapped)::template Arg<2>;
-        using DstMemSpace = typename decltype(wrapped)::template Arg<3>;
+    >();
 
-        using SrcView = ViewWrap<Type, Dimension, SrcMemSpace>;
+    apply_to_all(combinations, [&](auto combination_list)
+    {
+        using Dimension = typename decltype(combination_list)::template Arg<0>;
+        using Type = typename decltype(combination_list)::template Arg<1>;
+        using Layout = typename decltype(combination_list)::template Arg<2>;
+        using SrcMemSpace = typename decltype(combination_list)::template Arg<3>;
+        using DstMemSpace = typename decltype(combination_list)::template Arg<4>;
+
+        using SrcView = ViewWrap<Type, Dimension, Layout, SrcMemSpace>;
 
         mod.method("create_mirror", [](const SrcView& src_view, const DstMemSpace& dst_space, bool init)
         {
@@ -37,19 +38,19 @@ void register_mirror_methods(jlcxx::Module& mod)
                 if (init) {
                     auto view_mirror = Kokkos::create_mirror(src_view);
                     using default_dst_space = typename decltype(view_mirror)::memory_space;
-                    return ViewWrap<Type, Dimension, default_dst_space>(std::move(view_mirror));
+                    return ViewWrap<Type, Dimension, Layout, default_dst_space>(std::move(view_mirror));
                 } else {
                     auto view_mirror = Kokkos::create_mirror(Kokkos::WithoutInitializing, src_view);
                     using default_dst_space = typename decltype(view_mirror)::memory_space;
-                    return ViewWrap<Type, Dimension, default_dst_space>(std::move(view_mirror));
+                    return ViewWrap<Type, Dimension, Layout, default_dst_space>(std::move(view_mirror));
                 }
             } else {
                 if (init) {
                     auto view_mirror = Kokkos::create_mirror(dst_space, src_view);
-                    return ViewWrap<Type, Dimension, DstMemSpace>(std::move(view_mirror));
+                    return ViewWrap<Type, Dimension, Layout, DstMemSpace>(std::move(view_mirror));
                 } else {
                     auto view_mirror = Kokkos::create_mirror(Kokkos::WithoutInitializing, dst_space, src_view);
-                    return ViewWrap<Type, Dimension, DstMemSpace>(std::move(view_mirror));
+                    return ViewWrap<Type, Dimension, Layout, DstMemSpace>(std::move(view_mirror));
                 }
             }
         });
@@ -63,19 +64,19 @@ void register_mirror_methods(jlcxx::Module& mod)
                 if (init) {
                     auto view_mirror = Kokkos::create_mirror_view(src_view);
                     using default_dst_space = typename decltype(view_mirror)::memory_space;
-                    return ViewWrap<Type, Dimension, default_dst_space>(std::move(view_mirror));
+                    return ViewWrap<Type, Dimension, Layout, default_dst_space>(std::move(view_mirror));
                 } else {
                     auto view_mirror = Kokkos::create_mirror_view(Kokkos::WithoutInitializing, src_view);
                     using default_dst_space = typename decltype(view_mirror)::memory_space;
-                    return ViewWrap<Type, Dimension, default_dst_space>(std::move(view_mirror));
+                    return ViewWrap<Type, Dimension, Layout, default_dst_space>(std::move(view_mirror));
                 }
             } else {
                 if (init) {
                     auto view_mirror = Kokkos::create_mirror_view(dst_space, src_view);
-                    return ViewWrap<Type, Dimension, DstMemSpace>(std::move(view_mirror));
+                    return ViewWrap<Type, Dimension, Layout, DstMemSpace>(std::move(view_mirror));
                 } else {
                     auto view_mirror = Kokkos::create_mirror_view(Kokkos::WithoutInitializing, dst_space, src_view);
-                    return ViewWrap<Type, Dimension, DstMemSpace>(std::move(view_mirror));
+                    return ViewWrap<Type, Dimension, Layout, DstMemSpace>(std::move(view_mirror));
                 }
             }
         });

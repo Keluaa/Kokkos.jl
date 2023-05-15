@@ -15,7 +15,7 @@ Your `LocalPreferences.jl` file will store the options needed by your current pr
     However, if you need to dynamically configure `Kokkos.jl`, it must be done before loading the
     wrapper library.
     After calling [`load_wrapper_lib`](@ref) (or [`initialize`](@ref)), all options will be
-    locked, and any changes made afterwards will __not__ affect the current Julia session.
+    locked, and any changes made afterward will **not** affect the current Julia session.
 
 
 ### kokkos_version
@@ -68,7 +68,7 @@ names should correspond to one of the valid
 Defaults to `Serial` and `OpenMP`.
 
 Can be set using `Kokkos.set_backends()`, using a vector of `String` or [`ExecutionSpace`](@ref)
-sub-types.
+subtypes.
 
 The value for the current Julia session is stored in `Kokkos.KOKKOS_BACKENDS`.
 
@@ -89,6 +89,23 @@ Can be set using `Kokkos.set_view_types()`, using a `Vector` of `String` or `Typ
 The value for the current Julia session is stored in `Kokkos.KOKKOS_VIEW_TYPES`.
 
 
+## view_layouts
+
+List of layouts for which views will be compiled.
+The following layouts are supported:
+ - 'left', for [`Kokkos::LayoutLeft`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/layoutLeft.html)
+ - 'right', for [`Kokkos::LayoutRight`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/layoutRight.html)
+ - 'stride', for [`Kokkos::LayoutStride`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/layoutStride.html)
+ - 'deviceDefault', for the default layout of the default device execution space: `Kokkos::DefaultExecutionSpace::array_layout`
+ - 'hostDefault', for the default layout of the default host execution space: `Kokkos::DefaultHostExecutionSpace::array_layout`
+
+Can be set using `Kokkos.set_view_layouts()`, using a `Vector` of `String` or `Kokkos.Layout` types.
+The value for the current Julia session is stored in `Kokkos.KOKKOS_LAYOUT_TYPES`.
+
+Note that 'deviceDefault' and 'hostDefault' resolve to one of 'left', 'right' or 'stride', and
+appear as such through [`Kokkos.COMPILED_LAYOUTS`](@ref).
+
+
 ### build_type
 
 CMake build type.
@@ -102,5 +119,6 @@ The value for the current Julia session is stored in `Kokkos.KOKKOS_BUILD_TYPE`.
 Main building directory for the current session.
 The wrapping library is built in `$(build_dir)/wrapper-build-$(build_type)/`.
 
-Can be set using `Kokkos.set_build_dir()`.
+Can be set using `Kokkos.set_build_dir()`, [`Kokkos.build_in_scratch`](@ref build_in_scratch),
+[`Kokkos.build_in_tmp`](@ref build_in_tmp) or [`Kokkos.build_in_project`](@ref build_in_project).
 The value for the current Julia session is stored in `Kokkos.KOKKOS_BUILD_DIR`.

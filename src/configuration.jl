@@ -114,6 +114,27 @@ end
 set_view_types(types::Vector{DataType}) = set_view_types(string.(nameof.(types)))
 
 
+function set_view_layouts(layouts::Union{Nothing, Missing, Vector{String}})
+    @set_preferences!("view_layouts" => layouts)
+    if !is_kokkos_wrapper_loaded()
+        global KOKKOS_VIEW_LAYOUTS = @load_preference("view_layouts", __DEFAULT_KOKKOS_VIEW_LAYOUTS)
+    else
+        global HAS_CONFIGURATION_CHANGED = true
+        @info "New view layouts set to $layouts.\n\
+               Restart your Julia session for this change to take effect."
+    end
+    return KOKKOS_VIEW_LAYOUTS
+end
+
+function set_view_layouts(layouts::Vector{DataType})
+    typeassert.(layouts, Type{<:Kokkos.Layout})
+    # Transform the types to the names as described in the docs
+    layouts_str = layouts .|> nameof .|> string .|> lowercase
+    layouts_str = chop.(layouts_str; head=length("Layout"), tail=0)  # Remove the leading 'Layout'
+    return set_view_layouts(string.(layouts_str))
+end
+
+
 function set_build_type(build_type::Union{Nothing, Missing, String})
     @set_preferences!("build_type" => build_type)
     if !is_kokkos_wrapper_loaded()
@@ -138,3 +159,28 @@ function set_build_dir(build_dir::Union{Nothing, Missing, String})
     end
     return KOKKOS_BUILD_DIR
 end
+
+
+"""
+    build_in_scratch()
+
+Sets the `build_dir` configuration option to a scratch directory (the default).
+"""
+build_in_scratch() = set_build_dir(__get_scratch_build_dir())
+
+
+"""
+    build_in_tmp()
+
+Sets the `build_dir` configuration option to a temporary directory, cleaned at the end of the Julia
+session.
+"""
+build_in_tmp() = set_build_dir(__get_tmp_build_dir())
+
+
+"""
+    build_in_project(name = ".kokkos-build")
+
+Sets the `build_dir` configuration option to the directory `name` in the active project directory.
+"""
+build_in_project(name = ".kokkos-build") = set_build_dir(__get_project_build_dir(name))
