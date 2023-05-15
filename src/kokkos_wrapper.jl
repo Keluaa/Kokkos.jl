@@ -155,7 +155,7 @@ function install_kokkos()
 end
 
 
-function compile_wrapper_lib(; no_compilation=false, no_git=false)
+function compile_wrapper_lib(; no_compilation=false, no_git=false, loading_bar=true)
     global KOKKOS_LIB_PROJECT = create_kokkos_lib_project(; no_git)
     global KOKKOS_LIB_PATH = lib_path(KOKKOS_LIB_PROJECT)
 
@@ -164,7 +164,7 @@ function compile_wrapper_lib(; no_compilation=false, no_git=false)
         return
     end
 
-    pretty_compile(KOKKOS_LIB_PROJECT; info=true)
+    pretty_compile(KOKKOS_LIB_PROJECT; info=true, loading_bar)
     install_kokkos()
 end
 
@@ -211,7 +211,7 @@ get_impl_module() = Impl
 
 
 """
-    load_wrapper_lib(; no_compilation=false, no_git=false)
+    load_wrapper_lib(; no_compilation=false, no_git=false, loading_bar=true)
 
 Configures, compiles then loads the wrapper library using the current [Configuration Options](@ref).
 
@@ -226,9 +226,9 @@ operations (clone + checkout) will be done.
 Both `no_compilation=true` and `no_git=true` are needed when initializing Kokkos.jl in non-root MPI
 processes.
 """
-function load_wrapper_lib(; no_compilation=false, no_git=false)
+function load_wrapper_lib(; no_compilation=false, no_git=false, loading_bar=true)
     !isnothing(KOKKOS_LIB) && return
-    !is_kokkos_wrapper_compiled() && compile_wrapper_lib(; no_compilation, no_git)
+    !is_kokkos_wrapper_compiled() && compile_wrapper_lib(; no_compilation, no_git, loading_bar)
 
     @debug "Loading the Kokkos Wrapper library..."
 

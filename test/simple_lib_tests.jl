@@ -134,7 +134,7 @@ project_2D = CMakeKokkosProject(project_1D, "SimpleKokkosLib2D", "libSimpleKokko
 
 @testset "Simple lib" begin
     @testset "1D" begin
-        compile(project_1D)
+        compile(project_1D; loading_bar=true)
         lib_1D = Kokkos.load_lib(project_1D)
 
         @test handle(lib_1D) != C_NULL
@@ -146,7 +146,7 @@ project_2D = CMakeKokkosProject(project_1D, "SimpleKokkosLib2D", "libSimpleKokko
     end
 
     @testset "2D" begin
-        compile(project_2D)
+        compile(project_2D; loading_bar=true)
         lib_2D = Kokkos.load_lib(project_2D)
 
         test_lib(lib_2D, (Nx, Ny))

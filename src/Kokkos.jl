@@ -5,6 +5,7 @@ using Libdl
 using Preferences
 using Scratch
 using LibGit2
+using ProgressMeter
 
 if !isdefined(Base, :get_extension)
     using Requires
