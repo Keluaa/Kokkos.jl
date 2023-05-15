@@ -193,6 +193,13 @@ function clean(project::KokkosProject; reset=false)
 end
 
 
+function short_build_dir(p::KokkosProject)
+    dir_path = build_dir(p)
+    scratch_dir = @get_scratch!("kokkos-build")
+    return replace(dir_path, scratch_dir => "@scratch/kokkos-build")
+end
+
+
 function pretty_compile(p::KokkosProject; info=false, loading_bar=true)
     if info
         @info "Configuring Kokkos project at $(source_dir(p))"
@@ -202,9 +209,9 @@ function pretty_compile(p::KokkosProject; info=false, loading_bar=true)
     configure(p)
 
     if info
-        @info "Compiling Kokkos project at $(source_dir(p))"
+        @info "Compiling Kokkos project to $(short_build_dir(p))"
     else
-        @debug "Compiling Kokkos project at $(source_dir(p))"
+        @debug "Compiling Kokkos project to $(short_build_dir(p))"
     end
     compile(p; loading_bar)
 end
