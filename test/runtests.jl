@@ -50,6 +50,8 @@ end
     )
 
     @info "Julia threads: $(Threads.nthreads())"
+    @show ENV["OMP_NUM_THREADS"] ENV["OMP_PLACES"] ENV["OMP_PROC_BIND"]
+    @show ENV
     Kokkos.versioninfo()
 
     include("spaces.jl")
