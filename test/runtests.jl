@@ -32,6 +32,7 @@ macro error_match(exception)
     end
 end
 
+@info "Julia threads: $(Threads.nthreads())"
 
 @testset "Kokkos.jl" begin
     include("pre_wrapper_load.jl")
@@ -47,6 +48,9 @@ end
         layouts=[Kokkos.LayoutLeft, Kokkos.LayoutRight, Kokkos.LayoutStride],
         exec_spaces=[TEST_BACKEND_HOST, TEST_BACKEND_DEVICE]
     )
+
+    @info "Julia threads: $(Threads.nthreads())"
+    Kokkos.versioninfo()
 
     include("spaces.jl")
 
