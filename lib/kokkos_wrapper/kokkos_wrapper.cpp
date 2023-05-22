@@ -140,8 +140,6 @@ void import_all_env_methods(jl_module_t* impl_module, jl_module_t* kokkos_module
             "print_configuration",
             "initialize",
             "finalize",
-            "is_initialized",
-            "is_finalized",
             "fence",
             "num_threads",
             "device_id",
