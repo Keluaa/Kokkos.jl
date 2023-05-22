@@ -9,7 +9,7 @@ import ..Kokkos: memory_space, execution_space, accessible, array_layout, main_s
 export Layout, LayoutLeft, LayoutRight, LayoutStride, View, Idx
 export COMPILED_TYPES, COMPILED_DIMS, COMPILED_LAYOUTS
 export impl_view_type, label, view_wrap, view_data, memory_span
-export deep_copy, create_mirror, create_mirror_view
+export subview, deep_copy, create_mirror, create_mirror_view
 
 
 """
@@ -329,6 +329,90 @@ returned and no view is created.
 """
 function create_mirror_view(src::View; mem_space = nothing, zero_fill = false)
     return create_mirror_view(src, mem_space, zero_fill)
+end
+
+
+"""
+    subview(v::View, indexes::Tuple{Vararg{Union{Int, Colon, AbstractUnitRange}}})
+
+Return a new `Kokkos.view` which will be a subview into the region specified by `indexes` of `v`,
+with the same memory space (but maybe not the same layout).
+
+Unspecified dimensions are completed by `:`, e.g. if `v` is a 3D view `(1,)` and `(1, :, :)` will
+return the same subview.
+
+A subview may need `LayoutStride` to be compiled in order to be represented.
+
+Equivalent to [`Kokkos::subview`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/subview.html).
+
+`Kokkos::ALL` is equivalent to `:`.
+
+# Example
+```jldoctest
+julia> v = Kokkos.View{Float64}(undef, 4, 4);
+
+julia> v[:] .= collect(1:length(v));
+
+julia> v
+4×4 Kokkos.KokkosWrapper.Impl.View2D_R_HostAllocated{Float64}:
+ 1.0  5.0   9.0  13.0
+ 2.0  6.0  10.0  14.0
+ 3.0  7.0  11.0  15.0
+ 4.0  8.0  12.0  16.0
+
+julia> Kokkos.subview(v, (2:3, 2:3))
+2×2 Kokkos.KokkosWrapper.Impl.View2D_R_HostAllocated{Float64}:
+ 6.0  10.0
+ 7.0  11.0
+
+julia> Kokkos.subview(v, (:, 1))  # The subview may change its layout to `LayoutStride` 
+4-element Kokkos.KokkosWrapper.Impl.View1D_S_HostAllocated{Float64}:
+ 1.0
+ 2.0
+ 3.0
+ 4.0
+
+julia> Kokkos.subiew(v, (1,))  # Equivalent to `(1, :)`
+4-element Kokkos.KokkosWrapper.Impl.View1D_R_HostAllocated{Float64}:
+  1.0
+  5.0
+  9.0
+ 13.0
+```
+"""
+function subview(::View{T, D, L, S}, ::Tuple, subview_dim::Val{SD}, subview_layout::Type{SL}) where {T, D, L, S, SD, SL}
+    # Fallback: error handler
+    error_view_not_compiled(View{T, SD, SL, S})
+end
+
+
+function _get_subview_dim_and_layout(src_rank, src_layout, indexes_type)
+    # IMPORTANT: this should always return the same layout type as Kokkos::Subview.
+    # The code here is equivalent to the logic of Kokkos::Impl::ViewMapping at
+    # https://github.com/kokkos/kokkos/blob/62d2b6c879b74b6ae7bd06eb3e5e80139c4708e6/core/src/impl/Kokkos_ViewMapping.hpp#L3812-L3885
+
+    src_rank == 0 && return 0, src_layout
+
+    is_range = (!==).(indexes_type.parameters, Int)
+    if length(is_range) < src_rank
+        # Select the full range of all remaining dimensions
+        append!(is_range, Iterators.repeated(true, src_rank - length(is_range)))
+    end
+
+    rank = sum(is_range)
+    rank == 0 && return 0, src_layout
+
+    keep_layout = rank <= 2 &&
+        ((src_layout === LayoutLeft  && is_range[1]       ) ||
+         (src_layout === LayoutRight && is_range[src_rank]))
+
+    return rank, (keep_layout ? src_layout : LayoutStride)
+end
+
+
+function subview(v::View{T, D, L, S}, indexes::Tuple{Vararg{Union{Int, Colon, AbstractUnitRange}}}) where {T, D, L, S}
+    subview_dim, subview_layout = _get_subview_dim_and_layout(D, L, typeof(indexes))
+    return subview(v, indexes, Val(subview_dim), subview_layout)
 end
 
 

@@ -6,6 +6,7 @@
 #include "views.h"
 #include "copy.h"
 #include "mirrors.h"
+#include "subviews.h"
 
 #include <sstream>
 
@@ -196,4 +197,5 @@ JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
     define_kokkos_views(mod);
     define_kokkos_deep_copy(mod);
     define_kokkos_mirrors(mod);
+    define_kokkos_subview(mod);
 }

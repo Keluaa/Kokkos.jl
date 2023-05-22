@@ -43,6 +43,7 @@ add_library(KokkosWrapper SHARED
         views.cpp views.h
         copy.cpp copy.h
         mirrors.cpp mirrors.h
+        subviews.cpp subviews.h
         utils.h)
 target_link_libraries(KokkosWrapper PUBLIC JlCxx::cxxwrap_julia)
 target_link_libraries(KokkosWrapper PRIVATE Kokkos::kokkos)
