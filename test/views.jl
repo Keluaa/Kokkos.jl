@@ -290,4 +290,32 @@ end
     end
 end
 
+
+@testset "subview" begin
+    v = Kokkos.View{Float64}(undef, 4, 4)
+    v[:] .= collect(1:length(v))
+
+    sv1 = Kokkos.subview(v, (2:3, 2:3))
+    @test typeof(sv1) === typeof(v)
+    @test sv1 == [6.0 10.0 ; 7.0 11.0]
+
+    sv2 = Kokkos.subview(v, (:, 1))
+    @test typeof(sv2) === Kokkos.impl_view_type(View{Float64, 1, Kokkos.LayoutStride, Kokkos.HostSpace})
+    @test sv2 == [1.0, 2.0, 3.0, 4.0]
+
+    sv3 = Kokkos.subview(v, (1,))
+    @test typeof(sv3) === Kokkos.impl_view_type(View{Float64, 1, array_layout(v), memory_space(v)})
+    @test sv3 == [1.0, 5.0, 9.0, 13.0]
+
+    sv4 = Kokkos.subview(v, (1, :))
+    @test typeof(sv4) === typeof(sv3)
+    @test sv3 == sv4
+
+    # Making a (fake) subview from a SubArray, using ranges with non-unit steps 
+    sub_v = @view v[1:3:4, 1:3:4]  # Select the "corners" of the matrix
+    sv5 = Kokkos.view_wrap(sub_v)  # Uses `strides(sub_v)`
+    @test pointer(sv5) == pointer(v)
+    @test sv5 == [1.0 13.0 ; 4.0 16.0]
+end
+
 end
