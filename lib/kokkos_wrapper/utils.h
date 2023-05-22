@@ -21,10 +21,10 @@ struct TList {
 /**
  * Helper function to transform a 'std::integer_sequence<int, 1, 2, ...>' into a
  * 'TList<std::integral_constant<std::size_t, 1>, ...>'
- * This way each dimension is stored into its own type, instead of a single sequence type.
+ * This way each int is stored into its own type, instead of a single sequence type.
  */
 template<typename I, I... Dims>
-constexpr auto wrap_dims(std::integer_sequence<I, Dims...>)
+constexpr auto tlist_from_sequence(std::integer_sequence<I, Dims...>)
 {
     return (TList<std::integral_constant<std::size_t, Dims>>{} + ...);
 }
