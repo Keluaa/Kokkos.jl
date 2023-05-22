@@ -20,6 +20,7 @@ const TEST_MEM_SHARED = TEST_CUDA ? Kokkos.CudaUVMSpace        : Kokkos.HostSpac
 const TEST_MEM_PINNED = TEST_CUDA ? Kokkos.CudaHostPinnedSpace : Kokkos.HostSpace
 
 const TEST_DEVICE_ACCESSIBLE = !TEST_CUDA
+const TEST_IDX_SIZE = TEST_DEVICE_IS_HOST ? 8 : 4
 
 
 macro error_match(exception)
@@ -33,7 +34,6 @@ macro error_match(exception)
     end
 end
 
-@info "Julia threads: $(Threads.nthreads())"
 
 @testset "Kokkos.jl" begin
     include("pre_wrapper_load.jl")
@@ -49,11 +49,6 @@ end
         layouts=[Kokkos.LayoutLeft, Kokkos.LayoutRight, Kokkos.LayoutStride],
         exec_spaces=[TEST_BACKEND_HOST, TEST_BACKEND_DEVICE]
     )
-
-    @info "Julia threads: $(Threads.nthreads())"
-    @show ENV["OMP_NUM_THREADS"] ENV["OMP_PLACES"] ENV["OMP_PROC_BIND"]
-    @show ENV
-    Kokkos.versioninfo()
 
     include("spaces.jl")
 

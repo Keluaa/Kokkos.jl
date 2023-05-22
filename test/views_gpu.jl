@@ -14,6 +14,9 @@ else
 end
 
 
+TEST_DEFAULT_DEVICE_LAYOUT = array_layout(TEST_BACKEND_DEVICE)
+
+
 import Kokkos: Idx, View
 
 @test Idx <: Union{UInt64, Int64, UInt32, Int32}
@@ -25,8 +28,8 @@ import Kokkos: Idx, View
 @test View <: AbstractArray
 @test View{Float64} <: AbstractArray{Float64}
 @test View{Float64, 2} <: AbstractArray{Float64, 2}
-@test View{Float64, 2, Kokkos.LayoutLeft} <: AbstractArray{Float64, 2}
-@test View{Float64, 3, Kokkos.LayoutLeft, Kokkos.HostSpace} <: AbstractArray{Float64, 3}
+@test View{Float64, 2, TEST_DEFAULT_DEVICE_LAYOUT} <: AbstractArray{Float64, 2}
+@test View{Float64, 3, TEST_DEFAULT_DEVICE_LAYOUT, TEST_MAIN_MEM_SPACE_DEVICE} <: AbstractArray{Float64, 3}
 
 n1 = 10
 v1 = View{Float64}(n1)
@@ -35,8 +38,8 @@ v1 = View{Float64}(n1)
 @test v1 isa View{Float64}
 @test v1 isa View{Float64, 1}
 @test v1 isa View{Float64, 1, <:Kokkos.Layout}
-@test v1 isa View{Float64, 1, Kokkos.LayoutRight}
-@test v1 isa View{Float64, 1, Kokkos.LayoutRight, <:Kokkos.HostSpace}
+@test v1 isa View{Float64, 1, TEST_DEFAULT_DEVICE_LAYOUT}
+@test v1 isa View{Float64, 1, TEST_DEFAULT_DEVICE_LAYOUT, <:TEST_MAIN_MEM_SPACE_DEVICE}
 @test v1 isa TEST_DEFAULT_VIEW_TYPE{Float64}
 @test v1 isa AbstractArray
 @test v1 isa AbstractArray{Float64}
@@ -100,18 +103,18 @@ v4 = similar(v3)
 # View constructors
 v6 = View{Float64, 2}(undef, (1, 2))
 v6_simili = [
-    View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}(undef, (1, 2)),
-    View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}(undef, 1, 2),
-    View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}((1, 2)),
-    View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}(1, 2),
-    View{Float64, 2, Kokkos.LayoutRight}(undef, (1, 2)),
-    View{Float64, 2, Kokkos.LayoutRight}(undef, 1, 2),
-    View{Float64, 2, Kokkos.LayoutRight}((1, 2)),
-    View{Float64, 2, Kokkos.LayoutRight}(1, 2),
-    View{Float64, 2}(undef, (1, 2); layout=Kokkos.LayoutRight),
-    View{Float64, 2}(undef, 1, 2; layout=Kokkos.LayoutRight),
-    View{Float64, 2}((1, 2); layout=Kokkos.LayoutRight),
-    View{Float64, 2}(1, 2; layout=Kokkos.LayoutRight),
+    View{Float64, 2, TEST_DEFAULT_DEVICE_LAYOUT, TEST_MAIN_MEM_SPACE_DEVICE}(undef, (1, 2)),
+    View{Float64, 2, TEST_DEFAULT_DEVICE_LAYOUT, TEST_MAIN_MEM_SPACE_DEVICE}(undef, 1, 2),
+    View{Float64, 2, TEST_DEFAULT_DEVICE_LAYOUT, TEST_MAIN_MEM_SPACE_DEVICE}((1, 2)),
+    View{Float64, 2, TEST_DEFAULT_DEVICE_LAYOUT, TEST_MAIN_MEM_SPACE_DEVICE}(1, 2),
+    View{Float64, 2, TEST_DEFAULT_DEVICE_LAYOUT}(undef, (1, 2)),
+    View{Float64, 2, TEST_DEFAULT_DEVICE_LAYOUT}(undef, 1, 2),
+    View{Float64, 2, TEST_DEFAULT_DEVICE_LAYOUT}((1, 2)),
+    View{Float64, 2, TEST_DEFAULT_DEVICE_LAYOUT}(1, 2),
+    View{Float64, 2}(undef, (1, 2); layout=TEST_DEFAULT_DEVICE_LAYOUT),
+    View{Float64, 2}(undef, 1, 2; layout=TEST_DEFAULT_DEVICE_LAYOUT),
+    View{Float64, 2}((1, 2); layout=TEST_DEFAULT_DEVICE_LAYOUT),
+    View{Float64, 2}(1, 2; layout=TEST_DEFAULT_DEVICE_LAYOUT),
     View{Float64, 2}(undef, (1, 2)),
     View{Float64, 2}(undef, 1, 2),
     View{Float64, 2}((1, 2)),
@@ -122,10 +125,10 @@ v6_simili = [
     View{Float64}(1, 2),
     View{Float64}(1, 2; dim_pad=true),
     View{Float64}(1, 2; label=""),
-    View{Float64}(1, 2; mem_space=TEST_MEM_SPACE),
-    View{Float64}(1, 2; mem_space=TEST_MEM_SPACE()),
-    View{Float64}(1, 2; mem_space=TEST_MEM_SPACE, layout=Kokkos.LayoutRight),
-    View{Float64}(1, 2; mem_space=TEST_MEM_SPACE, layout=Kokkos.LayoutRight())
+    View{Float64}(1, 2; mem_space=TEST_MAIN_MEM_SPACE_DEVICE),
+    View{Float64}(1, 2; mem_space=TEST_MAIN_MEM_SPACE_DEVICE()),
+    View{Float64}(1, 2; mem_space=TEST_MAIN_MEM_SPACE_DEVICE, layout=TEST_DEFAULT_DEVICE_LAYOUT),
+    View{Float64}(1, 2; mem_space=TEST_MAIN_MEM_SPACE_DEVICE, layout=TEST_DEFAULT_DEVICE_LAYOUT())
 ]
 for v6_s in v6_simili
     @test typeof(v6) == typeof(v6_s)
@@ -135,8 +138,8 @@ end
 
 @test size(View{Float64}()) == (0,)
 @test size(View{Float64, 2}()) == (0, 0)
-@test size(View{Float64, 2, Kokkos.LayoutRight}()) == (0, 0)
-@test size(View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}()) == (0, 0)
+@test size(View{Float64, 2, TEST_DEFAULT_DEVICE_LAYOUT}()) == (0, 0)
+@test size(View{Float64, 2, TEST_DEFAULT_DEVICE_LAYOUT, TEST_MAIN_MEM_SPACE_DEVICE}()) == (0, 0)
 
 @test_throws @error_match("`Int32` is not compiled") View{Int32}(undef, n1)
 @test_throws @error_match("`Kokkos.View3D` cannot") View{Int64}(undef, (2, 2, 2))
