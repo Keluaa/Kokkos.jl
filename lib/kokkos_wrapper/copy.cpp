@@ -36,7 +36,7 @@ void register_all_deep_copy_combinations(jlcxx::Module& mod)
 {
     auto combinations = build_all_combinations<
             decltype(TList<NoExecSpaceArg>{} + ExecutionSpaceList{}),
-            decltype(wrap_dims(DimensionsToInstantiate{})),
+            decltype(tlist_from_sequence(DimensionsToInstantiate{})),
             TList<VIEW_TYPES>,
             LayoutList,
             MemorySpacesList

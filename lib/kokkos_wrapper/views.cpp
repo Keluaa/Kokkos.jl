@@ -356,7 +356,7 @@ struct RegisterUtils
 
 void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_module)
 {
-    using DimsList = decltype(wrap_dims(DimensionsToInstantiate{}));
+    using DimsList = decltype(tlist_from_sequence(DimensionsToInstantiate{}));
 
     auto combinations = build_all_combinations<
             MemorySpacesList,
