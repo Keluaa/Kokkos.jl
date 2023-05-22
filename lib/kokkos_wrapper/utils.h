@@ -1,6 +1,8 @@
 #ifndef KOKKOS_WRAPPER_UTILS_H
 #define KOKKOS_WRAPPER_UTILS_H
 
+#include <tuple>
+
 
 /**
  * Template list where the N-th argument can be accessed with 'TList<...>::Arg<N>', and which can be combined with other
@@ -8,8 +10,10 @@
  */
 template<typename... Args>
 struct TList {
+    using tuple = std::tuple<Args...>;
+
     template<std::size_t I>
-    using Arg = std::tuple_element_t<I, std::tuple<Args...>>;
+    using Arg = std::tuple_element_t<I, tuple>;
 
     static constexpr auto size = sizeof...(Args);
 
@@ -121,7 +125,7 @@ void apply_to_each(TList<Combinations...>, Functor&& f, Args... args)
 }
 
 
-template<typename Functor, typename... Combinations, size_t... I, typename... Args>
+template<typename Functor, typename... Combinations, std::size_t... I, typename... Args>
 void apply_with_index(TList<Combinations...>, std::index_sequence<I...>, Functor&& f, Args... args)
 {
     (f(TList<Combinations>{}, I, std::forward<Args...>(args)...), ...);
@@ -156,7 +160,23 @@ auto repeat_type(std::index_sequence<I...>)
 template<typename T, std::size_t N>
 auto repeat_type()
 {
-    return repeat_type<T>(std::make_index_sequence<N>{});
+    if constexpr (N == 0) {
+        return TList<>{};
+    } else if constexpr (N == 1) {
+        return TList<T>{};
+    } else {
+        return repeat_type<T>(std::make_index_sequence<N>{});
+    }
+}
+
+
+/**
+ * Returns a TList for which `f(T)` returns `std::true_type` (aka `std::bool_constant<true>`).
+ */
+template<typename Functor, typename... T>
+constexpr auto filter_types(Functor&& f, TList<T...>)
+{
+    return (std::conditional_t<decltype(f(std::declval<T>()))::value, TList<T>, TList<>>{} + ...);
 }
 
 

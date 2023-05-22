@@ -66,7 +66,13 @@ template<typename T, typename DimCst, typename LayoutType, typename MemSpace,
 struct ViewWrap : public KokkosViewT
 {
     using type = T;
+    using layout = LayoutType;
+    using mem_space = MemSpace;
+
     using kokkos_view_t = KokkosViewT;
+
+    template<typename OtherLayout>
+    using with_layout = ViewWrap<T, DimCst, OtherLayout, MemSpace>;
 
     static constexpr size_t dim = DimCst::value;
 
