@@ -51,6 +51,17 @@ constexpr std::string_view layout_name()
 }
 
 
+// CxxWrap does not detect the layout types as simple types since they are classes. This is important as
+// 'jlcxx::julia_base_type<Layout>' and 'jlcxx::SingletonType<Layout>' will return their supertype (Kokkos.Layout) if
+// they are not marked as mirrored types.
+template<>
+struct jlcxx::IsMirroredType<Kokkos::LayoutLeft> : std::true_type {};
+template<>
+struct jlcxx::IsMirroredType<Kokkos::LayoutRight> : std::true_type {};
+template<>
+struct jlcxx::IsMirroredType<Kokkos::LayoutStride> : std::true_type {};
+
+
 void define_all_layouts(jlcxx::Module& mod);
 
 #endif //KOKKOS_WRAPPER_LAYOUTS_H
