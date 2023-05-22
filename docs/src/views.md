@@ -14,6 +14,7 @@ array_layout(::View)
 label
 view_data
 memory_span
+subview
 view_wrap
 deep_copy
 create_mirror

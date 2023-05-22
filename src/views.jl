@@ -348,7 +348,7 @@ Equivalent to [`Kokkos::subview`](https://kokkos.github.io/kokkos-core-wiki/API/
 `Kokkos::ALL` is equivalent to `:`.
 
 # Example
-```jldoctest
+```julia-repl
 julia> v = Kokkos.View{Float64}(undef, 4, 4);
 
 julia> v[:] .= collect(1:length(v));
@@ -372,13 +372,19 @@ julia> Kokkos.subview(v, (:, 1))  # The subview may change its layout to `Layout
  3.0
  4.0
 
-julia> Kokkos.subiew(v, (1,))  # Equivalent to `(1, :)`
+julia> Kokkos.subview(v, (1,))  # Equivalent to `(1, :)`
 4-element Kokkos.KokkosWrapper.Impl.View1D_R_HostAllocated{Float64}:
   1.0
   5.0
   9.0
  13.0
 ```
+
+# !!! warning
+
+    `Kokkos.subview` is __not__ equivalent to `Base.view`, as it returns a new `Kokkos.View` object,
+    while `Base.view` returns a `SubArray`, which cannot be passed to a `ccall`.
+
 """
 function subview(::View{T, D, L, S}, ::Tuple, subview_dim::Val{SD}, subview_layout::Type{SL}) where {T, D, L, S, SD, SL}
     # Fallback: error handler
