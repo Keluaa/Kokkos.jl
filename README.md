@@ -16,23 +16,23 @@ This package uses a wrapper library which is compiled before initializing Kokkos
 Because it is not pre-compiled as an artifact, this maximizes the flexibility of usage of `Kokkos.jl`.
 
 `Kokkos.jl` currently supports Kokkos v3.7.0, v3.7.1, v4.0.0 and above.
-All Kokkos backends should be supported by this package, but not all of them were tested.
+All Kokkos backends should be supported by this package, but not all of them were tested (yet).
 
 ### Supported functionalities
- * :heavy_check_mark: `Kokkos::initialize`, `Kokkos::finalize`, `Kokkos::InitializationSettings`
- * :heavy_check_mark: `Kokkos::View`, `Kokkos::View<T, MyLayout, SomeMemorySpace>`, `Kokkos::view_alloc`
+ * :heavy_check_mark: `Kokkos::initialize`, `Kokkos::finalize` and `Kokkos::InitializationSettings`
+ * :heavy_check_mark: `Kokkos::View`, `Kokkos::View<T, MyLayout, SomeMemorySpace>` and `Kokkos::view_alloc`
  * :x: `Kokkos::MemoryTraits` (planned)
  * :heavy_check_mark: `Kokkos::create_mirror`, `Kokkos::create_mirror_view`
  * :heavy_check_mark: `Kokkos::deep_copy`
  * :x: `Kokkos::resize`, `Kokkos::realloc` (planned)
- * :x: `Kokkos::subview` (planned)
+ * :heavy_check_mark: `Kokkos::subview`
  * :x: All parallel patterns (`Kokkos::parallel_for`, `Kokkos::parallel_reduce`, `Kokkos::parallel_scan`), reducers, execution policies and tasking
  * :heavy_check_mark: `Kokkos::fence`
  * :heavy_check_mark: All execution spaces (`Kokkos::OpenMP`, `Kokkos::Cuda`...) and memory spaces (`Kokkos::HostSpace`, `Kokkos::CudaSpace`...)
  * :x: Atomics
  * :x: All containers (`Kokkos::DualView`, `Kokkos::ScatterView`...) (planned)
  * :x: SIMD
- 
+
 ### Tested backends
  * :heavy_check_mark: `Kokkos::Serial`
  * :heavy_check_mark: `Kokkos::OpenMP`
