@@ -1,7 +1,7 @@
 module Views
 
 using CxxWrap
-import ..Kokkos: ExecutionSpace, MemorySpace
+import ..Kokkos: ExecutionSpace, MemorySpace, HostSpace
 import ..Kokkos: COMPILED_MEM_SPACES, DEFAULT_DEVICE_MEM_SPACE, DEFAULT_HOST_MEM_SPACE
 import ..Kokkos: ensure_kokkos_wrapper_loaded, get_impl_module
 import ..Kokkos: memory_space, execution_space, accessible, array_layout, main_space_type, finalize
@@ -609,14 +609,19 @@ View{T}(; kwargs...) where {T} =
 # 'views.cpp', in 'register_constructor'.
 """
     view_wrap(array::DenseArray{T, D})
-    view_wrap(::Type{View{T, D, L, S}}, array::DenseArray{T, D})
+    view_wrap(::Type{View{T, D}}, array::DenseArray{T, D})
+
+    view_wrap(array::AbstractArray{T, D})
+    view_wrap(::Type{View{T, D}}, array::AbstractArray{T, D})
+
     view_wrap(::Type{View{T, D, L, S}}, d::NTuple{D, Int}, p::Ptr{T}; layout = nothing)
 
-Construct a new [`View`](@ref) from the data of a Julia-allocated array.
-The returned view does not own the data, and no copy is made.
+Construct a new [`View`](@ref) from the data of a Julia-allocated array (or from any valid array or
+pointer).
+The returned view does not own the data: no copy is made.
 
-The memory space `S` defaults to [`DEFAULT_HOST_MEM_SPACE`](@ref), and the layout `L` to
-[`array_layout(S)`](@ref array_layout).
+The memory space `S` is `HostSpace` when `array` is a `DenseArray` or `AbstractArray`, and the
+layout `L` is [`LayoutLeft`](@ref) for `DenseArray` and [`LayoutStride`](@ref) for `AbstractArray`.
 
 If `L` is `LayoutStride`, then the kwarg `layout` should be an instance of a `LayoutStride` which
 specifies the stride of each dimension.
@@ -630,7 +635,7 @@ specifies the stride of each dimension.
 
 !!! warning
 
-    The returned view does not hold a reference to the original Julia array.
+    The returned view does not hold a reference to the original array.
     It is the responsability of the user to make sure the original array is kept alive as long as
     the view should be accessed.
 """
@@ -638,13 +643,24 @@ view_wrap(::Type{View{T, D, L, S}}, ::Dims{D}, layout, ::Ptr{T}) where {T, D, L,
     error_view_not_compiled(View{T, D, L, S})
 view_wrap(::Type{View{T, D, L, S}}, d::Dims{D}, p::Ptr{T}; layout=nothing) where {T, D, L, S} =
     view_wrap(View{T, D, L, S}, d, layout, p)
-view_wrap(::Type{View{T, D, L, S}}, a::DenseArray{T, D}; kwargs...) where {T, D, L, S} =
-    view_wrap(View{T, D, L, main_space_type(S)}, size(a), pointer(a); kwargs...)
+
+view_wrap(::Type{View{T, D, L, S}}, a::AbstractArray{T, D}; kwargs...) where {T, D, L, S} =
+    view_wrap(View{T, D, L, S}, size(a), pointer(a); kwargs...)
+
+# From a Julia-allocated DenseArray (column-major in host space)
 view_wrap(::Type{View{T, D}}, a::DenseArray{T, D}) where {T, D} =
-    view_wrap(View{T, D, array_layout(execution_space(DEFAULT_HOST_MEM_SPACE)), DEFAULT_HOST_MEM_SPACE}, a)
+    view_wrap(View{T, D, LayoutLeft, HostSpace}, a)
 view_wrap(::Type{View{T}}, a::DenseArray{T, D}) where {T, D} =
     view_wrap(View{T, D}, a)
 view_wrap(a::DenseArray{T, D}) where {T, D} =
+    view_wrap(View{T, D}, a)
+
+# From any AbstractArray (LayoutStride in host space)
+view_wrap(::Type{View{T, D}}, a::AbstractArray{T, D}) where {T, D} =
+    view_wrap(View{T, D, LayoutStride, HostSpace}, a; layout=LayoutStride(strides(a)))
+view_wrap(::Type{View{T}}, a::AbstractArray{T, D}) where {T, D} =
+    view_wrap(View{T, D}, a)
+view_wrap(a::AbstractArray{T, D}) where {T, D} =
     view_wrap(View{T, D}, a)
 
 
