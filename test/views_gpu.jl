@@ -1,13 +1,13 @@
 @testset "Views (inaccessible)" begin
 # Same as 'test/views.jl', but with all view accesses removed, as they are inaccessible from the host.
 
-const TEST_VIEW_MEM_SPACES = if TEST_CUDA
+TEST_VIEW_MEM_SPACES = if TEST_CUDA
     (Kokkos.CudaSpace, Kokkos.CudaUVMSpace)
 else
     (Kokkos.HIPSpace, Kokkos.HIPManagedSpace)
 end
 
-const TEST_DEFAULT_VIEW_TYPE = if TEST_CUDA
+TEST_DEFAULT_VIEW_TYPE = if TEST_CUDA
     Kokkos.KokkosWrapper.Impl.View1D_L_CudaAllocated
 else
     Kokkos.KokkosWrapper.Impl.View1D_L_HIPAllocated

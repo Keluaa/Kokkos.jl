@@ -6,6 +6,7 @@ using Logging
 
 const TEST_CUDA = parse(Bool, get(ENV, "TEST_KOKKOS_CUDA", "false"))
 const TEST_OPENMP = !TEST_CUDA
+const TEST_DEVICE_IS_HOST = TEST_OPENMP
 
 const TEST_BACKEND_HOST        = Kokkos.Serial
 const TEST_BACKEND_DEVICE      = TEST_CUDA ? Kokkos.Cuda : Kokkos.OpenMP
