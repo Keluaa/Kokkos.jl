@@ -39,7 +39,7 @@ All Kokkos backends should be supported by this package, but not all of them wer
  * :x: `Kokkos::Threads`
  * :x: `Kokkos::HPX`
  * :x: `Kokkos::OpenMPTarget`
- * :x: `Kokkos::Cuda`
+ * :heavy_check_mark: `Kokkos::Cuda`
  * :x: `Kokkos::HIP`
  * :x: `Kokkos::SYCL`
  * :x: `Kokkos::OpenACC`
