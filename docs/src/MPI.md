@@ -42,7 +42,7 @@ lib = load_lib(my_project)
 
 If configuration options need to be changed before initializing Kokkos, then it is preferable to
 perform the changes on the root process before `using Kokkos` is called on the others, since
-changing options modify the `LocalPreferrences.toml` file.
+changing options will modify the `LocalPreferrences.toml` file.
 
 
 ## Passing views to MPI

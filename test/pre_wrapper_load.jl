@@ -11,24 +11,6 @@ Kokkos.is_initialized() && error("Kokkos should not be loaded for those tests")
 @test_throws @error_match("is not loaded") Kokkos.View{Float64}()
 
 
-@testset "Config requirements" begin
-    @test Kokkos.require(; version = ≥(v"4.0.0"), no_error = true) == (VersionNumber(Kokkos.LOCAL_KOKKOS_VERSION_STR) ≥ v"4.0.0")
-
-    @test Kokkos.require(; dims = [1, 2], no_error = true)
-    @test !Kokkos.require(; dims = [1, 2, 3], no_error = true)
-
-    @test Kokkos.require(; layouts = [Kokkos.LayoutRight], no_error = true)
-    @test !Kokkos.require(; layouts = [Kokkos.LayoutLeft, Kokkos.LayoutStride], no_error = true)
-
-    @test Kokkos.require(; exec_spaces = [Kokkos.OpenMP], no_error = true)
-    @test !Kokkos.require(; exec_spaces = [Kokkos.Cuda], no_error = true)
-
-    @test_logs (:warn, r"memory spaces") Kokkos.require(; mem_spaces = [Kokkos.HostSpace], no_error = true)
-    
-    @test_logs (:warn, r"Cannot check the index") Kokkos.require(; idx = (==(8) ∘ sizeof), no_error = true)
-end
-
-
 default_path = Kokkos.LOCAL_KOKKOS_DIR
 @test Kokkos.set_kokkos_version("3.7.01")                       == Kokkos.LOCAL_KOKKOS_VERSION_STR == "3.7.01"
 @test Kokkos.set_kokkos_path(default_path)                      == Kokkos.KOKKOS_PATH              == default_path
@@ -54,9 +36,25 @@ default_path = Kokkos.LOCAL_KOKKOS_DIR
 @test Kokkos.set_build_dir(missing)      == Kokkos.KOKKOS_BUILD_DIR         == Kokkos.__DEFAULT_KOKKOS_BUILD_DIR
 
 # Set the configuration back to what other tests expect (on top of the default values)
-Kokkos.set_backends([Kokkos.Serial, Kokkos.OpenMP])
+Kokkos.set_backends([TEST_BACKEND_HOST, TEST_BACKEND_DEVICE])
 Kokkos.set_view_dims([1, 2])
 Kokkos.set_view_types([Float64, Int64])
 Kokkos.set_view_layouts([Kokkos.LayoutLeft, Kokkos.LayoutRight, Kokkos.LayoutStride])
+
+@testset "Config requirements" begin
+    @test Kokkos.require(; version = ≥(v"4.0.0"), no_error = true) == (VersionNumber(Kokkos.LOCAL_KOKKOS_VERSION_STR) ≥ v"4.0.0")
+
+    @test Kokkos.require(; dims = [1, 2], no_error = true)
+    @test !Kokkos.require(; dims = [1, 2, 3], no_error = true)
+
+    @test Kokkos.require(; layouts = [Kokkos.LayoutRight], no_error = true)
+
+    @test Kokkos.require(; exec_spaces = [TEST_BACKEND_DEVICE], no_error = true)
+    @test !Kokkos.require(; exec_spaces = [TEST_UNAVAILABLE_BACKEND], no_error = true)
+
+    @test_logs (:warn, r"memory spaces") Kokkos.require(; mem_spaces = [Kokkos.HostSpace], no_error = true)
+
+    @test_logs (:warn, r"Cannot check the index") Kokkos.require(; idx = (==(8) ∘ sizeof), no_error = true)
+end
 
 end
