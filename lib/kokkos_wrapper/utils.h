@@ -58,8 +58,8 @@ constexpr auto remove_duplicates(TList<Unique...>, TList<Element, Args...>)
 /**
  * Simple recursive template function to return the template list with no duplicate types.
  */
-template<template<typename> typename List, typename... Args>
-constexpr auto remove_duplicates(List<Args...>)
+template<typename... Args>
+constexpr auto remove_duplicates(TList<Args...>)
 {
     return remove_duplicates(TList<>{}, TList<Args...>{});
 }

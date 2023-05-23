@@ -184,7 +184,11 @@ JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
     mod.method("is_finalized", (bool (*)()) &Kokkos::is_finalized);
 
     mod.method("fence", [](){ Kokkos::fence(); });
+#ifdef __INTEL_COMPILER
+    mod.method("fence", [](const std::string& s){ Kokkos::fence(s); });
+#else
     mod.method("fence", &Kokkos::fence);
+#endif // __INTEL_COMPILER
 
     mod.unset_override_module();
 
