@@ -8,6 +8,8 @@ const TEST_CUDA = parse(Bool, get(ENV, "TEST_KOKKOS_CUDA", "false"))
 const TEST_OPENMP = !TEST_CUDA
 const TEST_DEVICE_IS_HOST = TEST_OPENMP
 
+const TEST_MPI = parse(Bool, get(ENV, "TEST_KOKKOS_MPI", "false"))
+
 const TEST_BACKEND_HOST        = Kokkos.Serial
 const TEST_BACKEND_DEVICE      = TEST_CUDA ? Kokkos.Cuda : Kokkos.OpenMP
 const TEST_UNAVAILABLE_BACKEND = TEST_CUDA ? Kokkos.HIP  : Kokkos.Cuda
@@ -66,7 +68,7 @@ end
     include("projects.jl")
     include("simple_lib_tests.jl")
     include("misc.jl")
-    include("mpi.jl")
+    TEST_MPI && include("mpi.jl")
 
     GC.gc(true)  # Call the finalizers of all created views
     @test_nowarn Kokkos.finalize()

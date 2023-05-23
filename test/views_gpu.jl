@@ -163,10 +163,10 @@ end
             src_space in Kokkos.COMPILED_MEM_SPACES, dst_space in Kokkos.COMPILED_MEM_SPACES,
             src_layout in Kokkos.COMPILED_LAYOUTS, dst_layout in Kokkos.COMPILED_LAYOUTS
 
-        src_view_t = View{type, dim, src_layout, src_space}
-        dst_view_t = View{type, dim, dst_layout, dst_space}
+        src_view_t = Kokkos.Views.impl_view_type(View{type, dim, src_layout, src_space})
+        dst_view_t = Kokkos.Views.impl_view_type(View{type, dim, dst_layout, dst_space})
         if !((src_layout == dst_layout) || exec_space === :no_exec_space ||
-                (accessible(exec_space_type, src_space) && accessible(exec_space, dst_scapce)))
+                (accessible(exec_space_type, src_space) && accessible(exec_space, dst_space)))
             # As per the Kokkos::deep_copy docs, there should not be a valid deep_copy method
             # See https://kokkos.github.io/kokkos-core-wiki/API/core/view/deep_copy.html#requirements
             if exec_space === :no_exec_space

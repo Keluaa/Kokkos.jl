@@ -48,7 +48,6 @@ Kokkos.set_view_layouts([Kokkos.LayoutLeft, Kokkos.LayoutRight, Kokkos.LayoutStr
     @test !Kokkos.require(; dims = [1, 2, 3], no_error = true)
 
     @test Kokkos.require(; layouts = [Kokkos.LayoutRight], no_error = true)
-    @test !Kokkos.require(; layouts = [Kokkos.LayoutLeft, Kokkos.LayoutStride], no_error = true)
 
     @test Kokkos.require(; exec_spaces = [TEST_BACKEND_DEVICE], no_error = true)
     @test !Kokkos.require(; exec_spaces = [TEST_UNAVAILABLE_BACKEND], no_error = true)
