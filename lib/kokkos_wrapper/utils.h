@@ -22,6 +22,16 @@ struct TList {
 };
 
 
+template <typename>
+struct is_tlist : public std::false_type {};
+
+template <typename... T>
+struct is_tlist<TList<T...>> : public std::true_type {};
+
+template <typename T>
+constexpr bool is_tlist_v = is_tlist<T>::value;
+
+
 /**
  * Helper function to transform a 'std::integer_sequence<int, 1, 2, ...>' into a
  * 'TList<std::integral_constant<std::size_t, 1>, ...>'
@@ -62,6 +72,43 @@ template<typename... Args>
 constexpr auto remove_duplicates(TList<Args...>)
 {
     return remove_duplicates(TList<>{}, TList<Args...>{});
+}
+
+
+template<std::size_t offset, std::size_t... Idx>
+auto offset_index_sequence(std::index_sequence<Idx...>)
+{
+    return std::index_sequence<(Idx + offset)...>{};
+}
+
+
+template<std::size_t start, std::size_t end>
+auto build_index_sequence()
+{
+    static_assert(start >= 0);
+    static_assert(start <= end);
+    return offset_index_sequence<start>(std::make_index_sequence<end - start>{});
+}
+
+
+template<typename... T, std::size_t... I>
+auto sub_tlist(TList<T...>, std::index_sequence<I...>)
+{
+    return TList<typename TList<T...>::template Arg<I>...>{};
+}
+
+
+/**
+ * Returns the TList elements from 'start' to 'end' (exclusive).
+ *
+ *     sub_tlist<1, 3>(TList<short, int, long, double>) => TList<int, long>
+ *     sub_tlist<1, 1>(TList<short, int, long, double>) => TList<>
+ */
+template<std::size_t start, std::size_t end, typename... T>
+auto sub_tlist(TList<T...> l)
+{
+    static_assert(end <= sizeof...(T));
+    return sub_tlist(l, build_index_sequence<start, end>());
 }
 
 
