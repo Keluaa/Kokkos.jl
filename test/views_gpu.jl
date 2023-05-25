@@ -100,6 +100,9 @@ v4 = similar(v3)
 @test strides(v4) == strides(v3)
 @test memory_space(v4) == memory_space(v3)
 
+flat_v4 = v4[:]
+@test length(flat_v4) == length(v4)
+
 # View constructors
 v6 = View{Float64, 2}(undef, (1, 2))
 v6_simili = [
@@ -149,7 +152,19 @@ end
 @test_throws @error_match("requires a instance") View{Float64}(undef, n1; layout=Kokkos.LayoutStride)
 
 
-# TODO: view_wrap test, but for each backend, from the respective packages CUDA.jl and AMDGPU.jl
+# LayoutStride, but with a contiguous row-major layout
+v9 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_strides(1, 3, 4)))
+@test size(v9) == (3, 4)
+@test strides(v9) == Base.size_to_strides(1, 3, 4)
+@test Kokkos.span_is_contiguous(v9)
+
+# LayoutStride, but with a non-contiguous layout (each element takes twice as much space)
+v10 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_strides(2, 3, 4)))
+@test size(v10) == (3, 4)
+@test strides(v10) == Base.size_to_strides(2, 3, 4)
+@test !Kokkos.span_is_contiguous(v10)
+@test Kokkos.memory_span(v10) == prod(size(v10)) * sizeof(Float64) * 2 
+
 
 @testset "Deep copy on $exec_space_type in $(dim)D with $type" for 
         exec_space_type in (:no_exec_space, Kokkos.COMPILED_EXEC_SPACES...),
@@ -241,9 +256,11 @@ end
 
     sv2 = Kokkos.subview(v, (:, 1))
     @test typeof(sv2) === Kokkos.impl_view_type(View{Float64, 1, Kokkos.LayoutStride, Kokkos.HostSpace})
+    @test Kokkos.main_view_type(sv2) === View{Float64, 1, Kokkos.LayoutStride, Kokkos.HostSpace}
 
     sv3 = Kokkos.subview(v, (1,))
     @test typeof(sv3) === Kokkos.impl_view_type(View{Float64, 1, array_layout(v), memory_space(v)})
+    @test Kokkos.main_view_type(sv3) === View{Float64, 1, array_layout(v), memory_space(v)}
 
     sv4 = Kokkos.subview(v, (1, :))
     @test typeof(sv4) === typeof(sv3)
