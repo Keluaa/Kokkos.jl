@@ -1,14 +1,15 @@
 
-using Kokkos
 using Test
 using Logging
+using Kokkos
 
 
 const TEST_CUDA = parse(Bool, get(ENV, "TEST_KOKKOS_CUDA", "false"))
 const TEST_OPENMP = !TEST_CUDA
 const TEST_DEVICE_IS_HOST = TEST_OPENMP
 
-const TEST_MPI = parse(Bool, get(ENV, "TEST_KOKKOS_MPI", "true"))
+const TEST_MPI_ONLY = parse(Bool, get(ENV, "TEST_KOKKOS_MPI_ONLY", "false"))
+const TEST_MPI = parse(Bool, get(ENV, "TEST_KOKKOS_MPI", "true")) || TEST_MPI_ONLY
 
 const TEST_BACKEND_HOST        = Kokkos.Serial
 const TEST_BACKEND_DEVICE      = TEST_CUDA ? Kokkos.Cuda : Kokkos.OpenMP
@@ -52,22 +53,25 @@ end
         exec_spaces=[TEST_BACKEND_HOST, TEST_BACKEND_DEVICE]
     )
 
-    include("spaces.jl")
+    if !TEST_MPI_ONLY
+        include("spaces.jl")
 
-    if TEST_DEVICE_ACCESSIBLE
-        include("views.jl")
-    else
-        include("views_gpu.jl")
+        if TEST_DEVICE_ACCESSIBLE
+            include("views.jl")
+        else
+            include("views_gpu.jl")
+        end
+
+        if TEST_CUDA
+            include("backends/cuda.jl")
+        end
+
+        include("utils.jl")
+        include("projects.jl")
+        include("simple_lib_tests.jl")
+        include("misc.jl")
     end
 
-    if TEST_CUDA
-        include("backends/cuda.jl")
-    end
-
-    include("utils.jl")
-    include("projects.jl")
-    include("simple_lib_tests.jl")
-    include("misc.jl")
     TEST_MPI && include("mpi.jl")
 
     GC.gc(true)  # Call the finalizers of all created views

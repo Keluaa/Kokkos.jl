@@ -1,25 +1,34 @@
 module MPIExt
 
-# Follows the same structure of the extensions for CUDA.jl and AMDGPU.jl in MPI.jl
-
 import Kokkos
 isdefined(Base, :get_extension) ? (import MPI) : (import ..MPI)
-import MPI: MPIPtr, Buffer, Datatype
+import MPI: MPIPtr
 
 
-Base.cconvert(::Type{MPIPtr}, arr::Kokkos.View) = arr
+Base.cconvert(::Type{MPIPtr}, v::Kokkos.View) = v
+Base.unsafe_convert(::Type{MPIPtr}, v::Kokkos.View) = reinterpret(MPIPtr, pointer(v))
 
-function Base.unsafe_convert(::Type{MPIPtr}, arr::Kokkos.View{T}) where T
-    return reinterpret(MPIPtr, pointer(arr))
-end
 
-function Buffer(arr::Kokkos.View)
-    # TODO: support for complex view layouts
-    if Kokkos.memory_span(arr) % sizeof(eltype(arr)) != 0
-        error("the view's memory span is irregular. \n\
-               MPI support for complex view layouts (or with padding) is not yet implemented.")
+function MPI.Buffer(v::Kokkos.View{T, D}) where {T, D}
+    datatype = MPI.Datatype(T)
+    count = Cint(1)
+
+    if D == 0
+        # `v` can be safely treated like a single `T`
+    elseif Kokkos.span_is_contiguous(v)
+        # Treat the view as a contiguous block of `T`
+        count = Cint(Kokkos.memory_span(v) ÷ sizeof(T))  # equivalent to `Kokkos::size(v)` in this case
+    else
+        # Build a datatype representing exactly the strided view, stacking each dimension on top of
+        # the previous one.
+        datatype = MPI.Types.create_vector(size(v, 1), 1, stride(v, 1), datatype)
+        for d in 2:D
+            datatype = MPI.Types.create_hvector(size(v, d), 1, stride(v, d) * sizeof(T), datatype)
+        end
+        MPI.Types.commit!(datatype)
     end
-    return Buffer(arr, Cint(Kokkos.memory_span(arr) ÷ sizeof(eltype(arr))), Datatype(eltype(arr)))
+
+    return MPI.Buffer(v, count, datatype)
 end
 
 end
