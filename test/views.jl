@@ -186,6 +186,28 @@ end
 @test_throws @error_match("requires a instance") View{Float64}(undef, n1; layout=Kokkos.LayoutStride)
 
 
+@testset "layout matching" begin
+    # LayoutLeft should match the Julia's Array layout
+    v_l = View{Float64}(undef, 3, 5; layout=Kokkos.LayoutLeft)
+    v_l[:] .= collect(1:length(v_l))
+
+    a_l = unsafe_wrap(Array, pointer(v_l), size(v_l))
+    @test size(a_l) == size(v_l)
+    @test strides(a_l) == strides(v_l)
+    @test view(a_l, :) == view(v_l, :)
+
+    # LayoutRight should match the layout of a transposed Array
+    v_r = View{Float64}(undef, 3, 5; layout=Kokkos.LayoutRight)
+    v_r[:] .= collect(1:length(v_r))
+
+    a_r = unsafe_wrap(Array, pointer(v_r), reverse(size(v_r)))
+    a_r = a_r'
+    @test size(a_r) == size(v_r)
+    @test strides(a_r) == strides(v_r)
+    @test view(a_r, :) == view(v_r, :)
+end
+
+
 @testset "view_wrap" begin
     a7 = rand(Float64, 43)
     v7 = view_wrap(a7)
