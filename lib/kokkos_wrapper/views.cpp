@@ -400,6 +400,7 @@ void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_modul
             wrapped.method("view_data", &Wrapped_t::data);
             wrapped.method("label", &Wrapped_t::label);
             wrapped.method("memory_span", [](const Wrapped_t& view) { return view.impl_map().memory_span(); });
+            wrapped.method("span_is_contiguous", &Wrapped_t::span_is_contiguous);
             wrapped.method("get_dims", [](const Wrapped_t& view) { return std::tuple_cat(view.get_dims()); });
             wrapped.method("get_strides", [](const Wrapped_t& view) { return std::tuple_cat(view.get_strides()); });
             wrapped.method("get_tracker", [](const Wrapped_t& view) {
@@ -443,6 +444,7 @@ void import_all_views_methods(jl_module_t* impl_module, jl_module_t* views_modul
         "view_wrap",
         "view_data",
         "memory_span",
+        "span_is_contiguous",
         "label",
         "get_dims",
         "get_strides",

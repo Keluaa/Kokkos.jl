@@ -31,7 +31,7 @@ set_omp_vars
 ## Synchronization
 
 ```@docs
-fence()
+fence
 ```
 
 ## Constants

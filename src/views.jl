@@ -8,7 +8,7 @@ import ..Kokkos: memory_space, execution_space, accessible, array_layout, main_s
 
 export Layout, LayoutLeft, LayoutRight, LayoutStride, View, Idx
 export COMPILED_TYPES, COMPILED_DIMS, COMPILED_LAYOUTS
-export impl_view_type, label, view_wrap, view_data, memory_span
+export impl_view_type, main_view_type, label, view_wrap, view_data, memory_span, span_is_contiguous
 export subview, deep_copy, create_mirror, create_mirror_view
 
 
@@ -203,6 +203,8 @@ end
 
 Returns the internal [`View`](@ref) type for the given complete View type.
 
+The opposite of [`main_view_type`](@ref).
+
 ```julia-repl
 julia> view_t = Kokkos.View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}
 Kokkos.Views.View{Float64, 2, Kokkos.Views.LayoutRight, Kokkos.Spaces.HostSpace}
@@ -221,6 +223,19 @@ function impl_view_type(::Type{View{T, D, L, S}}) where {T, D, L, S}
     # Fallback: error handler
     error_view_not_compiled(View{T, D, L, S})
 end
+
+
+"""
+    main_view_type(::View)
+    main_view_type(::Type{<:View})
+
+The "main type" of the view: converts `Type{View1D_S_HostAllocated{Float64}}` into
+`Type{View{Float64, 1, LayoutStride, HostSpace}}`, which is easier to understand.
+
+The opposite of [`impl_view_type`](@ref).
+"""
+main_view_type(::Type{<:View{T, D, L, S}}) where {T, D, L, S} = View{T, D, L, main_space_type(S)}
+main_view_type(v::View) = main_view_type(supertype(supertype(typeof(v))))
 
 
 """
@@ -287,6 +302,16 @@ function memory_span end
 
 
 """
+    span_is_contiguous(::View)
+
+`true` if the view stores all its elements contiguously in memory.
+
+Equivalent to [`view.span_is_contiguous()`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/view.html?highlight=span_is_contiguous#_CPPv4NK18span_is_contiguousEv).
+"""
+function span_is_contiguous end
+
+
+"""
     deep_copy(dest::View, src::View)
     deep_copy(space::ExecutionSpace, dest::View, src::View)
 
@@ -333,6 +358,7 @@ end
 
 
 """
+    subview(v::View, indexes...)
     subview(v::View, indexes::Tuple{Vararg{Union{Int, Colon, AbstractUnitRange}}})
 
 Return a new `Kokkos.view` which will be a subview into the region specified by `indexes` of `v`,
@@ -422,9 +448,12 @@ function subview(v::View{T, D, L, S}, indexes::Tuple{Vararg{Union{Int, Colon, Ab
 end
 
 
+subview(v::View, indexes::Vararg{Union{Int, Colon, AbstractUnitRange}}) = subview(v, indexes)
+
+
 # === Constructors ===
 
-function get_mem_space_type(mem_space)
+function _get_mem_space_type(mem_space)
     mem_space_t::DataType = Nothing
     if mem_space isa DataType
         # Default construction of the memory space (delegated to `alloc_view`)
@@ -443,7 +472,7 @@ function get_mem_space_type(mem_space)
 end
 
 
-function get_layout_type(layout, mem_space_t)
+function _get_layout_type(layout, mem_space_t)
     layout_t::DataType = Nothing
     if layout isa DataType
         layout_t = layout
@@ -535,7 +564,7 @@ function View{T, D, L}(dims::Dims{D};
     mem_space = DEFAULT_DEVICE_MEM_SPACE,
     kwargs...
 ) where {T, D, L}
-    mem_space_t = get_mem_space_type(mem_space)
+    mem_space_t = _get_mem_space_type(mem_space)
     return View{T, D, L, mem_space_t}(dims; mem_space, kwargs...)
 end
 
@@ -549,8 +578,8 @@ function View{T, D}(dims::Dims{D};
     layout = nothing,
     kwargs...
 ) where {T, D}
-    mem_space_t = get_mem_space_type(mem_space)
-    layout_t = get_layout_type(layout, mem_space_t)
+    mem_space_t = _get_mem_space_type(mem_space)
+    layout_t = _get_layout_type(layout, mem_space_t)
     return View{T, D, layout_t, mem_space_t}(dims; mem_space, layout, kwargs...)
 end
 
@@ -650,16 +679,12 @@ view_wrap(::Type{View{T, D, L, S}}, a::AbstractArray{T, D}; kwargs...) where {T,
 # From a Julia-allocated DenseArray (column-major in host space)
 view_wrap(::Type{View{T, D}}, a::DenseArray{T, D}) where {T, D} =
     view_wrap(View{T, D, LayoutLeft, HostSpace}, a)
-view_wrap(::Type{View{T}}, a::DenseArray{T, D}) where {T, D} =
-    view_wrap(View{T, D}, a)
 view_wrap(a::DenseArray{T, D}) where {T, D} =
     view_wrap(View{T, D}, a)
 
 # From any AbstractArray (LayoutStride in host space)
 view_wrap(::Type{View{T, D}}, a::AbstractArray{T, D}) where {T, D} =
     view_wrap(View{T, D, LayoutStride, HostSpace}, a; layout=LayoutStride(strides(a)))
-view_wrap(::Type{View{T}}, a::AbstractArray{T, D}) where {T, D} =
-    view_wrap(View{T, D}, a)
 view_wrap(a::AbstractArray{T, D}) where {T, D} =
     view_wrap(View{T, D}, a)
 
@@ -683,10 +708,15 @@ Base.@propagate_inbounds Base.setindex!(v::View{T, D}, val, I::Vararg{Int, D}) w
 Base.similar(a::View{T, D, L, M}) where {T, D, L, M} =
     View{T, D, L, main_space_type(M)}(size(a);
         zero_fill=false, layout=L <: LayoutStride ? LayoutStride(strides(a)) : nothing)
+Base.similar(a::View{T, D, L, M}, dims::Dims{D}) where {T, D, L, M} =
+    View{T, D, L, main_space_type(M)}(dims;
+        zero_fill=false, layout=L <: LayoutStride ? LayoutStride(strides(a)) : nothing)
 Base.similar(::View{T, <:Any, L, M}, dims::Dims{D}) where {T, D, L, M} =
-    View{T, D, L, main_space_type(M)}(dims; zero_fill=false)
+    View{T, D, L, main_space_type(M)}(dims;
+        zero_fill=false, layout=L <: LayoutStride ? LayoutStride(Base.size_to_strides(1, dims...)) : nothing)
 Base.similar(::View{<:Any, <:Any, L, M}, ::Type{T}, dims::Dims{D}) where {T, D, L, M} =
-    View{T, D, L, main_space_type(M)}(dims; zero_fill=false)
+    View{T, D, L, main_space_type(M)}(dims;
+        zero_fill=false, layout=L <: LayoutStride ? LayoutStride(Base.size_to_strides(1, dims...)) : nothing)
 
 
 Base.copyto!(dest::View{DT, Dim, DL, DM}, src::View{ST, Dim, SL, SM}) where {DT, ST, DL, SL, DM, SM, Dim} =

@@ -14,12 +14,14 @@ array_layout(::View)
 label
 view_data
 memory_span
+span_is_contiguous
 subview
 view_wrap
 deep_copy
 create_mirror
 create_mirror_view
 impl_view_type
+main_view_type
 ```
 
 ## Layouts

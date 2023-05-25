@@ -137,6 +137,11 @@ v5 = copy(v3')
 
 @test memory_space(v5) === Kokkos.HostSpace
 
+flat_v5 = v5[:]
+@test length(flat_v5) == length(v5)
+@test flat_v5 == view(v5, :)
+
+
 # View constructors
 v6 = View{Float64, 2}(undef, (1, 2))
 v6_simili = [
@@ -232,6 +237,20 @@ end
 end
 
 
+# LayoutStride, but with a contiguous row-major layout
+v9 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_strides(1, 3, 4)))
+@test size(v9) == (3, 4)
+@test strides(v9) == Base.size_to_strides(1, 3, 4)
+@test Kokkos.span_is_contiguous(v9)
+
+# LayoutStride, but with a non-contiguous layout (each element takes twice as much space)
+v10 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_strides(2, 3, 4)))
+@test size(v10) == (3, 4)
+@test strides(v10) == Base.size_to_strides(2, 3, 4)
+@test !Kokkos.span_is_contiguous(v10)
+@test Kokkos.memory_span(v10) == prod(size(v10)) * sizeof(Float64) * 2 
+
+
 @testset "Deep copy on $exec_space_type in $(dim)D with $type" for 
         exec_space_type in (:no_exec_space, Kokkos.COMPILED_EXEC_SPACES...),
         dim in Kokkos.COMPILED_DIMS,
@@ -323,10 +342,12 @@ end
 
     sv2 = Kokkos.subview(v, (:, 1))
     @test typeof(sv2) === Kokkos.impl_view_type(View{Float64, 1, Kokkos.LayoutStride, Kokkos.HostSpace})
+    @test Kokkos.main_view_type(sv2) === View{Float64, 1, Kokkos.LayoutStride, Kokkos.HostSpace}
     @test sv2 == [1.0, 2.0, 3.0, 4.0]
 
     sv3 = Kokkos.subview(v, (1,))
     @test typeof(sv3) === Kokkos.impl_view_type(View{Float64, 1, array_layout(v), memory_space(v)})
+    @test Kokkos.main_view_type(sv3) === View{Float64, 1, array_layout(v), memory_space(v)}
     @test sv3 == [1.0, 5.0, 9.0, 13.0]
 
     sv4 = Kokkos.subview(v, (1, :))
