@@ -3,6 +3,7 @@ push!(LOAD_PATH, joinpath(@__DIR__, "../"))
 
 using Kokkos
 using Documenter
+using CUDA  # For the extension documentation
 
 ci = get(ENV, "CI", "") == "true"
 
@@ -23,14 +24,15 @@ makedocs(;
         "Usage" => [
             "Calling a Kokkos library" => "calling_c.md",
             "Using views in an inaccessible memory space" => "inaccessible_views.md",
+            "Interoperability with CUDA.jl" => "interop.md",
+            "MPI" => "MPI.md"
         ],
         "Environment" => "environment.md",
         "Execution & Memory Spaces" => "spaces.md",
         "Views" => "views.md",
         "Compilation" => "compilation.md",
         "Library Management" => "library_management.md",
-        "Configuration options" => "config_options.md",
-        "MPI" => "MPI.md"
+        "Configuration options" => "config_options.md"
     ],
 )
 
