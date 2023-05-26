@@ -40,13 +40,13 @@ size_t jl_indexes_to_cpp(jl_value_t* jl_indexes,
 {
     // 'jl_indexes' is of type 'Tuple{Vararg{Union{Colon, AbstractUnitRange{Int64}, Int64}}}'
     jl_value_t* indexes_type = jl_typeof(jl_indexes);
-    size_t index_count = jl_nparams(indexes_type);
-    if (index_count > Dim) {
+    int index_count = jl_nparams(indexes_type);
+    if (static_cast<size_t>(index_count) > Dim) {
         jl_errorf("expected a tuple of %d indexes or slices, got %d", Dim, index_count);
     }
 
-    size_t int_count = 0;
-    size_t r = -1;
+    int int_count = 0;
+    int r = -1;
     for (auto& index : indexes) {
         r++;
 
@@ -154,7 +154,7 @@ void register_subviews_for_view_and_layout(jlcxx::Module& mod)
         using SubViewStrided = typename SubView::template with_layout<Kokkos::LayoutStride>;
 
         // method signature: (View{T, D, L, M}, Tuple{Vararg{Union{Colon, AbstractUnitRange, Int64}}}, Val{SubDim}, LayoutStride)
-        mod.method("subview", [](const View& v, IndexVarargs* indexes, jlcxx::Val<int64_t, SubView::dim>, jlcxx::SingletonType<Kokkos::LayoutStride>) {
+        mod.method("subview", [](const View& v, IndexVarargs* indexes, jlcxx::SingletonType<jlcxx::Val<int64_t, SubView::dim>>, jlcxx::SingletonType<Kokkos::LayoutStride>) {
             auto* jl_indexes = reinterpret_cast<jl_value_t*>(indexes);
 
             std::array<std::variant<int64_t, Range>, View::dim> view_indexes;
@@ -170,7 +170,7 @@ void register_subviews_for_view_and_layout(jlcxx::Module& mod)
     }
 
     // method signature: (View{T, D, L, M}, Tuple{Vararg{Union{Colon, AbstractUnitRange, Int64}}}, Val{SubDim}, Layout)
-    mod.method("subview", [](const View& v, IndexVarargs* indexes, jlcxx::Val<int64_t, SubView::dim>, jlcxx::SingletonType<typename View::layout>) {
+    mod.method("subview", [](const View& v, IndexVarargs* indexes, jlcxx::SingletonType<jlcxx::Val<int64_t, SubView::dim>>, jlcxx::SingletonType<typename View::layout>) {
         auto* jl_indexes = reinterpret_cast<jl_value_t*>(indexes);
 
         std::array<std::variant<int64_t, Range>, View::dim> view_indexes;

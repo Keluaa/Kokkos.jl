@@ -412,7 +412,7 @@ julia> Kokkos.subview(v, (1,))  # Equivalent to `(1, :)`
     while `Base.view` returns a `SubArray`, which cannot be passed to a `ccall`.
 
 """
-function subview(::View{T, D, L, S}, ::Tuple, subview_dim::Val{SD}, subview_layout::Type{SL}) where {T, D, L, S, SD, SL}
+function subview(::View{T, D, L, S}, ::Tuple, subview_dim::Type{Val{SD}}, subview_layout::Type{SL}) where {T, D, L, S, SD, SL}
     # Fallback: error handler
     error_view_not_compiled(View{T, SD, SL, S})
 end
@@ -444,7 +444,7 @@ end
 
 function subview(v::View{T, D, L, S}, indexes::Tuple{Vararg{Union{Int, Colon, AbstractUnitRange}}}) where {T, D, L, S}
     subview_dim, subview_layout = _get_subview_dim_and_layout(D, L, typeof(indexes))
-    return subview(v, indexes, Val(subview_dim), subview_layout)
+    return subview(v, indexes, Val{subview_dim}, subview_layout)
 end
 
 

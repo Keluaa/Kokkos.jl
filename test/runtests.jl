@@ -1,6 +1,9 @@
 
+push!(LOAD_PATH, joinpath(@__DIR__, ".."))  # For LocalPreferences.toml
+
 using Test
 using Logging
+using Preferences
 using Kokkos
 
 
@@ -11,9 +14,10 @@ const TEST_DEVICE_IS_HOST = TEST_OPENMP
 const TEST_MPI_ONLY = parse(Bool, get(ENV, "TEST_KOKKOS_MPI_ONLY", "false"))
 const TEST_MPI = parse(Bool, get(ENV, "TEST_KOKKOS_MPI", "true")) || TEST_MPI_ONLY
 
-const TEST_BACKEND_HOST        = Kokkos.Serial
-const TEST_BACKEND_DEVICE      = TEST_CUDA ? Kokkos.Cuda : Kokkos.OpenMP
-const TEST_UNAVAILABLE_BACKEND = TEST_CUDA ? Kokkos.HIP  : Kokkos.Cuda
+const TEST_BACKEND_HOST          = Kokkos.Serial
+const TEST_BACKEND_DEVICE        = TEST_CUDA ? Kokkos.Cuda      : Kokkos.OpenMP
+const TEST_UNAVAILABLE_BACKEND   = TEST_CUDA ? Kokkos.HIP       : Kokkos.Cuda
+const TEST_UNAVAILABLE_MEM_SPACE = TEST_CUDA ? Kokkos.HIPSpace  : Kokkos.CudaSpace
 
 const TEST_MEM_SPACE_HOST = Kokkos.HostSpace
 const TEST_MEM_SPACES_DEVICE = TEST_CUDA ? (Kokkos.CudaSpace, Kokkos.CudaUVMSpace) : (Kokkos.HostSpace,)
@@ -24,6 +28,9 @@ const TEST_MEM_PINNED = TEST_CUDA ? Kokkos.CudaHostPinnedSpace : Kokkos.HostSpac
 
 const TEST_DEVICE_ACCESSIBLE = !TEST_CUDA
 const TEST_IDX_SIZE = TEST_DEVICE_IS_HOST ? 8 : 4
+
+
+TEST_CUDA && using CUDA
 
 
 macro error_match(exception)
