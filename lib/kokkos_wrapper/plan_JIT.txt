@@ -1,0 +1,40 @@
+
+Julia:
+ - a Kokkos function is called, which is a @generated function
+     => if the symbol of the Kokkos function is not present in the current process
+        => try to find the shared library which would contain the compiled Kokkos function
+            => found: load the lib
+            => not found:
+                => acquire MPI/thread build lock (write to a file the PID/rank, flush/save, read the file again, if rank matches then compile, if not wait)
+                => build the lib
+                => release the MPI/thread lock
+    => build the ccall expression
+ - we cannot unload the Kokkos library anymore (simpler to handle)
+ - there is a possibility that we need to load the libs from the main kokkos library, to make sure all symbols are resolved correctly (I don't think so)
+
+ => `Kokkos.KokkosWrapper.get_symbol_for_prototype` should transform any C++ function name + Julia types into a symbol
+    which name will be the one of the exported C++ function once compiled
+    - it should not rely on non-compile-time values
+
+ => `Kokkos.KokkosWrapper.get_function_ptr` will pick the C++ function pointer from a dict of symbols to Ptr{Cvoid}
+   - it should return `nothing` if not found
+
+ => `Kokkos.KokkosWrapper.compile_and_load_function` will do the "JIT" compilation: set up the right env vars from its
+    parameters, then build the right cmake target, then ask the main lib to load the built library
+    => IMPORTANT: we shouldn't rebuild if the target library is already here.
+    => It should also set up the MPI/thread compilation lock
+    => IMPORTANT: the symbols dict should also be locked in some way before writing to it (only needed if writing to a dict can invalidate other entries)
+
+ => then all Kokkos calls will only cost 1 dict read + one ccall => very cheap
+
+
+lib building:
+ - there is only one cmake target per function (or group of functions, e.g. for views all of their functionalities would be compiled at once)
+ - the target is PHONY (never up-to-date)
+ ? pass the arguments to the build target (dim, layout, mem/exec space, etc...)
+ - compile the file, with a custom name containing all parameters
+
+
+c++:
+ - arguments are passed as macro definitions
+ - each file need to be designed to compile only one main thing (type or function)

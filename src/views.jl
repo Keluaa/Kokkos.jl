@@ -273,6 +273,35 @@ Kokkos.Spaces.CudaSpace
 memory_space(::View{T, D, L, MemSpace}) where {T, D, L, MemSpace} = main_space_type(MemSpace)
 
 
+@generated function jit_deep_copy(
+    dst::View{T, D, Dst_L, Dst_S},
+    src::View{T, D, Src_L, Src_S}
+) where {T, D, Dst_L, Dst_S, Src_L, Src_S}
+    func_sym = Kokkos.KokkosWrapper.get_symbol_for_prototype(
+        :deep_copy,
+        Cvoid,
+        (View{T, D, Dst_L, Dst_S}, View{T, D, Src_L, Src_S})
+    )
+
+    return quote
+        func_ptr = Kokkos.KokkosWrapper.get_function_ptr($(func_sym))
+
+        if func_ptr === nothing
+            func_ptr = Kokkos.KokkosWrapper.compile_and_load_function(
+                $(func_sym);
+                view_types = (T,), view_dims = (D,), view_layouts = (Src_L, Dst_L),
+                mem_spaces = (Dst_S, Src_S), exec_spaces = ()
+            )
+        end
+
+        ccall(func_ptr,
+            Cvoid, (Ref{View{T, D, Dst_L, Dst_S}}, Ref{View{T, D, Src_L, Src_S}}),
+            dst, src
+        )
+    end
+end
+
+
 """
     label(::View)
 

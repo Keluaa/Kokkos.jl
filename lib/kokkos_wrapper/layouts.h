@@ -6,6 +6,11 @@
 #include "utils.h"
 
 
+#if !defined(COMPLETE_BUILD) || COMPLETE_BUILD == 0
+#include "parameters.h"
+#endif
+
+
 #ifndef VIEW_LAYOUTS
 /**
  * Controls which `Kokkos::View` layout types are to be instantiated.
@@ -19,6 +24,7 @@
  * The registered method `compiled_layouts` returns a tuple of all compiled layout types.
  */
 #define VIEW_LAYOUTS deviceDefault, hostDefault
+#warning "No explicit value set for VIEW_LAYOUTS, using the default of 'deviceDefault, hostDefault'"
 #endif
 
 

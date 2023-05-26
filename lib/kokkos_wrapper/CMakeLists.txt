@@ -51,6 +51,7 @@ target_compile_definitions(KokkosWrapper PRIVATE
         VIEW_DIMENSIONS=${VIEW_DIMENSIONS}
         VIEW_TYPES=${VIEW_TYPES}
         VIEW_LAYOUTS=${VIEW_LAYOUTS}
+        COMPLETE_BUILD=1
 )
 target_compile_options(KokkosWrapper PRIVATE
         $<$<CONFIG:Debug>:-Wall -Wextra -Wpedantic>
@@ -59,3 +60,5 @@ target_compile_options(KokkosWrapper PRIVATE
 if(Kokkos_ENABLE_OPENMP)
     target_link_libraries(KokkosWrapper PRIVATE OpenMP::OpenMP_CXX)
 endif()
+
+include(all_targets_generator.cmake)

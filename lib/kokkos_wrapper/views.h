@@ -7,6 +7,11 @@
 #include "layouts.h"
 
 
+#if !defined(COMPLETE_BUILD) || COMPLETE_BUILD == 0
+#include "parameters.h"
+#endif
+
+
 #ifndef VIEW_DIMENSIONS
 /**
  * Controls which `Kokkos::View` dimensions are instantiated.
@@ -18,6 +23,7 @@
  * The registered method `compiled_dims` returns a tuple of all compiled dimensions.
  */
 #define VIEW_DIMENSIONS 1, 2
+#warning "No explicit value set for VIEW_DIMENSIONS, using the default of '1, 2'"
 #endif
 
 
@@ -30,7 +36,8 @@
  *
  * The registered method `compiled_types` returns a tuple of all compiled types.
  */
-#define VIEW_TYPES double, float, int64_t
+#define VIEW_TYPES double, int64_t
+#warning "No explicit value set for VIEW_TYPES, using the default of 'double, int64_t'"
 #endif
 
 

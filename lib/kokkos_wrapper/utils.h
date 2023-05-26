@@ -40,9 +40,12 @@ constexpr bool is_tlist_v = is_tlist<T>::value;
 template<typename I, I... Dims>
 constexpr auto tlist_from_sequence(std::integer_sequence<I, Dims...>)
 {
-    return (TList<std::integral_constant<std::size_t, Dims>>{} + ...);
+    if constexpr (sizeof...(Dims) == 0) {
+        return TList<>{};
+    } else {
+        return (TList<std::integral_constant<std::size_t, Dims>>{} + ...);
+    }
 }
-
 
 template<typename Element, typename... Args>
 constexpr bool is_element_in_list(TList<Args...>)
@@ -71,7 +74,11 @@ constexpr auto remove_duplicates(TList<Unique...>, TList<Element, Args...>)
 template<typename... Args>
 constexpr auto remove_duplicates(TList<Args...>)
 {
-    return remove_duplicates(TList<>{}, TList<Args...>{});
+    if constexpr (sizeof...(Args) == 0) {
+        return TList<>{};
+    } else {
+        return remove_duplicates(TList<>{}, TList<Args...>{});
+    }
 }
 
 
@@ -124,9 +131,17 @@ constexpr auto build_all_combinations(TList<Stack...>, TList<List...>)
 {
     // Add to N copies of the stack one of the N elements of List, then recurse to the next lists (if there is any)
     if constexpr (sizeof...(NextLists) == 0) {
-        return (build_all_combinations<>(TList<Stack..., List>{}, NextList{}) + ...);
+        if constexpr (sizeof...(List) == 0) {
+            return build_all_combinations<>(TList<Stack...>{}, NextList{});
+        } else {
+            return (build_all_combinations<>(TList<Stack..., List>{}, NextList{}) + ...);
+        }
     } else {
-        return (build_all_combinations<NextLists...>(TList<Stack..., List>{}, NextList{}) + ...);
+        if constexpr (sizeof...(List) == 0) {
+            return build_all_combinations<NextLists...>(TList<Stack...>{}, NextList{});
+        } else {
+            return (build_all_combinations<NextLists...>(TList<Stack..., List>{}, NextList{}) + ...);
+        }
     }
 }
 
