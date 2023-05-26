@@ -137,6 +137,11 @@ v5 = copy(v3')
 
 @test memory_space(v5) === Kokkos.HostSpace
 
+flat_v5 = v5[:]
+@test length(flat_v5) == length(v5)
+@test flat_v5 == view(v5, :)
+
+
 # View constructors
 v6 = View{Float64, 2}(undef, (1, 2))
 v6_simili = [
@@ -186,6 +191,28 @@ end
 @test_throws @error_match("requires a instance") View{Float64}(undef, n1; layout=Kokkos.LayoutStride)
 
 
+@testset "layout matching" begin
+    # LayoutLeft should match the Julia's Array layout
+    v_l = View{Float64}(undef, 3, 5; layout=Kokkos.LayoutLeft)
+    v_l[:] .= collect(1:length(v_l))
+
+    a_l = unsafe_wrap(Array, pointer(v_l), size(v_l))
+    @test size(a_l) == size(v_l)
+    @test strides(a_l) == strides(v_l)
+    @test view(a_l, :) == view(v_l, :)
+
+    # LayoutRight should match the layout of a transposed Array
+    v_r = View{Float64}(undef, 3, 5; layout=Kokkos.LayoutRight)
+    v_r[:] .= collect(1:length(v_r))
+
+    a_r = unsafe_wrap(Array, pointer(v_r), reverse(size(v_r)))
+    a_r = a_r'
+    @test size(a_r) == size(v_r)
+    @test strides(a_r) == strides(v_r)
+    @test view(a_r, :) == view(v_r, :)
+end
+
+
 @testset "view_wrap" begin
     a7 = rand(Float64, 43)
     v7 = view_wrap(a7)
@@ -208,6 +235,20 @@ end
     @test v8_corners == reshape(a8, (4, 4))[1:3:end, 1:3:end]  # No transposition needed
     @test pointer(a8) == Kokkos.view_data(v8_corners)
 end
+
+
+# LayoutStride, but with a contiguous row-major layout
+v9 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_strides(1, 3, 4)))
+@test size(v9) == (3, 4)
+@test strides(v9) == Base.size_to_strides(1, 3, 4)
+@test Kokkos.span_is_contiguous(v9)
+
+# LayoutStride, but with a non-contiguous layout (each element takes twice as much space)
+v10 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_strides(2, 3, 4)))
+@test size(v10) == (3, 4)
+@test strides(v10) == Base.size_to_strides(2, 3, 4)
+@test !Kokkos.span_is_contiguous(v10)
+@test Kokkos.memory_span(v10) == prod(size(v10)) * sizeof(Float64) * 2 
 
 
 @testset "Deep copy on $exec_space_type in $(dim)D with $type" for 
@@ -288,6 +329,36 @@ end
             @test all(v_src_m2 .== 0)
         end
     end
+end
+
+
+@testset "subview" begin
+    v = Kokkos.View{Float64}(undef, 4, 4)
+    v[:] .= collect(1:length(v))
+
+    sv1 = Kokkos.subview(v, (2:3, 2:3))
+    @test typeof(sv1) === typeof(v)
+    @test sv1 == [6.0 10.0 ; 7.0 11.0]
+
+    sv2 = Kokkos.subview(v, (:, 1))
+    @test typeof(sv2) === Kokkos.impl_view_type(View{Float64, 1, Kokkos.LayoutStride, Kokkos.HostSpace})
+    @test Kokkos.main_view_type(sv2) === View{Float64, 1, Kokkos.LayoutStride, Kokkos.HostSpace}
+    @test sv2 == [1.0, 2.0, 3.0, 4.0]
+
+    sv3 = Kokkos.subview(v, (1,))
+    @test typeof(sv3) === Kokkos.impl_view_type(View{Float64, 1, array_layout(v), memory_space(v)})
+    @test Kokkos.main_view_type(sv3) === View{Float64, 1, array_layout(v), memory_space(v)}
+    @test sv3 == [1.0, 5.0, 9.0, 13.0]
+
+    sv4 = Kokkos.subview(v, (1, :))
+    @test typeof(sv4) === typeof(sv3)
+    @test sv3 == sv4
+
+    # Making a (fake) subview from a SubArray, using ranges with non-unit steps 
+    sub_v = @view v[1:3:4, 1:3:4]  # Select the "corners" of the matrix
+    sv5 = Kokkos.view_wrap(sub_v)  # Uses `strides(sub_v)`
+    @test pointer(sv5) == pointer(v)
+    @test sv5 == [1.0 13.0 ; 4.0 16.0]
 end
 
 end

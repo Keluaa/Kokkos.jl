@@ -66,14 +66,25 @@ template<typename T, typename DimCst, typename LayoutType, typename MemSpace,
 struct ViewWrap : public KokkosViewT
 {
     using type = T;
+    using layout = LayoutType;
+    using mem_space = MemSpace;
+
     using kokkos_view_t = KokkosViewT;
+
+    template<typename OtherLayout>
+    using with_layout = ViewWrap<T, DimCst, OtherLayout, MemSpace>;
 
     static constexpr size_t dim = DimCst::value;
 
-    using IdxTuple [[maybe_unused]] = decltype(std::tuple_cat(std::array<Idx, dim>()));
+    using IdxTuple = decltype(std::tuple_cat(std::array<Idx, dim>()));
 
+#ifdef __INTEL_COMPILER
+    template<typename... Args>
+    ViewWrap(Args&&... args) : KokkosViewT(std::forward<Args>(args)...) {}
+#else
     // Should be 'using typename KokkosViewT::View;' but compiler incompatibilities make this impossible
     using Kokkos::View<T_Ptr, LayoutType, Device, MemTraits>::View;
+#endif // __INTEL_COMPILER
 
     explicit ViewWrap(const KokkosViewT& other) : KokkosViewT(other) {};
     explicit ViewWrap(KokkosViewT&& other) : KokkosViewT(std::move(other)) {};

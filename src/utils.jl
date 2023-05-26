@@ -134,7 +134,6 @@ Calls [`Kokkos::finalize()`](https://kokkos.github.io/kokkos-core-wiki/API/core/
 function finalize end
 
 
-# Overloaded in 'kokkos_wrapper.cpp', in 'define_kokkos_module'
 """
     is_initialized()
 
@@ -142,10 +141,13 @@ Return `Kokkos::is_initialized()`.
 
 Can be called before the wrapper library is loaded.
 """
-is_initialized() = false
+function is_initialized()
+    !is_kokkos_wrapper_loaded() && return false
+    # Defined in 'kokkos_wrapper.cpp', in 'define_kokkos_module'
+    return Kokkos.KokkosWrapper.Impl.is_initialized()
+end
 
 
-# Overloaded in 'kokkos_wrapper.cpp', in 'define_kokkos_module'
 """
     is_finalized()
 
@@ -153,7 +155,11 @@ Return `Kokkos::is_finalized()`.
 
 Can be called before the wrapper library is loaded.
 """
-is_finalized() = false
+function is_finalized()
+    !is_kokkos_wrapper_loaded() && return false
+    # Defined in 'kokkos_wrapper.cpp', in 'define_kokkos_module'
+    return Kokkos.KokkosWrapper.Impl.is_finalized()
+end
 
 
 # Defined in 'kokkos_wrapper.cpp', in 'define_kokkos_module'
@@ -165,7 +171,7 @@ Wait for all asynchronous Kokkos operations to complete.
 
 Equivalent to [`Kokkos::fence()`](https://kokkos.github.io/kokkos-core-wiki/API/core/parallel-dispatch/fence.html).
 """
-fence() = ensure_kokkos_wrapper_loaded()
+function fence end
 
 
 """

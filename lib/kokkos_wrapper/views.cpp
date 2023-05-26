@@ -25,11 +25,14 @@ std::array<size_t, KOKKOS_MAX_DIMENSIONS> unpack_dims(const std::tuple<Dims...>&
             KOKKOS_IMPL_CTOR_DEFAULT_ARG
     };
 
+    // Important detail: the dimensions given from Julia should be reversed when passed to Kokkos, in order for the
+    // array to be coherent with the parameters of the constructor: `Kokkos.View{Float64}(undef, 3, 4)` should give a
+    // `3x4` array as seen from Julia, whatever the layout is.
     std::apply(
     [&](const Dims&... dim)
     {
-        std::size_t n{0};
-        ((N[n++] = dim), ...);
+        std::size_t n{sizeof...(Dims) - 1};
+        ((N[n--] = dim), ...);
     }, dims);
 
     return N;
@@ -356,7 +359,7 @@ struct RegisterUtils
 
 void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_module)
 {
-    using DimsList = decltype(wrap_dims(DimensionsToInstantiate{}));
+    using DimsList = decltype(tlist_from_sequence(DimensionsToInstantiate{}));
 
     auto combinations = build_all_combinations<
             MemorySpacesList,
@@ -397,6 +400,7 @@ void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_modul
             wrapped.method("view_data", &Wrapped_t::data);
             wrapped.method("label", &Wrapped_t::label);
             wrapped.method("memory_span", [](const Wrapped_t& view) { return view.impl_map().memory_span(); });
+            wrapped.method("span_is_contiguous", &Wrapped_t::span_is_contiguous);
             wrapped.method("get_dims", [](const Wrapped_t& view) { return std::tuple_cat(view.get_dims()); });
             wrapped.method("get_strides", [](const Wrapped_t& view) { return std::tuple_cat(view.get_strides()); });
             wrapped.method("get_tracker", [](const Wrapped_t& view) {
@@ -440,6 +444,7 @@ void import_all_views_methods(jl_module_t* impl_module, jl_module_t* views_modul
         "view_wrap",
         "view_data",
         "memory_span",
+        "span_is_contiguous",
         "label",
         "get_dims",
         "get_strides",

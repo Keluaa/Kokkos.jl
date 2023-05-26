@@ -82,6 +82,7 @@ include("configuration.jl")
 function __init__()
     @static if !isdefined(Base, :get_extension)
         @require MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195" include("../ext/MPIExt.jl")
+        @require CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba" include("../ext/CUDAExt.jl")
     end
 end
 

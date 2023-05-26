@@ -17,16 +17,10 @@ void register_layout(jl_module_t* views_module)
 }
 
 
-template<template<typename> typename Container, typename... L>
-void register_layouts(jl_module_t* views_module, Container<L...>)
+template<typename... L>
+void register_layouts(jl_module_t* views_module, TList<L...>)
 {
-    ([&](){
-        static bool already_registered = false;
-        if (!already_registered) {
-            register_layout<L>(views_module);
-            already_registered = true;
-        }
-    }(), ...);
+    (register_layout<L>(views_module), ...);
 }
 
 

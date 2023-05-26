@@ -6,6 +6,7 @@
 #include "views.h"
 #include "copy.h"
 #include "mirrors.h"
+#include "subviews.h"
 
 #include <sstream>
 
@@ -139,8 +140,6 @@ void import_all_env_methods(jl_module_t* impl_module, jl_module_t* kokkos_module
             "print_configuration",
             "initialize",
             "finalize",
-            "is_initialized",
-            "is_finalized",
             "fence",
             "num_threads",
             "device_id",
@@ -185,7 +184,11 @@ JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
     mod.method("is_finalized", (bool (*)()) &Kokkos::is_finalized);
 
     mod.method("fence", [](){ Kokkos::fence(); });
+#ifdef __INTEL_COMPILER
+    mod.method("fence", [](const std::string& s){ Kokkos::fence(s); });
+#else
     mod.method("fence", &Kokkos::fence);
+#endif // __INTEL_COMPILER
 
     mod.unset_override_module();
 
@@ -196,4 +199,5 @@ JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
     define_kokkos_views(mod);
     define_kokkos_deep_copy(mod);
     define_kokkos_mirrors(mod);
+    define_kokkos_subview(mod);
 }

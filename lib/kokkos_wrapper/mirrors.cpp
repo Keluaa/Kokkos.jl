@@ -8,7 +8,7 @@
 
 void register_mirror_methods(jlcxx::Module& mod)
 {
-    using DimsList = decltype(wrap_dims(DimensionsToInstantiate{}));
+    using DimsList = decltype(tlist_from_sequence(DimensionsToInstantiate{}));
     using DstMemSpacesList = decltype(TList<jl_value_t*>{} + MemorySpacesList{});
 
     auto combinations = build_all_combinations<

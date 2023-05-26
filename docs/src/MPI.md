@@ -60,9 +60,13 @@ MPI.Sendrecv!(v, next_rank, 0, r, prev_rank, 0, MPI.COMM_WORLD)
 @assert all(r .== prev_rank)
 ```
 
-Internally, the pointer to the data of the view is passed to MPI, there is no copy of the data.
-The data length given to MPI is not `length(view)` but
-[`Kokkos.memory_span(view)`](@ref Kokkos.memory_span), therefore views with an irregular layout will
-work as long as their data is stored in a single memory block.
+Internally, the pointer to the data of the view is passed to MPI, there is no copy of the data,
+regardless of the memory space where the view is stored in.
+
+If `Kokkos.span_is_contiguous(view) == true`, then the whole memory span of the view is passed to
+MPI as a single block of data.
+
+For non-contiguous views (such as `LayoutStride`), a custom `MPI.Datatype` is built to exactly
+represent the view.
 
 Support for GPU-awareness should be seamless, as long as your MPI implementation supports the GPU.
