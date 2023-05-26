@@ -100,7 +100,7 @@ v4 = similar(v3)
 @test strides(v4) == strides(v3)
 @test memory_space(v4) == memory_space(v3)
 
-flat_v4 = v4[:]
+flat_v4 = @view v4[:]
 @test length(flat_v4) == length(v4)
 
 # View constructors
@@ -249,18 +249,17 @@ end
 
 @testset "subview" begin
     v = Kokkos.View{Float64}(undef, 4, 4)
-    v[:] .= collect(1:length(v))
 
     sv1 = Kokkos.subview(v, (2:3, 2:3))
     @test typeof(sv1) === typeof(v)
 
     sv2 = Kokkos.subview(v, (:, 1))
-    @test typeof(sv2) === Kokkos.impl_view_type(View{Float64, 1, Kokkos.LayoutStride, Kokkos.HostSpace})
-    @test Kokkos.main_view_type(sv2) === View{Float64, 1, Kokkos.LayoutStride, Kokkos.HostSpace}
+    @test typeof(sv2) === Kokkos.impl_view_type(View{Float64, 1, array_layout(v), Kokkos.CudaSpace})
+    @test Kokkos.main_view_type(sv2) === View{Float64, 1, array_layout(v), Kokkos.CudaSpace}
 
     sv3 = Kokkos.subview(v, (1,))
-    @test typeof(sv3) === Kokkos.impl_view_type(View{Float64, 1, array_layout(v), memory_space(v)})
-    @test Kokkos.main_view_type(sv3) === View{Float64, 1, array_layout(v), memory_space(v)}
+    @test typeof(sv3) === Kokkos.impl_view_type(View{Float64, 1, Kokkos.LayoutStride, memory_space(v)})
+    @test Kokkos.main_view_type(sv3) === View{Float64, 1, Kokkos.LayoutStride, memory_space(v)}
 
     sv4 = Kokkos.subview(v, (1, :))
     @test typeof(sv4) === typeof(sv3)

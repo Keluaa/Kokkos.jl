@@ -1,8 +1,6 @@
 @testset "Cuda" begin
 
 import Kokkos: Idx, View
-using CUDA
-
 
 @testset "CuArray to View" begin
     A = CuArray{Int64}(undef, 5, 5)
@@ -18,7 +16,7 @@ using CUDA
 
     A_vh = Kokkos.create_mirror_view(A_v)
     copyto!(A_vh, A_v)
-    @test A_vh[:] == 1:25
+    @test (@view A_vh[:]) == 1:25
 
     sub_A = @view A[2:4, 2:4]
     sub_A_v = Kokkos.view_wrap(sub_A)
@@ -29,8 +27,17 @@ using CUDA
     @test strides(sub_A_v) == strides(sub_A)
 
     sub_A_vh = Kokkos.create_mirror_view(sub_A_v)
-    copyto!(sub_A_vh, sub_A_v)
-    @test sub_A_vh == [7 12 17 ; 8 13 18 ; 9 14 19]
+    # sub_A_v and sub_A_vh are not contiguous and therefore cannot be copied directly across devices
+    @test !Kokkos.span_is_contiguous(sub_A_v) && !Kokkos.span_is_contiguous(sub_A_vh)
+    @test_throws @error_match(r"Kokkos::deep_copy with no available copy mechanism") copyto!(sub_A_vh, sub_A_v)
+
+    sub_A_v_contiguous = Kokkos.View{Int64}(undef, size(sub_A_v); mem_space=Kokkos.CudaSpace, layout=Kokkos.LayoutLeft)
+    copyto!(sub_A_v_contiguous, sub_A_v)
+
+    sub_A_vh_contiguous = Kokkos.create_mirror_view(sub_A_v_contiguous)
+    copyto!(sub_A_vh_contiguous, sub_A_v_contiguous)
+
+    @test sub_A_vh_contiguous == [7 12 17 ; 8 13 18 ; 9 14 19]
 end
 
 
@@ -46,18 +53,18 @@ end
     cu_V = unsafe_wrap(CuArray, V)
     @test size(cu_V) == size(V)
     @test strides(cu_V) == strides(V)
-    @allowscalar @test Vh == cu_V
+    CUDA.@allowscalar @test Vh == cu_V
 
     sub_V = Kokkos.subview(V, (1:3, 1:3))
     @test !Kokkos.span_is_contiguous(sub_V)
     @test_throws @error_match(r"non-contiguous views cannot") unsafe_wrap(CuArray, sub_V)
 
-    sub_V2 = Kokkos.subview(V, (1:3, :))
+    sub_V2 = Kokkos.subview(V, (:, 1:3))
     @test Kokkos.span_is_contiguous(sub_V2)
-    cu_sub_V2 = unsafe_wrap(CuArray, sub_V)
+    cu_sub_V2 = unsafe_wrap(CuArray, sub_V2)
     @test size(cu_sub_V2) == size(sub_V2)
     @test strides(cu_sub_V2) == strides(sub_V2)
-    @allowscalar @test (@view Vh[1:3, :]) == cu_sub_V2
+    CUDA.@allowscalar @test (@view Vh[:, 1:3]) == cu_sub_V2
 end
 
 end
