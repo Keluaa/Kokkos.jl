@@ -406,7 +406,7 @@ julia> Kokkos.subview(v, (1,))  # Equivalent to `(1, :)`
  13.0
 ```
 
-# !!! warning
+!!! warning
 
     `Kokkos.subview` is __not__ equivalent to `Base.view`, as it returns a new `Kokkos.View` object,
     while `Base.view` returns a `SubArray`, which cannot be passed to a `ccall`.

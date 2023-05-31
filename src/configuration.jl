@@ -2,7 +2,7 @@
 HAS_CONFIGURATION_CHANGED = false
 
 
-function set_kokkos_version(version::Union{Nothing, Missing, String})
+function set_kokkos_version(version::Union{Nothing, Missing, AbstractString})
     @set_preferences!("kokkos_version" => version)
     if !is_kokkos_wrapper_loaded()
         global LOCAL_KOKKOS_VERSION_STR = @load_preference("kokkos_version", __DEFAULT_KOKKOS_VERSION_STR)
@@ -18,7 +18,7 @@ function set_kokkos_version(version::Union{Nothing, Missing, String})
 end
 
 
-function set_kokkos_path(path::Union{Nothing, Missing, String})
+function set_kokkos_path(path::Union{Nothing, Missing, AbstractString})
     @set_preferences!("kokkos_path" => path)
     if !is_kokkos_wrapper_loaded()
         global KOKKOS_PATH = @load_preference("kokkos_path", LOCAL_KOKKOS_DIR)
@@ -31,7 +31,7 @@ function set_kokkos_path(path::Union{Nothing, Missing, String})
 end
 
 
-function set_cmake_options(options::Union{Nothing, Missing, Vector{String}})
+function set_cmake_options(options::Union{Nothing, Missing, Vector{<:AbstractString}})
     @set_preferences!("cmake_options" => options)
     if !is_kokkos_wrapper_loaded()
         global KOKKOS_CMAKE_OPTIONS = @load_preference("cmake_options", __DEFAULT_KOKKOS_CMAKE_OPTIONS)
@@ -44,7 +44,7 @@ function set_cmake_options(options::Union{Nothing, Missing, Vector{String}})
 end
 
 
-function set_kokkos_options(options::Union{Nothing, Missing, Vector{String}})
+function set_kokkos_options(options::Union{Nothing, Missing, Vector{<:AbstractString}})
     @set_preferences!("kokkos_options" => options)
     if !is_kokkos_wrapper_loaded()
         global KOKKOS_LIB_OPTIONS = @load_preference("kokkos_options", __DEFAULT_KOKKOS_LIB_OPTIONS)
@@ -68,7 +68,7 @@ function set_kokkos_options(options::Dict{String, <:Any})
 end
 
 
-function set_backends(backends::Union{Nothing, Missing, Vector{String}})
+function set_backends(backends::Union{Nothing, Missing, Vector{<:AbstractString}})
     @set_preferences!("backends" => backends)
     if !is_kokkos_wrapper_loaded()
         global KOKKOS_BACKENDS = @load_preference("backends", __DEFAULT_KOKKOS_BACKENDS)
@@ -99,7 +99,7 @@ function set_view_dims(dims::Union{Nothing, Missing, Vector{Int}})
 end
 
 
-function set_view_types(types::Union{Nothing, Missing, Vector{String}})
+function set_view_types(types::Union{Nothing, Missing, Vector{<:AbstractString}})
     @set_preferences!("view_types" => types)
     if !is_kokkos_wrapper_loaded()
         global KOKKOS_VIEW_TYPES = @load_preference("view_types", __DEFAULT_KOKKOS_VIEW_TYPES)
@@ -114,7 +114,7 @@ end
 set_view_types(types::Vector{DataType}) = set_view_types(string.(nameof.(types)))
 
 
-function set_view_layouts(layouts::Union{Nothing, Missing, Vector{String}})
+function set_view_layouts(layouts::Union{Nothing, Missing, Vector{<:AbstractString}})
     @set_preferences!("view_layouts" => layouts)
     if !is_kokkos_wrapper_loaded()
         global KOKKOS_VIEW_LAYOUTS = @load_preference("view_layouts", __DEFAULT_KOKKOS_VIEW_LAYOUTS)
@@ -131,11 +131,11 @@ function set_view_layouts(layouts::Vector{DataType})
     # Transform the types to the names as described in the docs
     layouts_str = layouts .|> nameof .|> string .|> lowercase
     layouts_str = chop.(layouts_str; head=length("Layout"), tail=0)  # Remove the leading 'Layout'
-    return set_view_layouts(string.(layouts_str))
+    return set_view_layouts(layouts_str)
 end
 
 
-function set_build_type(build_type::Union{Nothing, Missing, String})
+function set_build_type(build_type::Union{Nothing, Missing, AbstractString})
     @set_preferences!("build_type" => build_type)
     if !is_kokkos_wrapper_loaded()
         global KOKKOS_BUILD_TYPE = @load_preference("build_type", __DEFAULT_KOKKOS_BUILD_TYPE)
@@ -148,7 +148,7 @@ function set_build_type(build_type::Union{Nothing, Missing, String})
 end
 
 
-function set_build_dir(build_dir::Union{Nothing, Missing, String})
+function set_build_dir(build_dir::Union{Nothing, Missing, AbstractString})
     @set_preferences!("build_dir" => build_dir)
     if !is_kokkos_wrapper_loaded()
         global KOKKOS_BUILD_DIR = @load_preference("build_dir", __DEFAULT_KOKKOS_BUILD_DIR)
