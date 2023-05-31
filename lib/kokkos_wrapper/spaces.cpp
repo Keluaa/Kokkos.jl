@@ -9,7 +9,7 @@
 template<typename Space>
 void register_space(jlcxx::Module& mod, jl_module_t* spaces_module)
 {
-    const std::string main_type_name = SpaceInfo<Space>::julia_name;
+    const std::string main_type_name = std::string(SpaceInfo<Space>::julia_name);
     const std::string impl_type_name = main_type_name + "Impl";
 
     // Manual 'mod.map_type' for 'SpaceInfo<Space>' since the type is in another module
@@ -66,7 +66,7 @@ void post_register_space(jlcxx::Module& mod)
 template<typename T>
 jl_datatype_t* get_julia_main_type(jl_module_t* spaces_module)
 {
-    return (jl_datatype_t*) jl_get_global(spaces_module, jl_symbol(SpaceInfo<T>::julia_name));
+    return (jl_datatype_t*) jl_get_global(spaces_module, jl_symbol(SpaceInfo<T>::julia_name.data()));
 }
 
 

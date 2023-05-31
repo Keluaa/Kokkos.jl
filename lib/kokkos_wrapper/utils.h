@@ -242,4 +242,28 @@ constexpr auto filter_types(Functor&& f, TList<T...>)
 }
 
 
+template<typename T, std::size_t N, std::size_t... I>
+constexpr std::array<T, N> make_array(T (&a)[N], std::index_sequence<I...>)
+{
+    return { {a[I]...} };
+}
+
+
+/**
+ * Creates a `std::array<T, N>` from a C array reference. Supports inlined C arrays of size 0 if `T` is specified.
+ */
+template<typename T, std::size_t N = 0L, typename arg_t = std::enable_if_t<(N > 0L), T(&)[N]>>
+constexpr std::array<T, N> make_array(arg_t a)
+{
+    return make_array(a, std::make_index_sequence<N>{});
+}
+
+
+template<typename T, std::size_t N = 0L, typename arg_t = std::enable_if_t<(N == 0L), T>>
+constexpr std::array<T, 0> make_array(arg_t)
+{
+    return {};
+}
+
+
 #endif //KOKKOS_WRAPPER_UTILS_H

@@ -12,7 +12,7 @@ template<>
 struct SpaceInfo<Kokkos::HostSpace>
 {
     using space = Kokkos::HostSpace;
-    static constexpr const char* julia_name = "HostSpace";
+    static constexpr std::string_view julia_name = "HostSpace";
 };
 
 #ifdef KOKKOS_ENABLE_CUDA
@@ -20,14 +20,14 @@ template<>
 struct SpaceInfo<Kokkos::CudaSpace>
 {
     using space = Kokkos::CudaSpace;
-    static constexpr const char* julia_name = "CudaSpace";
+    static constexpr std::string_view julia_name = "CudaSpace";
 };
 
 template<>
 struct SpaceInfo<Kokkos::CudaHostPinnedSpace>
 {
     using space = Kokkos::CudaHostPinnedSpace;
-    static constexpr const char* julia_name = "CudaHostPinnedSpace";
+    static constexpr std::string_view julia_name = "CudaHostPinnedSpace";
 };
 
 #if (KOKKOS_VERSION >= 40000) || defined(KOKKOS_ENABLE_CUDA_UVM)
@@ -36,7 +36,7 @@ template<>
 struct SpaceInfo<Kokkos::CudaUVMSpace>
 {
     using space = Kokkos::CudaUVMSpace;
-    static constexpr const char* julia_name = "CudaUVMSpace";
+    static constexpr std::string_view julia_name = "CudaUVMSpace";
 };
 #endif // (KOKKOS_VERSION >= 40000) || defined(KOKKOS_ENABLE_CUDA_UVM)
 #endif // KOKKOS_ENABLE_CUDA
@@ -52,21 +52,21 @@ template<>
 struct SpaceInfo<Kokkos_HIP::HIPSpace>
 {
     using space = Kokkos_HIP::HIPSpace;
-    static constexpr const char* julia_name = "HIPSpace";
+    static constexpr std::string_view julia_name = "HIPSpace";
 };
 
 template<>
 struct SpaceInfo<Kokkos_HIP::HIPHostPinnedSpace>
 {
     using space = Kokkos_HIP::HIPHostPinnedSpace;
-    static constexpr const char* julia_name = "HIPHostPinnedSpace";
+    static constexpr std::string_view julia_name = "HIPHostPinnedSpace";
 };
 
 template<>
 struct SpaceInfo<Kokkos_HIP::HIPManagedSpace>
 {
     using space = Kokkos_HIP::HIPManagedSpace;
-    static constexpr const char* julia_name = "HIPManagedSpace";
+    static constexpr std::string_view julia_name = "HIPManagedSpace";
 };
 #endif // KOKKOS_ENABLE_HIP
 
