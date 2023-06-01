@@ -174,9 +174,6 @@ KOKKOS_LIB_PATH = nothing
 KOKKOS_LIB = nothing
 
 
-is_kokkos_wrapper_compiled() = !isnothing(KOKKOS_LIB_PATH)
-
-
 """
     get_kokkos_build_dir()
 
@@ -228,7 +225,8 @@ processes.
 """
 function load_wrapper_lib(; no_compilation=false, no_git=false, loading_bar=true)
     !isnothing(KOKKOS_LIB) && return
-    !is_kokkos_wrapper_compiled() && compile_wrapper_lib(; no_compilation, no_git, loading_bar)
+
+    compile_wrapper_lib(; no_compilation, no_git, loading_bar)
 
     @debug "Loading the Kokkos Wrapper library..."
 
