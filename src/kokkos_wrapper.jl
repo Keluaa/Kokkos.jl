@@ -143,7 +143,8 @@ function create_kokkos_lib_project(; no_git=false)
     end
 
     return CMakeKokkosProject(joinpath(@__DIR__, "../lib/kokkos_wrapper"), "libKokkosWrapper";
-        build_dir, build_type = KOKKOS_BUILD_TYPE, cmake_options, kokkos_path, kokkos_options
+        build_dir, build_type = KOKKOS_BUILD_TYPE, cmake_options, kokkos_path, kokkos_options,
+        inherit_options = false
     )
 end
 

@@ -242,7 +242,8 @@ end
         build_dir = joinpath(source_dir, "cmake-build-\$(lowercase(build_type))"),
         cmake_options = [],
         kokkos_path = nothing,
-        kokkos_options = nothing
+        kokkos_options = nothing,
+        inherit_options = true
     )
 
 Construct a new Kokkos project in `source_dir` built to `build_dir` using CMake.
@@ -276,6 +277,10 @@ Values of type `Bool` are converted to "ON" and "OFF", all other types directly 
 strings.
 Each variable is then passed to CMake as `"-D\$(name)=\$(value)"`.
 
+If `inherit_options` is `true`, the `cmake_options` of the Kokkos wrapper project will be appended
+at the front of the new project's `cmake_options`.
+`kokkos_options` are not inherited here since Kokkos's CMake mechanisms do this automatically.
+
 All commands are invoked from the current working directory.
 """
 function CMakeKokkosProject(source_dir, target_lib_path;
@@ -284,7 +289,8 @@ function CMakeKokkosProject(source_dir, target_lib_path;
     build_dir = joinpath(source_dir, "cmake-build-$(lowercase(build_type))"),
     cmake_options = String[],
     kokkos_path = nothing,
-    kokkos_options = nothing
+    kokkos_options = nothing,
+    inherit_options = true
 )
     source_dir = normpath(source_dir)
     build_dir = normpath(build_dir)
@@ -321,6 +327,15 @@ function CMakeKokkosProject(source_dir, target_lib_path;
     end
 
     new_kokkos_options = Dict{String, String}()
+
+    if inherit_options
+        if isnothing(KokkosWrapper.KOKKOS_LIB_PROJECT)
+            error("cannot inherit options: the Kokkos wrapper project is not set up. \
+                   Call one of `Kokkos.load_wrapper_lib` or `Kokkos.initialize` first.")
+        end
+        pushfirst!(cmake_options, KokkosWrapper.KOKKOS_LIB_PROJECT.cmake_options...)
+    end
+
     for (name, value) in something(kokkos_options, ())
         if value isa Bool
             new_kokkos_options[name] = value ? "ON" : "OFF"
