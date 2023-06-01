@@ -6,6 +6,10 @@
 #include "execution_spaces.h"
 #include "utils.h"
 
+#ifndef WITHOUT_EXEC_SPACE_ARG
+#define WITHOUT_EXEC_SPACE_ARG 0
+#endif
+
 
 struct NoExecSpaceArg {};
 
@@ -35,16 +39,22 @@ struct DeepCopyDetectorNoExecSpace
 void register_all_deep_copy_combinations(jlcxx::Module& mod)
 {
     auto combinations = build_all_combinations<
-            decltype(TList<NoExecSpaceArg>{} + ExecutionSpaceList{}),
+#if defined(COMPLETE_BUILD) && COMPLETE_BUILD == 1
+            decltype(TList<NoExecSpaceArg>{} + FilteredExecutionSpaceList{}),
+#elif WITHOUT_EXEC_SPACE_ARG == 1
+            decltype(FilteredExecutionSpaceList{}),
+#else
+            decltype(TList<NoExecSpaceArg>{}),
+#endif
             decltype(tlist_from_sequence(DimensionsToInstantiate{})),
             TList<VIEW_TYPES>,
             LayoutList,
-            MemorySpacesList
+            FilteredMemorySpaceList
     >();
 
     auto src_combinations = build_all_combinations<
             LayoutList,
-            MemorySpacesList
+            FilteredMemorySpaceList
     >();
 
     apply_to_all(combinations, [&](auto combination)

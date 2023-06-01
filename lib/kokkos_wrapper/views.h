@@ -3,9 +3,7 @@
 #define KOKKOS_WRAPPER_VIEWS_H
 
 #include "kokkos_wrapper.h"
-
 #include "layouts.h"
-
 
 #if !defined(COMPLETE_BUILD) || COMPLETE_BUILD == 0
 #include "parameters.h"

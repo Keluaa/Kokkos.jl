@@ -7,6 +7,10 @@
 
 #include "Kokkos_Core.hpp"
 
+#if !defined(COMPLETE_BUILD) || COMPLETE_BUILD == 0
+#include "parameters.h"
+#endif
+
 
 #ifdef KOKKOS_ENABLE_SERIAL
 template<>

@@ -12,6 +12,9 @@ Julia:
  - we cannot unload the Kokkos library anymore (simpler to handle)
  - there is a possibility that we need to load the libs from the main kokkos library, to make sure all symbols are resolved correctly (I don't think so)
 
+ => USE @ccall !!! => It can simplify some things because of this feature: https://docs.julialang.org/en/v1/manual/calling-c-and-fortran-code/#Indirect-Calls
+
+
  => `Kokkos.KokkosWrapper.get_symbol_for_prototype` should transform any C++ function name + Julia types into a symbol
     which name will be the one of the exported C++ function once compiled
     - it should not rely on non-compile-time values

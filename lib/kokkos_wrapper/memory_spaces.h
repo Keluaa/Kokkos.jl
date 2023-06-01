@@ -7,6 +7,10 @@
 
 #include "Kokkos_Core.hpp"
 
+#if !defined(COMPLETE_BUILD) || COMPLETE_BUILD == 0
+#include "parameters.h"
+#endif
+
 
 template<>
 struct SpaceInfo<Kokkos::HostSpace>
@@ -98,6 +102,17 @@ using MemorySpacesList = TList<
 //        , Kokkos::Experimental::SYCLHostUSMSpace
 #endif // KOKKOS_ENABLE_SYCL
 >;
+
+
+#ifndef MEM_SPACE_FILTER
+#define MEM_SPACE_FILTER
+#endif
+
+
+constexpr const std::array mem_space_filters = make_array<const char*>({ MEM_SPACE_FILTER });
+
+using FilteredMemorySpaceList = decltype(filter_spaces<mem_space_filters.size(), mem_space_filters>(MemorySpacesList{}));
+
 
 
 #endif //KOKKOS_WRAPPER_MEMORY_SPACES_H
