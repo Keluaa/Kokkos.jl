@@ -1,7 +1,7 @@
 name = "Kokkos"
 uuid = "3296cea9-b0de-4b57-aba0-ce554b517c3b"
 authors = ["Keluaa <34173752+Keluaa@users.noreply.github.com> and contributors"]
-version = "0.4.0"
+version = "0.4.1"
 
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
