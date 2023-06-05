@@ -116,8 +116,15 @@ function create_kokkos_lib_project(; no_git=false)
 
     cmake_options = [
         "-DCMAKE_INSTALL_PREFIX=$install_dir",
+        # Kokkos build options
+        # Required: else Kokkos is statically linked, as well as any library built
+        # afterwards. This will create a nasty invisible problem where a process could have several
+        # Kokkos independent runtimes: therefore shared libs is a must.
+        "-DBUILD_SHARED_LIBS=ON",
+        # CxxWrap options
         "-DJulia_EXECUTABLE=$julia_exe_path",
         "-DJlCxx_ROOT=$jlcxx_root",
+        # Wrapper options
         "-DVIEW_DIMENSIONS='" * join(KOKKOS_VIEW_DIMS, ",") * "'",
         "-DVIEW_TYPES='" * join(c_view_types, ",") * "'",
         "-DVIEW_LAYOUTS='" * join(KOKKOS_VIEW_LAYOUTS, ",") * "'"

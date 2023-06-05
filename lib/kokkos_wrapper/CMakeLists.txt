@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.22)
 project(KokkosWrapper)
 
 if(NOT DEFINED CMAKE_CXX_STANDARD)
@@ -7,6 +7,11 @@ endif()
 
 if(NOT DEFINED CMAKE_CXX_EXTENSIONS)
     set(CMAKE_CXX_EXTENSIONS OFF)
+endif()
+
+if(NOT DEFINED CMAKE_INSTALL_MODE)
+    # Symlinks are faster to create than copies. This should reduce initialization time.
+    set(CMAKE_INSTALL_MODE ABS_SYMLINK_OR_COPY)
 endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)  # Needed to include the Kokkos libs in the shared library

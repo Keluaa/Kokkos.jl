@@ -83,6 +83,17 @@ If your project uses Kokkos in-tree, you have several options:
  - change it to `add_subdirectory(${Kokkos_ROOT} lib/kokkos)` (the second argument is arbitrary)
 
 
+!!! warning
+
+    All libraries should use Kokkos as a shared library. To do this the cmake option
+    `"BUILD_SHARED_LIBS"` must be `"ON"`.
+    Failing to do so will statically link Kokkos to your library, which therefore will not share the
+    same environment as the kokkos wrapper library.
+    This error is invisible in most backends but will create errors in others (like Cuda).
+    When creating a project with a [`CMakeKokkosProject`](@ref), `"BUILD_SHARED_LIBS"` will be
+    properly set to `"ON"`.
+
+
 ## Loading the wrapper library of `Kokkos.jl`
 
 `Kokkos.jl` relies on a wrapper library written in C++ to compile all possible combinations of
@@ -123,7 +134,7 @@ be configured with [build_dir](@ref).
 It is recommended to build the project files to the same directory, by using the
 `Kokkos.KOKKOS_BUILD_DIR` variable.
 In order for the [Configuration Options](@ref) to be passed correctly, you should use a
-`CMakeKokkosProject`:
+[`CMakeKokkosProject`](@ref):
 
 ```julia-repl
 julia> my_lib_path = "./path/to/mylib/project"
