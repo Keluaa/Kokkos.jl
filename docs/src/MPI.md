@@ -40,9 +40,30 @@ MPI.Barrier(MPI.COMM_WORLD)
 lib = load_lib(my_project)
 ```
 
-If configuration options need to be changed before initializing Kokkos, then it is preferable to
-perform the changes on the root process before `using Kokkos` is called on the others, since
-changing options will modify the `LocalPreferrences.toml` file.
+If configuration options need to be changed before initializing Kokkos, then they must be changed by
+the root process, since changing options will modify the `LocalPreferrences.toml` file.
+Configuration options only affect how the wrapper library is compiled, therefore there is no need to
+synchronize them on all processes, apart from one: [`build_dir`](@ref), which __MUST__ be the same
+on all processes.
+Passing `local_only=true` to `Kokkos.set_build_dir` for non-root processes will not affect the
+`LocalPreferrences.toml` file.
+The new workflow then looks like this:
+
+```julia
+rank = MPI.Comm_rank(MPI.COMM_WORLD)
+if rank == 0
+    Kokkos.set_view_types(my_view_types)
+    # set other config options...
+    Kokkos.set_build_dir(my_build_dir)
+    Kokkos.load_wrapper_lib()
+else
+    Kokkos.set_build_dir(my_build_dir; local_only=true)
+end
+
+MPI.Barrier(MPI.COMM_WORLD)
+
+rank != 0 && Kokkos.load_wrapper_lib(; no_compilation=true, no_git=true)
+```
 
 
 ## Passing views to MPI

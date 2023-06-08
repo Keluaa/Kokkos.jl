@@ -148,7 +148,13 @@ function set_build_type(build_type::Union{Nothing, Missing, AbstractString})
 end
 
 
-function set_build_dir(build_dir::Union{Nothing, Missing, AbstractString})
+function set_build_dir(build_dir::Union{Nothing, Missing, AbstractString}; local_only=false)
+    if local_only
+        # KOKKOS_BUILD_DIR is the only option which should be set on all processes in a MPI app
+        global KOKKOS_BUILD_DIR = build_dir
+        return KOKKOS_BUILD_DIR
+    end
+
     @set_preferences!("build_dir" => build_dir)
     if !is_kokkos_wrapper_loaded()
         global KOKKOS_BUILD_DIR = @load_preference("build_dir", __DEFAULT_KOKKOS_BUILD_DIR)
