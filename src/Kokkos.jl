@@ -1,5 +1,6 @@
 module Kokkos
 
+using Printf
 using CxxWrap
 using Libdl
 using Preferences
@@ -24,7 +25,7 @@ __get_project_build_dir(name) = joinpath(dirname(Base.active_project()), name)
 
 
 # Configuration options
-const __DEFAULT_KOKKOS_VERSION_STR   = "4.0.00"  # Must be a valid tag in the Kokkos repo
+const __DEFAULT_KOKKOS_VERSION_STR   = "4.0.00"  # Must be a valid tag in the Kokkos repo (patch must be 2 digits)
 const __DEFAULT_KOKKOS_CMAKE_OPTIONS = []
 const __DEFAULT_KOKKOS_LIB_OPTIONS   = []
 const __DEFAULT_KOKKOS_BACKENDS      = ["Serial", "OpenMP"]

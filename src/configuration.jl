@@ -3,6 +3,10 @@ HAS_CONFIGURATION_CHANGED = false
 
 
 function set_kokkos_version(version::Union{Nothing, Missing, String})
+    if version isa String && findlast('.', version) != length(version) - 2
+        error("Invalid Kokkos version. The version must be a valid tag in the Kokkos repo: \
+               the patch version must have two digits. Use '3.7.02' and not '3.7.2'.")
+    end
     @set_preferences!("kokkos_version" => version)
     if !is_kokkos_wrapper_loaded()
         global LOCAL_KOKKOS_VERSION_STR = @load_preference("kokkos_version", __DEFAULT_KOKKOS_VERSION_STR)
@@ -15,6 +19,11 @@ function set_kokkos_version(version::Union{Nothing, Missing, String})
                Note that the version is only used if 'kokkos_path' is not set."
     end
     return LOCAL_KOKKOS_VERSION_STR
+end
+
+
+function set_kokkos_version(version::VersionNumber)
+    return set_kokkos_version(@sprintf("%d.%d.%02d", version.major, version.minor, version.patch))
 end
 
 
