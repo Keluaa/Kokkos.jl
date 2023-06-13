@@ -1,4 +1,4 @@
-module KokkosWrapper
+module Wrapper
 
 using libcxxwrap_julia_jll
 using LibGit2
@@ -245,7 +245,7 @@ function load_wrapper_lib(; no_compilation=false, no_git=false, loading_bar=true
         @wrapmodule($KOKKOS_LIB_PATH, :define_kokkos_module)
     end)
 
-    Kokkos = parentmodule(KokkosWrapper)
+    Kokkos = parentmodule(Wrapper)
     Kokkos.__init_vars()
     Kokkos.Spaces.__init_vars()
     Kokkos.Views.__init_vars()

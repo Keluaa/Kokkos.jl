@@ -23,7 +23,7 @@ v1 = View{Float64}(n1)
 @test v1 isa View{Float64, 1, <:Kokkos.Layout}
 @test v1 isa View{Float64, 1, Kokkos.LayoutRight}
 @test v1 isa View{Float64, 1, Kokkos.LayoutRight, <:Kokkos.HostSpace}
-@test v1 isa Kokkos.KokkosWrapper.Impl.View1D_R_HostAllocated{Float64}
+@test v1 isa Kokkos.Wrapper.Impl.View1D_R_HostAllocated{Float64}
 @test v1 isa AbstractArray
 @test v1 isa AbstractArray{Float64}
 @test v1 isa AbstractArray{Float64, 1}
@@ -186,7 +186,7 @@ end
 @test_throws @error_match("`Int32` is not compiled") View{Int32}(undef, n1)
 @test_throws @error_match("`Kokkos.View3D` cannot") View{Int64}(undef, (2, 2, 2))
 @test_throws @error_match("CudaSpace is not compiled") View{Int64}(undef, n1; mem_space=Kokkos.CudaSpace)
-@test_throws @error_match("`mem_space` kwarg") View{Float64, 1, Kokkos.LayoutLeft, Kokkos.KokkosWrapper.Impl.HostSpaceImplDereferenced}(undef, n1; mem_space=Kokkos.HostSpace)
+@test_throws @error_match("`mem_space` kwarg") View{Float64, 1, Kokkos.LayoutLeft, Kokkos.Wrapper.Impl.HostSpaceImplDereferenced}(undef, n1; mem_space=Kokkos.HostSpace)
 @test_throws @error_match("Kokkos.Views.LayoutLeft type") View{Float64, 1, Kokkos.LayoutLeft}(undef, n1; layout=Kokkos.LayoutRight)
 @test_throws @error_match("requires a instance") View{Float64}(undef, n1; layout=Kokkos.LayoutStride)
 

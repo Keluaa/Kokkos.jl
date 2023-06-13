@@ -144,7 +144,7 @@ Can be called before the wrapper library is loaded.
 function is_initialized()
     !is_kokkos_wrapper_loaded() && return false
     # Defined in 'kokkos_wrapper.cpp', in 'define_kokkos_module'
-    return Kokkos.KokkosWrapper.Impl.is_initialized()
+    return Kokkos.Wrapper.Impl.is_initialized()
 end
 
 
@@ -158,7 +158,7 @@ Can be called before the wrapper library is loaded.
 function is_finalized()
     !is_kokkos_wrapper_loaded() && return false
     # Defined in 'kokkos_wrapper.cpp', in 'define_kokkos_module'
-    return Kokkos.KokkosWrapper.Impl.is_finalized()
+    return Kokkos.Wrapper.Impl.is_finalized()
 end
 
 
@@ -225,7 +225,7 @@ function versioninfo(io::IO = stdout; internal=true, verbose=false)
         println(io, " (path: $(KOKKOS_PATH))")
     end
     println(io, "Kokkos installation dir: ", get_kokkos_install_dir())
-    println(io, "Wrapper library compiled at ", build_dir(KokkosWrapper.KOKKOS_LIB_PROJECT))
+    println(io, "Wrapper library compiled at ", build_dir(Wrapper.KOKKOS_LIB_PROJECT))
     println(io, "\nCompiled execution spaces:")
     for space in COMPILED_EXEC_SPACES
         println(io, " - $(nameof(space)) (default memory space: $(nameof(memory_space(space))))")

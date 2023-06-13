@@ -54,7 +54,7 @@ KOKKOS_BUILD_DIR     = @load_preference("build_dir",      __DEFAULT_KOKKOS_BUILD
 
 Return `true` if [`load_wrapper_lib`](@ref) has been called.
 """
-is_kokkos_wrapper_loaded() = !isnothing(KokkosWrapper.KOKKOS_LIB)
+is_kokkos_wrapper_loaded() = !isnothing(Wrapper.KOKKOS_LIB)
 
 function ensure_kokkos_wrapper_loaded()
     if !is_kokkos_wrapper_loaded()
@@ -69,7 +69,7 @@ include("kokkos_lib.jl")
 include("utils.jl")
 
 include("kokkos_wrapper.jl")
-using .KokkosWrapper
+using .Wrapper
 
 include("spaces.jl")
 using .Spaces

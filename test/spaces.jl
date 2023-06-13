@@ -45,16 +45,16 @@ end
 @test Kokkos.kokkos_name(Kokkos.HostSpace) == "Host"
 
 @test Kokkos.main_space_type(Kokkos.Serial) === Kokkos.Serial
-@test Kokkos.main_space_type(Kokkos.KokkosWrapper.Impl.SerialImpl) === Kokkos.Serial
-@test Kokkos.main_space_type(Kokkos.KokkosWrapper.Impl.SerialImplAllocated) === Kokkos.Serial
-@test Kokkos.main_space_type(Kokkos.KokkosWrapper.Impl.SerialImplDereferenced) === Kokkos.Serial
+@test Kokkos.main_space_type(Kokkos.Wrapper.Impl.SerialImpl) === Kokkos.Serial
+@test Kokkos.main_space_type(Kokkos.Wrapper.Impl.SerialImplAllocated) === Kokkos.Serial
+@test Kokkos.main_space_type(Kokkos.Wrapper.Impl.SerialImplDereferenced) === Kokkos.Serial
 
 @test_throws @error_match("must be a subtype") Kokkos.main_space_type(Kokkos.Space)
 @test_throws @error_match("must be a subtype") Kokkos.main_space_type(Kokkos.MemorySpace)
 @test_throws @error_match("must be a subtype") Kokkos.main_space_type(Kokkos.ExecutionSpace)
 
-@test Kokkos.impl_space_type(Kokkos.Serial) === Kokkos.KokkosWrapper.Impl.SerialImpl
-@test Kokkos.impl_space_type(Kokkos.HostSpace) === Kokkos.KokkosWrapper.Impl.HostSpaceImpl
+@test Kokkos.impl_space_type(Kokkos.Serial) === Kokkos.Wrapper.Impl.SerialImpl
+@test Kokkos.impl_space_type(Kokkos.HostSpace) === Kokkos.Wrapper.Impl.HostSpaceImpl
 
 @test_throws @error_match("is not compiled") Kokkos.impl_space_type(TEST_UNAVAILABLE_BACKEND)
 

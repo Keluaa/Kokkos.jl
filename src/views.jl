@@ -210,10 +210,10 @@ julia> view_t = Kokkos.View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}
 Kokkos.Views.View{Float64, 2, Kokkos.Views.LayoutRight, Kokkos.Spaces.HostSpace}
 
 julia> view_impl_t = Kokkos.impl_view_type(view_t)
-Kokkos.KokkosWrapper.Impl.View2D_R_HostAllocated{Float64}
+Kokkos.Wrapper.Impl.View2D_R_HostAllocated{Float64}
 
 julia> supertype(supertype(view_impl_t))
-Kokkos.Views.View{Float64, 2, Kokkos.Views.LayoutRight, Kokkos.KokkosWrapper.Impl.HostSpaceImplAllocated}
+Kokkos.Views.View{Float64, 2, Kokkos.Views.LayoutRight, Kokkos.Wrapper.Impl.HostSpaceImplAllocated}
 
 julia> view_impl_t <: view_t  # Julia types are contra-variant
 false
@@ -277,17 +277,17 @@ memory_space(::View{T, D, L, MemSpace}) where {T, D, L, MemSpace} = main_space_t
     dst::View{T, D, Dst_L, Dst_S},
     src::View{T, D, Src_L, Src_S}
 ) where {T, D, Dst_L, Dst_S, Src_L, Src_S}
-    func_sym = Kokkos.KokkosWrapper.get_symbol_for_prototype(
+    func_sym = Kokkos.Wrapper.get_symbol_for_prototype(
         :deep_copy,
         Cvoid,
         (View{T, D, Dst_L, Dst_S}, View{T, D, Src_L, Src_S})
     )
 
     return quote
-        func_ptr = Kokkos.KokkosWrapper.get_function_ptr($(func_sym))
+        func_ptr = Kokkos.Wrapper.get_function_ptr($(func_sym))
 
         if func_ptr === nothing
-            func_ptr = Kokkos.KokkosWrapper.compile_and_load_function(
+            func_ptr = Kokkos.Wrapper.compile_and_load_function(
                 $(func_sym);
                 view_types = (T,), view_dims = (D,), view_layouts = (Src_L, Dst_L),
                 mem_spaces = (Dst_S, Src_S), exec_spaces = ()
@@ -409,26 +409,26 @@ julia> v = Kokkos.View{Float64}(undef, 4, 4);
 julia> v[:] .= collect(1:length(v));
 
 julia> v
-4×4 Kokkos.KokkosWrapper.Impl.View2D_R_HostAllocated{Float64}:
+4×4 Kokkos.Wrapper.Impl.View2D_R_HostAllocated{Float64}:
  1.0  5.0   9.0  13.0
  2.0  6.0  10.0  14.0
  3.0  7.0  11.0  15.0
  4.0  8.0  12.0  16.0
 
 julia> Kokkos.subview(v, (2:3, 2:3))
-2×2 Kokkos.KokkosWrapper.Impl.View2D_R_HostAllocated{Float64}:
+2×2 Kokkos.Wrapper.Impl.View2D_R_HostAllocated{Float64}:
  6.0  10.0
  7.0  11.0
 
 julia> Kokkos.subview(v, (:, 1))  # The subview may change its layout to `LayoutStride` 
-4-element Kokkos.KokkosWrapper.Impl.View1D_S_HostAllocated{Float64}:
+4-element Kokkos.Wrapper.Impl.View1D_S_HostAllocated{Float64}:
  1.0
  2.0
  3.0
  4.0
 
 julia> Kokkos.subview(v, (1,))  # Equivalent to `(1, :)`
-4-element Kokkos.KokkosWrapper.Impl.View1D_R_HostAllocated{Float64}:
+4-element Kokkos.Wrapper.Impl.View1D_R_HostAllocated{Float64}:
   1.0
   5.0
   9.0
