@@ -3,7 +3,7 @@ module Views
 using CxxWrap
 import ..Kokkos: DynamicCompilation
 import ..Kokkos: ExecutionSpace, MemorySpace, HostSpace
-import ..Kokkos: COMPILED_MEM_SPACES, DEFAULT_DEVICE_MEM_SPACE, DEFAULT_HOST_MEM_SPACE, Idx
+import ..Kokkos: ENABLED_MEM_SPACES, DEFAULT_DEVICE_MEM_SPACE, DEFAULT_HOST_MEM_SPACE, Idx
 import ..Kokkos: ensure_kokkos_wrapper_loaded, get_impl_module
 import ..Kokkos: memory_space, execution_space, accessible, array_layout, main_space_type, finalize
 

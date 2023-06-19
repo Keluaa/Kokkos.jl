@@ -6,7 +6,7 @@ import ..Kokkos: ensure_kokkos_wrapper_loaded, fence, get_impl_module
 export Space, ExecutionSpace, MemorySpace
 export Serial, OpenMP, OpenACC, OpenMPTarget, Threads, Cuda, HIP, HPX, SYCL
 export HostSpace, CudaSpace, CudaHostPinnedSpace, CudaUVMSpace, HIPSpace, HIPHostPinnedSpace, HIPManagedSpace
-export COMPILED_EXEC_SPACES, COMPILED_MEM_SPACES
+export ENABLED_EXEC_SPACES, ENABLED_MEM_SPACES
 export DEFAULT_DEVICE_SPACE, DEFAULT_HOST_SPACE, DEFAULT_DEVICE_MEM_SPACE, DEFAULT_HOST_MEM_SPACE
 export SHARED_MEMORY_SPACE, SHARED_HOST_PINNED_MEMORY_SPACE, Idx
 export memory_space, execution_space, enabled, kokkos_name
@@ -277,13 +277,13 @@ function deallocate end
 
 # Defined in 'spaces.cpp', in 'register_all'
 """
-    COMPILED_EXEC_SPACES::Tuple{Vararg{Type{<:ExecutionSpace}}}
+    ENABLED_EXEC_SPACES::Tuple{Vararg{Type{<:ExecutionSpace}}}
 
-List of all compiled Kokkos execution spaces.
+List of all enabled Kokkos execution spaces.
 
 `nothing` if Kokkos is not yet loaded.
 """
-COMPILED_EXEC_SPACES = nothing
+ENABLED_EXEC_SPACES = nothing
 
 
 # Defined in 'spaces.cpp', in 'define_execution_spaces_functions'
@@ -314,13 +314,13 @@ DEFAULT_HOST_SPACE = nothing
 
 # Defined in 'spaces.cpp', in 'register_all'
 """
-    COMPILED_MEM_SPACES::Tuple{Vararg{Type{<:MemorySpace}}}
+    ENABLED_MEM_SPACES::Tuple{Vararg{Type{<:MemorySpace}}}
 
-List of all compiled Kokkos execution spaces.
+List of all enabled Kokkos memory spaces.
 
 `nothing` if Kokkos is not yet loaded.
 """
-COMPILED_MEM_SPACES = nothing
+ENABLED_MEM_SPACES = nothing
 
 
 # Defined in 'spaces.cpp', in 'define_memory_spaces_functions'
@@ -450,10 +450,10 @@ end
 
 function __init_vars()
     impl = get_impl_module()
-    global COMPILED_EXEC_SPACES = Base.invokelatest(impl.__compiled_exec_spaces)
+    global ENABLED_EXEC_SPACES = Base.invokelatest(impl.__compiled_exec_spaces)
     global DEFAULT_DEVICE_SPACE = Base.invokelatest(impl.__default_device_space)
     global DEFAULT_HOST_SPACE = Base.invokelatest(impl.__default_host_space)
-    global COMPILED_MEM_SPACES = Base.invokelatest(impl.__compiled_mem_spaces)
+    global ENABLED_MEM_SPACES = Base.invokelatest(impl.__compiled_mem_spaces)
     global DEFAULT_DEVICE_MEM_SPACE = Base.invokelatest(impl.__default_memory_space)
     global DEFAULT_HOST_MEM_SPACE = Base.invokelatest(impl.__default_host_memory_space)
     global SHARED_MEMORY_SPACE = Base.invokelatest(impl.__shared_memory_space)

@@ -222,13 +222,12 @@ function versioninfo(io::IO = stdout; internal=true, verbose=false)
     end
     println(io, "Kokkos installation dir: ", get_kokkos_install_dir())
     println(io, "Wrapper library compiled at ", build_dir(Wrapper.KOKKOS_LIB_PROJECT))
-    # TODO: rename to 'Available ... spaces:' + same for the constants
-    println(io, "\nCompiled execution spaces:")
-    for space in COMPILED_EXEC_SPACES
+    println(io, "\nEnabled execution spaces:")
+    for space in ENABLED_EXEC_SPACES
         println(io, " - $(nameof(space)) (default memory space: $(nameof(memory_space(space))))")
     end
-    println(io, "\nCompiled memory spaces:")
-    for space in COMPILED_MEM_SPACES
+    println(io, "\nEnabled memory spaces:")
+    for space in ENABLED_MEM_SPACES
         println(io, " - $(nameof(space)) (associated execution space: $(nameof(execution_space(space))))")
     end
 
@@ -236,121 +235,6 @@ function versioninfo(io::IO = stdout; internal=true, verbose=false)
         println(io, "\nKokkos internal configuration:")
         print_configuration(io, verbose)
     end
-end
-
-
-requirement_fail(msg, constraint::Base.Fix1, expected) = "$msg: $(constraint.x) $(nameof(constraint.f)) $expected"
-requirement_fail(msg, constraint::Base.Fix2, expected) = "$msg: $expected $(nameof(constraint.f)) $(constraint.x)"
-requirement_fail(msg, constraint::String, expected, value) = "$msg: $expected $constraint $value"
-requirement_fail(msg, args...) = "$msg"
-
-
-function require_config(version, exec_spaces, mem_spaces)
-    failures = []
-
-    if !isnothing(version)
-        if KOKKOS_PATH != LOCAL_KOKKOS_DIR
-            @warn "Cannot check the Kokkos version of a custom installation when Kokkos is not loaded" maxlog=1
-        elseif !version(VersionNumber(LOCAL_KOKKOS_VERSION_STR))
-            push!(failures, requirement_fail("Kokkos version $LOCAL_KOKKOS_VERSION_STR", version, "VERSION"))
-        end
-    end
-
-    if !isnothing(exec_spaces)
-        backends_str = string.(nameof.(exec_spaces))
-        if !issubset(backends_str, KOKKOS_BACKENDS)
-            push!(failures, requirement_fail("execution spaces", "⊈", tuple(backends_str...), KOKKOS_BACKENDS))
-        end
-    end
-
-    if !isnothing(mem_spaces)
-        @warn "Cannot check available memory spaces when Kokkos is not loaded" maxlog=1
-    end
-
-    return failures
-end
-
-
-function require_compiled(version, exec_spaces, mem_spaces)
-    failures = []
-
-    if !isnothing(version) && !version(KOKKOS_VERSION)
-        push!(failures, requirement_fail("Kokkos version $KOKKOS_VERSION", version, "VERSION"))
-    end
-
-    if !isnothing(exec_spaces) && !issubset(exec_spaces, COMPILED_EXEC_SPACES)
-        push!(failures, requirement_fail("execution spaces", "⊈", tuple(exec_spaces...), COMPILED_EXEC_SPACES))
-    end
-
-    if !isnothing(mem_spaces) && !issubset(mem_spaces, COMPILED_MEM_SPACES)
-        push!(failures, requirement_fail("memory spaces", "⊈", tuple(mem_spaces...), COMPILED_MEM_SPACES))
-    end
-
-    return failures
-end
-
-# TODO: remove
-"""
-    require(;
-        version=nothing,
-        exec_spaces=nothing, mem_spaces=nothing,
-        no_error=false
-    )
-
-Asserts that the underlying Kokkos wrapper library of `Kokkos.jl` respects the given requirements.
-
-An argument with a value of `nothing` is considered to have no requirements.
-
-`version` checks for the version of Kokkos. It is given as a callable returning a `Bool` and taking
-a single `VersionNumber`, e.g. passing `version = >=(v"4.0.0")` will match all Kokkos versions
-including `v4.0.0` and above.
-
-`exec_spaces` and `mem_spaces` are lists of the required execution and memory spaces.
-
-If `no_error` is true, then this function will return `false` if any requirement is not met.
-
-This function does not require for Kokkos to be initialized, but for the wrapper library to be
-loaded.
-If the wrapper is not loaded, the configuration options will be checked instead, however they cannot
-cover all possible requirements (`mem_spaces` does not work and `version` works only if the packaged
-Kokkos installation is used).
-
-
-# Examples
-
-```julia
-# Require Kokkos version 4.0.0 (exactly)
-Kokkos.require(;
-    version = ==(v"4.0.0")
-)
-
-# Require the Cuda and OpenMP backends of Kokkos, as well as the Cuda UVM
-# memory space to be available:
-Kokkos.require(;
-    exec_spaces = [Kokkos.Cuda, Kokkos.OpenMP],
-    mem_spaces = [Kokkos.CudaUVMSpace]
-)
-```
-"""
-function require(;
-    version=nothing,
-    exec_spaces=nothing, mem_spaces=nothing,
-    no_error=false
-)
-    if is_kokkos_wrapper_loaded()
-        failures = require_compiled(version, exec_spaces, mem_spaces)
-    else
-        failures = require_config(version, exec_spaces, mem_spaces)
-    end
-
-    if !isempty(failures)
-        no_error && return false
-        config_str = is_kokkos_wrapper_loaded() ? "" : "configuration"
-        length(failures) == 1 && error("$config_str requirement not met for $(first(failures))")
-        error("$config_str requirements not met for:\n" * join(" - " .* failures, "\n"))
-    end
-
-    return true
 end
 
 

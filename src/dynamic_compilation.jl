@@ -228,8 +228,6 @@ function compile_and_load(current_module, cmake_target;
     with_nothing_arg = false,
     subview_dims = nothing
 )
-    # TODO: rename to compile_and_load
-
     view_layouts, view_dims, view_types, 
         exec_spaces, mem_spaces, dest_layouts,
         dest_mem_spaces, subview_dims = __validate_parameters(;
