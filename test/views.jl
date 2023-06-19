@@ -4,10 +4,6 @@ import Kokkos: Idx, View
 
 @test Idx <: Union{UInt64, Int64, UInt32, Int32}
 
-@test Kokkos.COMPILED_DIMS == (1, 2)
-@test Kokkos.COMPILED_TYPES == (Float64, Int64)
-@test Kokkos.COMPILED_LAYOUTS == (Kokkos.LayoutLeft, Kokkos.LayoutRight, Kokkos.LayoutStride)
-
 @test View <: AbstractArray
 @test View{Float64} <: AbstractArray{Float64}
 @test View{Float64, 2} <: AbstractArray{Float64, 2}
@@ -23,7 +19,7 @@ v1 = View{Float64}(n1)
 @test v1 isa View{Float64, 1, <:Kokkos.Layout}
 @test v1 isa View{Float64, 1, Kokkos.LayoutRight}
 @test v1 isa View{Float64, 1, Kokkos.LayoutRight, <:Kokkos.HostSpace}
-@test v1 isa Kokkos.Wrapper.Impl.View1D_R_HostAllocated{Float64}
+@test nameof(typeof(v1)) == :View1D_R_HostAllocated
 @test v1 isa AbstractArray
 @test v1 isa AbstractArray{Float64}
 @test v1 isa AbstractArray{Float64, 1}
@@ -37,7 +33,7 @@ v1 = View{Float64}(n1)
 @test strides(v1) == (1,)
 @test Base.elsize(v1) == sizeof(Float64)
 
-v1_ptr = Kokkos.Views.get_ptr(v1, 0).cpp_object
+v1_ptr = Kokkos.Views._get_ptr(v1, 0).cpp_object
 @test Kokkos.Views.elem_ptr(v1, 1) == v1_ptr
 @test Kokkos.Views.elem_ptr(v1, 2) == (v1_ptr + sizeof(Float64))
 @test v1[1] == unsafe_load(v1_ptr, 1)
@@ -71,7 +67,7 @@ v3 = View{Int64, 2, Kokkos.LayoutRight}(n3)
 @test Base.elsize(v3) == sizeof(Float64)
 @test sizeof(v3) == sizeof(Float64) * prod(n3)
 
-v3_ptr = Kokkos.Views.get_ptr(v3, 0, 0).cpp_object
+v3_ptr = Kokkos.Views._get_ptr(v3, 0, 0).cpp_object
 @test Kokkos.Views.elem_ptr(v3, 1, 1) == v3_ptr
 @test Kokkos.Views.elem_ptr(v3, 1, 2) == (v3_ptr + sizeof(Int64))
 @test Kokkos.Views.elem_ptr(v3, 2, 1) == (v3_ptr + sizeof(Int64) * n3[1])
@@ -101,7 +97,7 @@ v3 .= LinearIndices(a3)'
     @test Base.elsize(v3_l) == sizeof(Float64)
     @test sizeof(v3_l) == sizeof(Float64) * prod(n3)
 
-    v3_l_ptr = Kokkos.Views.get_ptr(v3_l, 0, 0).cpp_object
+    v3_l_ptr = Kokkos.Views._get_ptr(v3_l, 0, 0).cpp_object
     @test Kokkos.Views.elem_ptr(v3_l, 1, 1) == v3_l_ptr
     @test Kokkos.Views.elem_ptr(v3_l, 1, 2) == (v3_l_ptr + sizeof(Int64) * n3[1])
     @test Kokkos.Views.elem_ptr(v3_l, 2, 1) == (v3_l_ptr + sizeof(Int64))
@@ -119,7 +115,7 @@ end
     @test Base.elsize(v3_s) == sizeof(Float64)
     @test sizeof(v3_s) == sizeof(Float64) * s[2] * n3[2]
 
-    v3_s_ptr = Kokkos.Views.get_ptr(v3_s, 0, 0).cpp_object
+    v3_s_ptr = Kokkos.Views._get_ptr(v3_s, 0, 0).cpp_object
     @test Kokkos.Views.elem_ptr(v3_s, 1, 1) == v3_s_ptr
     @test Kokkos.Views.elem_ptr(v3_s, 2, 1) == (v3_s_ptr + sizeof(Int64) * s[1])
     @test Kokkos.Views.elem_ptr(v3_s, 1, 2) == (v3_s_ptr + sizeof(Int64) * s[2])
@@ -183,8 +179,6 @@ end
 @test size(View{Float64, 2, Kokkos.LayoutRight}()) == (0, 0)
 @test size(View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}()) == (0, 0)
 
-@test_throws @error_match("`Int32` is not compiled") View{Int32}(undef, n1)
-@test_throws @error_match("`Kokkos.View3D` cannot") View{Int64}(undef, (2, 2, 2))
 @test_throws @error_match("CudaSpace is not compiled") View{Int64}(undef, n1; mem_space=Kokkos.CudaSpace)
 @test_throws @error_match("`mem_space` kwarg") View{Float64, 1, Kokkos.LayoutLeft, Kokkos.Wrapper.Impl.HostSpaceImplDereferenced}(undef, n1; mem_space=Kokkos.HostSpace)
 @test_throws @error_match("Kokkos.Views.LayoutLeft type") View{Float64, 1, Kokkos.LayoutLeft}(undef, n1; layout=Kokkos.LayoutRight)
@@ -252,16 +246,17 @@ v10 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_
 
 
 @testset "Deep copy on $exec_space_type in $(dim)D with $type" for 
-        exec_space_type in (:no_exec_space, Kokkos.COMPILED_EXEC_SPACES...),
-        dim in Kokkos.COMPILED_DIMS,
-        type in Kokkos.COMPILED_TYPES
+        exec_space_type in (:no_exec_space, Kokkos.ENABLED_EXEC_SPACES...),
+        dim in (1, 2),  # TODO: use a global test var to control this
+        type in (Float64, Int64)  # TODO: use a global test var to control this
 
     exec_space = exec_space_type === :no_exec_space ? nothing : exec_space_type()
     n = ntuple(Returns(7), dim)
 
     @testset "View{$type, $dim, $src_layout, $src_space} => View{$type, $dim, $dst_layout, $dst_space}" for
-            src_space in Kokkos.COMPILED_MEM_SPACES, dst_space in Kokkos.COMPILED_MEM_SPACES,
-            src_layout in Kokkos.COMPILED_LAYOUTS, dst_layout in Kokkos.COMPILED_LAYOUTS
+            src_space in Kokkos.ENABLED_MEM_SPACES, dst_space in Kokkos.ENABLED_MEM_SPACES,
+            src_layout in (Kokkos.LayoutLeft, Kokkos.LayoutRight, Kokkos.LayoutStride),  # TODO: use a global test var to control this
+            dst_layout in (Kokkos.LayoutLeft, Kokkos.LayoutRight, Kokkos.LayoutStride)   # TODO: use a global test var to control this
 
         if src_layout == Kokkos.LayoutStride
             src_layout = Kokkos.LayoutStride(Base.size_to_strides(1, n...))
@@ -289,16 +284,16 @@ end
 
 
 @testset "create_mirror to $dst_space_type in $(dim)D" for 
-        dst_space_type in (:default_mem_space, Kokkos.COMPILED_MEM_SPACES...),
-        dim in Kokkos.COMPILED_DIMS
+        dst_space_type in (:default_mem_space, Kokkos.ENABLED_MEM_SPACES...),
+        dim in (1, 2)  # TODO: use a global test var to control this
 
     dst_mem_space = dst_space_type === :default_mem_space ? nothing : dst_space_type()
     n = ntuple(Returns(7), dim)
 
     @testset "View{$src_type, $dim, $src_layout, $src_space}" for
-            src_type in Kokkos.COMPILED_TYPES,
-            src_space in Kokkos.COMPILED_MEM_SPACES,
-            src_layout in Kokkos.COMPILED_LAYOUTS
+            src_type in (Float64, Int64),  # TODO: use a global test var to control this
+            src_space in Kokkos.ENABLED_MEM_SPACES,  # TODO: use a global test var to control this
+            src_layout in (Kokkos.LayoutLeft, Kokkos.LayoutRight, Kokkos.LayoutStride)  # TODO: use a global test var to control this
 
         if src_layout == Kokkos.LayoutStride
             src_layout = Kokkos.LayoutStride(Base.size_to_strides(1, n...))

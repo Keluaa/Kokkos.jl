@@ -6,8 +6,6 @@ import Kokkos: View, Idx
 
 
 !Kokkos.is_initialized() && Kokkos.initialize()
-Kokkos.require(; dims=[1, 2], types=[Float64], exec_spaces=[TEST_BACKEND_HOST, TEST_BACKEND_DEVICE])
-
 
 const lib_src = joinpath(@__DIR__, "lib", "simple_lib")
 const lib_build = joinpath(Kokkos.KOKKOS_BUILD_DIR, "simple_lib")

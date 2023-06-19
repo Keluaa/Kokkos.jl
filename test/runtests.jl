@@ -53,12 +53,10 @@ end
     Kokkos.set_omp_vars()
     @test_logs min_level=Logging.Warn @test_nowarn Kokkos.load_wrapper_lib(; loading_bar=false)
     @test_nowarn Kokkos.initialize()
-    Kokkos.require(;
-        dims=[1, 2],
-        types=[Float64, Int64],
-        layouts=[Kokkos.LayoutLeft, Kokkos.LayoutRight, Kokkos.LayoutStride],
-        exec_spaces=[TEST_BACKEND_HOST, TEST_BACKEND_DEVICE]
-    )
+
+    if [TEST_BACKEND_HOST, TEST_BACKEND_DEVICE] ⊈ Kokkos.ENABLED_EXEC_SPACES
+        error("Invalid execution spaces: $([TEST_BACKEND_HOST, TEST_BACKEND_DEVICE]) ⊈ $(Kokkos.ENABLED_EXEC_SPACES)")
+    end
 
     if !TEST_MPI_ONLY
         include("spaces.jl")

@@ -15,20 +15,7 @@ rank = MPI.Comm_rank(MPI.COMM_WORLD)
 Test.TESTSET_PRINT_ENABLE[] = rank == 0  # Print results only on root
 
 # Important: make sure that all compilation occurs on the root process
-if rank == 0
-    invalid_config = !Kokkos.require(;
-        dims=[1, 2],
-        types=[Float64],
-        exec_spaces=[Kokkos.Serial],
-        no_error=true
-    )
-    if invalid_config
-        @warn "Invalid Kokkos configuration"
-        Kokkos.configinfo()
-        MPI.Abort(MPI.COMM_WORLD, 1)
-    end
-    Kokkos.load_wrapper_lib()
-end
+rank == 0 && Kokkos.load_wrapper_lib()
 
 MPI.Barrier(MPI.COMM_WORLD)
 

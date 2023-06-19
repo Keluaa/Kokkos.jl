@@ -1,6 +1,8 @@
 @testset "Views (inaccessible)" begin
 # Same as 'test/views.jl', but with all view accesses removed, as they are inaccessible from the host.
 
+# TODO: check
+
 TEST_VIEW_MEM_SPACES = if TEST_CUDA
     (Kokkos.CudaSpace, Kokkos.CudaUVMSpace)
 else
@@ -20,10 +22,6 @@ TEST_DEFAULT_DEVICE_LAYOUT = array_layout(TEST_BACKEND_DEVICE)
 import Kokkos: Idx, View
 
 @test Idx <: Union{UInt64, Int64, UInt32, Int32}
-
-@test Kokkos.COMPILED_DIMS == (1, 2)
-@test Kokkos.COMPILED_TYPES == (Float64, Int64)
-@test Kokkos.COMPILED_LAYOUTS == (Kokkos.LayoutLeft, Kokkos.LayoutRight, Kokkos.LayoutStride)
 
 @test View <: AbstractArray
 @test View{Float64} <: AbstractArray{Float64}
@@ -167,16 +165,17 @@ v10 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_
 
 
 @testset "Deep copy on $exec_space_type in $(dim)D with $type" for 
-        exec_space_type in (:no_exec_space, Kokkos.COMPILED_EXEC_SPACES...),
-        dim in Kokkos.COMPILED_DIMS,
-        type in Kokkos.COMPILED_TYPES
+        exec_space_type in (:no_exec_space, Kokkos.ENABLED_EXEC_SPACES...),
+        dim in (1, 2),  # TODO: use a global test var to control this
+        type in (Float64, Float32)  # TODO: use a global test var to control this
 
     exec_space = exec_space_type === :no_exec_space ? nothing : exec_space_type()
     n = ntuple(Returns(7), dim)
 
     @testset "View{$type, $dim, $src_layout, $src_space} => View{$type, $dim, $dst_layout, $dst_space}" for
-            src_space in Kokkos.COMPILED_MEM_SPACES, dst_space in Kokkos.COMPILED_MEM_SPACES,
-            src_layout in Kokkos.COMPILED_LAYOUTS, dst_layout in Kokkos.COMPILED_LAYOUTS
+            src_space in Kokkos.ENABLED_MEM_SPACES, dst_space in Kokkos.ENABLED_MEM_SPACES,
+            src_layout in (Kokkos.LayoutLeft, Kokkos.LayoutRight, Kokkos.LayoutStride),  # TODO: use a global test var to control this
+            dst_layout in (Kokkos.LayoutLeft, Kokkos.LayoutRight, Kokkos.LayoutStride)   # TODO: use a global test var to control this
 
         src_view_t = Kokkos.Views.impl_view_type(View{type, dim, src_layout, src_space})
         dst_view_t = Kokkos.Views.impl_view_type(View{type, dim, dst_layout, dst_space})
@@ -220,16 +219,16 @@ end
 
 
 @testset "create_mirror to $dst_space_type in $(dim)D" for 
-        dst_space_type in (:default_mem_space, Kokkos.COMPILED_MEM_SPACES...),
-        dim in Kokkos.COMPILED_DIMS
+        dst_space_type in (:default_mem_space, Kokkos.ENABLED_MEM_SPACES...),
+        dim in (1, 2)  # TODO: use a global test var to control this
 
     dst_mem_space = dst_space_type === :default_mem_space ? nothing : dst_space_type()
     n = ntuple(Returns(7), dim)
 
     @testset "View{$src_type, $dim, $src_layout, $src_space}" for
-            src_type in Kokkos.COMPILED_TYPES,
-            src_space in Kokkos.COMPILED_MEM_SPACES,
-            src_layout in Kokkos.COMPILED_LAYOUTS
+            src_type in (Float64, Int64),  # TODO: use a global test var to control this
+            src_space in Kokkos.ENABLED_MEM_SPACES,  # TODO: use a global test var to control this
+            src_layout in (Kokkos.LayoutLeft, Kokkos.LayoutRight, Kokkos.LayoutStride)  # TODO: use a global test var to control this
 
         if src_layout == Kokkos.LayoutStride
             src_layout = Kokkos.LayoutStride(Base.size_to_strides(1, n...))

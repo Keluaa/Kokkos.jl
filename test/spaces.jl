@@ -1,10 +1,10 @@
-@testset "spaces" begin
+@testset "Spaces" begin
 
-@test Kokkos.COMPILED_EXEC_SPACES == tuple(unique((TEST_BACKEND_HOST, TEST_BACKEND_DEVICE))...)
+@test Kokkos.ENABLED_EXEC_SPACES == tuple(unique((TEST_BACKEND_HOST, TEST_BACKEND_DEVICE))...)
 @test Kokkos.DEFAULT_DEVICE_SPACE === TEST_BACKEND_DEVICE
 @test Kokkos.DEFAULT_HOST_SPACE === (TEST_DEVICE_IS_HOST ? TEST_BACKEND_DEVICE : TEST_BACKEND_HOST)
 
-@test issetequal(Kokkos.COMPILED_MEM_SPACES, tuple(unique((TEST_MEM_SPACE_HOST, TEST_MEM_SPACES_DEVICE..., TEST_MEM_SHARED, TEST_MEM_PINNED))...))
+@test issetequal(Kokkos.ENABLED_MEM_SPACES, tuple(unique((TEST_MEM_SPACE_HOST, TEST_MEM_SPACES_DEVICE..., TEST_MEM_SHARED, TEST_MEM_PINNED))...))
 @test Kokkos.DEFAULT_DEVICE_MEM_SPACE === TEST_MAIN_MEM_SPACE_DEVICE
 @test Kokkos.DEFAULT_HOST_MEM_SPACE === TEST_MEM_SPACE_HOST
 
@@ -15,11 +15,11 @@ skip_shared_mem = Kokkos.KOKKOS_VERSION < v"4.0.0"
 
 @testset "enabled" begin
     for exec_space in Kokkos.Spaces.ALL_BACKENDS
-        @test Kokkos.enabled(exec_space) == (exec_space in Kokkos.COMPILED_EXEC_SPACES)
+        @test Kokkos.enabled(exec_space) == (exec_space in Kokkos.ENABLED_EXEC_SPACES)
     end
 
     for mem_space in Kokkos.Spaces.ALL_MEM_SPACES
-        @test Kokkos.enabled(mem_space) == (mem_space in Kokkos.COMPILED_MEM_SPACES)
+        @test Kokkos.enabled(mem_space) == (mem_space in Kokkos.ENABLED_MEM_SPACES)
     end
 end
 
