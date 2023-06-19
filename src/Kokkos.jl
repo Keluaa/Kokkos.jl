@@ -29,9 +29,6 @@ const __DEFAULT_KOKKOS_VERSION_STR   = "4.0.00"  # Must be a valid tag in the Ko
 const __DEFAULT_KOKKOS_CMAKE_OPTIONS = []
 const __DEFAULT_KOKKOS_LIB_OPTIONS   = []
 const __DEFAULT_KOKKOS_BACKENDS      = ["Serial", "OpenMP"]
-const __DEFAULT_KOKKOS_VIEW_DIMS     = [1, 2]
-const __DEFAULT_KOKKOS_VIEW_TYPES    = ["Float64", "Float32"]
-const __DEFAULT_KOKKOS_VIEW_LAYOUTS  = ["right"]
 const __DEFAULT_KOKKOS_BUILD_TYPE    = "Release"
 const __DEFAULT_KOKKOS_BUILD_DIR     = __get_scratch_build_dir()
 
@@ -42,9 +39,6 @@ KOKKOS_PATH          = @load_preference("kokkos_path",    LOCAL_KOKKOS_DIR)
 KOKKOS_CMAKE_OPTIONS = @load_preference("cmake_options",  __DEFAULT_KOKKOS_CMAKE_OPTIONS)
 KOKKOS_LIB_OPTIONS   = @load_preference("kokkos_options", __DEFAULT_KOKKOS_LIB_OPTIONS)
 KOKKOS_BACKENDS      = @load_preference("backends",       __DEFAULT_KOKKOS_BACKENDS)
-KOKKOS_VIEW_DIMS     = @load_preference("view_dims",      __DEFAULT_KOKKOS_VIEW_DIMS)
-KOKKOS_VIEW_TYPES    = @load_preference("view_types",     __DEFAULT_KOKKOS_VIEW_TYPES)
-KOKKOS_VIEW_LAYOUTS  = @load_preference("view_layouts",   __DEFAULT_KOKKOS_VIEW_LAYOUTS)
 KOKKOS_BUILD_TYPE    = @load_preference("build_type",     __DEFAULT_KOKKOS_BUILD_TYPE)
 KOKKOS_BUILD_DIR     = @load_preference("build_dir",      __DEFAULT_KOKKOS_BUILD_DIR)
 

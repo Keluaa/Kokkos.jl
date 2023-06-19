@@ -20,20 +20,33 @@ endif()
 
 add_subdirectory(${Kokkos_ROOT} lib/kokkos)
 
+if(NOT DEFINED COMPLETE_BUILD)
+    set(COMPLETE_BUILD OFF)
+endif()
+
 if(NOT DEFINED VIEW_DIMENSIONS)
-    set(VIEW_DIMENSIONS "1,2")
+    if (COMPLETE_BUILD)
+        set(VIEW_DIMENSIONS "1,2")
+    else()
+        set(VIEW_DIMENSIONS "1")
+    endif()
 endif()
 
 if(NOT DEFINED VIEW_TYPES)
-    set(VIEW_TYPES "double,int64_t")
+    if (COMPLETE_BUILD)
+        set(VIEW_TYPES "double,int64_t")
+    else()
+        set(VIEW_TYPES "")
+    endif()
 endif()
 
-if (NOT DEFINED VIEW_LAYOUTS)
-    set(VIEW_LAYOUTS "deviceDefault,hostDefault")
-endif()
-
-if (NOT DEFINED COMPLETE_BUILD)
-    set(COMPLETE_BUILD OFF)
+if(NOT DEFINED VIEW_LAYOUTS)
+    if (COMPLETE_BUILD)
+        set(VIEW_LAYOUTS "deviceDefault,hostDefault")
+    else()
+        # Compile all layouts by default
+        set(VIEW_LAYOUTS "left,right,stride")
+    endif()
 endif()
 
 

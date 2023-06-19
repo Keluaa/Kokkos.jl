@@ -77,11 +77,9 @@ struct ViewWrap : public KokkosViewT
     using kokkos_view_t = KokkosViewT;
 
     template<typename OtherLayout>
-    using with_layout = ViewWrap<T, DimCst, OtherLayout, MemSpace>;  // TODO: replace MemSpace with Device
+    using with_layout = ViewWrap<T, DimCst, OtherLayout, MemSpace, MemTraits>;
 
     static constexpr size_t dim = DimCst::value;
-
-    using IdxTuple = decltype(std::tuple_cat(std::array<Idx, dim>()));
 
 #ifdef __INTEL_COMPILER
     template<typename... Args>

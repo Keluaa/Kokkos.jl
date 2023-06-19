@@ -198,10 +198,6 @@ function configinfo(io::IO = stdout)
     println(io, "CMake build dir: '", KOKKOS_BUILD_DIR, "'")
     println(io, "Kokkos options: ", `$KOKKOS_LIB_OPTIONS`)
     println(io, "Enabled Kokkos backends: ", join(KOKKOS_BACKENDS, ", "))
-    println(io, "Views:")
-    println(io, " - dimensions: ", join(KOKKOS_VIEW_DIMS, ", "))
-    println(io, " - types: ", join(KOKKOS_VIEW_TYPES, ", "))
-    println(io, " - layouts: ", join(KOKKOS_VIEW_LAYOUTS, ", "))
 end
 
 

@@ -95,55 +95,6 @@ function set_backends(backends::Vector{DataType})
 end
 
 
-function set_view_dims(dims::Union{Nothing, Missing, Vector{Int}})
-    @set_preferences!("view_dims" => dims)
-    if !is_kokkos_wrapper_loaded()
-        global KOKKOS_VIEW_DIMS = @load_preference("view_dims", __DEFAULT_KOKKOS_VIEW_DIMS)
-    else
-        global HAS_CONFIGURATION_CHANGED = true
-        @info "New view dimensions set to $dims.\n\
-               Restart your Julia session for this change to take effect."
-    end
-    return KOKKOS_VIEW_DIMS
-end
-
-
-function set_view_types(types::Union{Nothing, Missing, Vector{String}})
-    @set_preferences!("view_types" => types)
-    if !is_kokkos_wrapper_loaded()
-        global KOKKOS_VIEW_TYPES = @load_preference("view_types", __DEFAULT_KOKKOS_VIEW_TYPES)
-    else
-        global HAS_CONFIGURATION_CHANGED = true
-        @info "New view types set to $types.\n\
-               Restart your Julia session for this change to take effect."
-    end
-    return KOKKOS_VIEW_TYPES
-end
-
-set_view_types(types::Vector{DataType}) = set_view_types(string.(nameof.(types)))
-
-
-function set_view_layouts(layouts::Union{Nothing, Missing, Vector{String}})
-    @set_preferences!("view_layouts" => layouts)
-    if !is_kokkos_wrapper_loaded()
-        global KOKKOS_VIEW_LAYOUTS = @load_preference("view_layouts", __DEFAULT_KOKKOS_VIEW_LAYOUTS)
-    else
-        global HAS_CONFIGURATION_CHANGED = true
-        @info "New view layouts set to $layouts.\n\
-               Restart your Julia session for this change to take effect."
-    end
-    return KOKKOS_VIEW_LAYOUTS
-end
-
-function set_view_layouts(layouts::Vector{DataType})
-    typeassert.(layouts, Type{<:Kokkos.Layout})
-    # Transform the types to the names as described in the docs
-    layouts_str = layouts .|> nameof .|> string .|> lowercase
-    layouts_str = chop.(layouts_str; head=length("Layout"), tail=0)  # Remove the leading 'Layout'
-    return set_view_layouts(string.(layouts_str))
-end
-
-
 function set_build_type(build_type::Union{Nothing, Missing, String})
     @set_preferences!("build_type" => build_type)
     if !is_kokkos_wrapper_loaded()

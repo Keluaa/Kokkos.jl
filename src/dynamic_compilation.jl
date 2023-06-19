@@ -5,7 +5,7 @@ import ..Kokkos: Wrapper
 import ..Kokkos: CMakeKokkosProject, CLibrary
 import ..Kokkos: ensure_kokkos_wrapper_loaded, compile, lib_path, load_lib, __validate_parameters
 
-export @compile_and_call, load_or_compile
+export @compile_and_call, compile_and_load
 
 
 const COMPILATION_LOCK_FILE = "__compilation.lock"
@@ -39,7 +39,7 @@ const NEXT_LIB_NUMBER = Ref(1)
 
 Remove all shared libraries generated for compilation on demand of some methods or types.
 
-Libraries are not unloaded, therefore subsequent calls to [`load_or_compile`](@ref) might not
+Libraries are not unloaded, therefore subsequent calls to [`compile_and_load`](@ref) might not
 trigger recompilation.
 """
 function clean_libs()
@@ -208,15 +208,15 @@ end
 
 
 """
-    load_or_compile(current_module, cmake_target; kwargs...)
+    compile_and_load(current_module, cmake_target; kwargs...)
 
 Check if the library of `cmake_target` compiled with `kwargs` exists, if not compile it, then load
 it.
 
 The library is a CxxWrap module, which is then loaded into `current_module` in the sub-module
-`Impl<number>` with '<number>' the total count of calls to `load_or_compile` in this Julia session.
+`Impl<number>` with '<number>' the total count of calls to `compile_and_load` in this Julia session.
 """
-function load_or_compile(current_module, cmake_target;
+function compile_and_load(current_module, cmake_target;
     view_layouts = nothing,
     view_dims = nothing,
     view_types = nothing,
@@ -293,7 +293,7 @@ end
 Call `func` with `args` with `Base.invokelatest(func, args...)`, but only if there is a specialized
 method for the arguments (an error is raised otherwise).
 
-After calling [`load_or_compile`](@ref) from a `@nospecialize` method meant to define a new method
+After calling [`compile_and_load`](@ref) from a `@nospecialize` method meant to define a new method
 specialized for `args`, this function will prevent infinite recursion if the new method is not
 applicable to `args`.
 """

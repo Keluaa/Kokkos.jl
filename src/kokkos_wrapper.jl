@@ -9,7 +9,6 @@ import ..Kokkos: run_cmd_print_on_error, load_lib, lib_path, build_dir, pretty_c
 import ..Kokkos: ensure_kokkos_wrapper_loaded, configuration_changed!
 import ..Kokkos: LOCAL_KOKKOS_DIR, LOCAL_KOKKOS_VERSION_STR
 import ..Kokkos: KOKKOS_PATH, KOKKOS_CMAKE_OPTIONS, KOKKOS_LIB_OPTIONS, KOKKOS_BACKENDS
-import ..Kokkos: KOKKOS_VIEW_DIMS, KOKKOS_VIEW_TYPES, KOKKOS_VIEW_LAYOUTS
 import ..Kokkos: KOKKOS_BUILD_TYPE, KOKKOS_BUILD_DIR
 
 export get_jlcxx_root, get_kokkos_dir, get_kokkos_build_dir, get_kokkos_install_dir
@@ -106,8 +105,6 @@ function create_kokkos_lib_project(; no_git=false)
     julia_exe_path = joinpath(Sys.BINDIR, "julia")
     !isfile(julia_exe_path) && error("Could not determine the position of the Julia executable")
 
-    c_view_types = julia_str_type_to_c_type.(KOKKOS_VIEW_TYPES)
-
     jlcxx_root = get_jlcxx_root()
 
     build_dir = joinpath(KOKKOS_BUILD_DIR, "wrapper-build-$(lowercase(KOKKOS_BUILD_TYPE))")
@@ -117,10 +114,7 @@ function create_kokkos_lib_project(; no_git=false)
     cmake_options = [
         "-DCMAKE_INSTALL_PREFIX=$install_dir",
         "-DJulia_EXECUTABLE=$julia_exe_path",
-        "-DJlCxx_ROOT=$jlcxx_root",
-        "-DVIEW_DIMENSIONS='" * join(KOKKOS_VIEW_DIMS, ",") * "'",
-        "-DVIEW_TYPES='" * join(c_view_types, ",") * "'",
-        "-DVIEW_LAYOUTS='" * join(KOKKOS_VIEW_LAYOUTS, ",") * "'"
+        "-DJlCxx_ROOT=$jlcxx_root"
     ]
     append!(cmake_options, KOKKOS_CMAKE_OPTIONS)
 

@@ -138,7 +138,7 @@ function compile_view(view_t::Type{<:View}; for_function=nothing, no_error=false
     end
 
     view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(view_t)
-    DynamicCompilation.load_or_compile(@__MODULE__, "views";
+    DynamicCompilation.compile_and_load(@__MODULE__, "views";
         view_types, view_dims, view_layouts, mem_spaces
     )
 
@@ -368,7 +368,7 @@ function deep_copy(dest::View, src::View)
         view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(typeof(src))
         _, _, dest_layouts, dest_mem_spaces = _extract_view_params(typeof(dest))
 
-        DynamicCompilation.load_or_compile(@__MODULE__, "copy";
+        DynamicCompilation.compile_and_load(@__MODULE__, "copy";
             view_types, view_dims, view_layouts,
             mem_spaces, dest_layouts, dest_mem_spaces,
             without_exec_space_arg = true,
@@ -397,7 +397,7 @@ function deep_copy(space::ExecutionSpace, dest::View, src::View)
         _, _, dest_layouts, dest_mem_spaces = _extract_view_params(typeof(dest))
 
         exec_spaces = [typeof(space)]
-        DynamicCompilation.load_or_compile(@__MODULE__, "copy";
+        DynamicCompilation.compile_and_load(@__MODULE__, "copy";
             view_types, view_dims, view_layouts,
             mem_spaces, exec_spaces, dest_layouts, dest_mem_spaces,
             without_exec_space_arg = false
@@ -430,7 +430,7 @@ function create_mirror(src::View, mem_space, zero_fill)
         compile_view(typeof(src); for_function=create_mirror, no_error=true)
         view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(typeof(src))
         dest_mem_spaces = isnothing(mem_space) ? DataType[] : [typeof(mem_space)]
-        DynamicCompilation.load_or_compile(@__MODULE__, "mirrors";
+        DynamicCompilation.compile_and_load(@__MODULE__, "mirrors";
             view_types, view_dims, view_layouts,
             mem_spaces, dest_mem_spaces,
             with_nothing_arg = isnothing(mem_space)
@@ -457,7 +457,7 @@ function create_mirror_view(src::View, mem_space, zero_fill)
         compile_view(typeof(src); for_function=create_mirror_view, no_error=true)
         view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(typeof(src))
         dest_mem_spaces = isnothing(mem_space) ? DataType[] : [typeof(mem_space)]
-        DynamicCompilation.load_or_compile(@__MODULE__, "mirrors";
+        DynamicCompilation.compile_and_load(@__MODULE__, "mirrors";
             view_types, view_dims, view_layouts,
             mem_spaces, dest_mem_spaces,
             with_nothing_arg = isnothing(mem_space)
@@ -540,7 +540,7 @@ function subview(view::View, indexes::Tuple, subview_dim::Type{<:Val}, subview_l
 
         view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(view_t)
         subview_dims = [sub_dim]
-        DynamicCompilation.load_or_compile(@__MODULE__, "subviews";
+        DynamicCompilation.compile_and_load(@__MODULE__, "subviews";
             view_types, view_dims, view_layouts, mem_spaces, subview_dims
         )
     end)
