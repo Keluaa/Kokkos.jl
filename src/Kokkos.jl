@@ -72,6 +72,8 @@ using .DynamicCompilation
 include("spaces.jl")
 using .Spaces
 
+include("layouts.jl")
+
 include("views.jl")
 using .Views
 

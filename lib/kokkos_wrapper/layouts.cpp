@@ -41,8 +41,8 @@ auto build_julia_layouts_tuple()
 void define_all_layouts(jlcxx::Module& mod)
 {
     jl_module_t* wrapper_module = mod.julia_module()->parent;
-    auto* views_module = (jl_module_t*) jl_get_global(wrapper_module->parent, jl_symbol("Views"));
+    auto* main_module = (jl_module_t*) wrapper_module->parent;
 
-    register_layouts(views_module, LayoutList{});
+    register_layouts(main_module, LayoutList{});
     mod.method("__compiled_layouts", [](){ return build_julia_layouts_tuple(); });
 }

@@ -136,7 +136,7 @@ end
 
 @test_throws @error_match("$(nameof(TEST_UNAVAILABLE_MEM_SPACE)) is not compiled") View{Int64}(undef, n1; mem_space=TEST_UNAVAILABLE_MEM_SPACE)
 @test_throws @error_match("`mem_space` kwarg") View{Float64, 1, Kokkos.LayoutLeft, Kokkos.Wrapper.Impl.HostSpaceImplDereferenced}(undef, n1; mem_space=Kokkos.HostSpace)
-@test_throws @error_match("Kokkos.Views.LayoutLeft type") View{Float64, 1, Kokkos.LayoutLeft}(undef, n1; layout=Kokkos.LayoutRight)
+@test_throws @error_match("Kokkos.LayoutLeft type") View{Float64, 1, Kokkos.LayoutLeft}(undef, n1; layout=Kokkos.LayoutRight)
 @test_throws @error_match("requires a instance") View{Float64}(undef, n1; layout=Kokkos.LayoutStride)
 
 
