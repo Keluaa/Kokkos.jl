@@ -297,13 +297,8 @@ struct RegisterUtils
     static void register_access_operator(Wrapped wrapped, TList<Indices...>, std::index_sequence<I...>)
     {
         using WrappedT = typename decltype(wrapped)::type;
-        // Add a method for integer indexing: `get_ptr(i::Idx)` in 1D, `get_ptr(i::Idx, j::Idx)` in 2D, etc
-        wrapped.method("get_ptr", &WrappedT::template operator()<Indices...>);
-        // Add a method for tuple indexing: `get_ptr(t::Tuple{Idx})` in 1D, `get_ptr(t::Tuple{Idx, Idx})` in 2D, etc
-        wrapped.method("get_ptr", [](WrappedT& view, const typename WrappedT::IdxTuple* idx_tuple)
-        {
-            return view(std::get<I>(*idx_tuple)...);
-        });
+        // Add a method for integer indexing: `_get_ptr(i::Idx)` in 1D, `_get_ptr(i::Idx, j::Idx)` in 2D, etc
+        wrapped.method("_get_ptr", &WrappedT::template operator()<Indices...>);
     }
 
 
@@ -311,12 +306,7 @@ struct RegisterUtils
     static void register_inaccessible_operator(Wrapped wrapped, TList<Indices...>)
     {
         using WrappedT = typename decltype(wrapped)::type;
-
-        wrapped.method("get_ptr", &inaccessible_view<WrappedT, Indices...>);
-        wrapped.method("get_ptr", [](WrappedT& view, const typename WrappedT::IdxTuple*)
-        {
-            throw_inaccessible_error(view);
-        });
+        wrapped.method("_get_ptr", &inaccessible_view<WrappedT, Indices...>);
     }
 
 
@@ -401,8 +391,8 @@ void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_modul
             wrapped.method("label", &Wrapped_t::label);
             wrapped.method("memory_span", [](const Wrapped_t& view) { return view.impl_map().memory_span(); });
             wrapped.method("span_is_contiguous", &Wrapped_t::span_is_contiguous);
-            wrapped.method("get_dims", [](const Wrapped_t& view) { return std::tuple_cat(view.get_dims()); });
-            wrapped.method("get_strides", [](const Wrapped_t& view) { return std::tuple_cat(view.get_strides()); });
+            wrapped.method("_get_dims", [](const Wrapped_t& view) { return std::tuple_cat(view.get_dims()); });
+            wrapped.method("_get_strides", [](const Wrapped_t& view) { return std::tuple_cat(view.get_strides()); });
             wrapped.method("get_tracker", [](const Wrapped_t& view) {
                 if (view.impl_track().has_record()) {
                     return reinterpret_cast<void*>(view.impl_track().template get_record<void>()->data());
@@ -415,39 +405,20 @@ void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_modul
 }
 
 
-auto build_julia_types_tuple()
-{
-    constexpr size_t view_types_count = TList<VIEW_TYPES>::size;
-    std::array<jl_value_t*, view_types_count> array{};
-
-    apply_with_index(TList<VIEW_TYPES>{}, [&](auto type, size_t i) {
-        using T = typename decltype(type)::template Arg<0>;
-        array[i] = (jl_value_t*) jlcxx::julia_base_type<T>();
-    });
-
-    return std::tuple_cat(array);
-}
-
-
-jl_datatype_t* get_idx_type()
-{
-    return jlcxx::julia_base_type<Idx>();
-}
-
-
 void import_all_views_methods(jl_module_t* impl_module, jl_module_t* views_module)
 {
     // In order to override the methods in the Kokkos.Views module, we must have them imported
     const std::array declared_methods = {
-        "get_ptr",
         "alloc_view",
         "view_wrap",
         "view_data",
         "memory_span",
         "span_is_contiguous",
         "label",
-        "get_dims",
-        "get_strides",
+        "_get_ptr",
+        "_get_dims",
+        "_get_strides",
+        "get_tracker",
         "impl_view_type"
     };
 
@@ -457,18 +428,22 @@ void import_all_views_methods(jl_module_t* impl_module, jl_module_t* views_modul
 }
 
 
+#ifdef WRAPPER_BUILD
 void define_kokkos_views(jlcxx::Module& mod)
 {
+    // Called from 'Kokkos.Wrapper.Impl'
     jl_module_t* wrapper_module = mod.julia_module()->parent;
     auto* views_module = (jl_module_t*) jl_get_global(wrapper_module->parent, jl_symbol("Views"));
+#else
+JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
+{
+    // Called from 'Kokkos.Views.Impl<number>'
+    jl_module_t* views_module = mod.julia_module()->parent;
+#endif
 
     import_all_views_methods(mod.julia_module(), views_module);
 
     mod.set_override_module(views_module);
     register_all_view_combinations(mod, views_module);
     mod.unset_override_module();
-
-    mod.method("__idx_type", &get_idx_type);
-    mod.method("__compiled_dims", [](){ return std::make_tuple(VIEW_DIMENSIONS); });
-    mod.method("__compiled_types", [](){ return build_julia_types_tuple(); });
 }

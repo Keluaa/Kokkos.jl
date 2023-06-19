@@ -7,7 +7,7 @@
 
 #include "Kokkos_Core.hpp"
 
-#if !defined(COMPLETE_BUILD) || COMPLETE_BUILD == 0
+#ifndef WRAPPER_BUILD
 #include "parameters.h"
 #endif
 
@@ -108,11 +108,23 @@ using MemorySpacesList = TList<
 #define MEM_SPACE_FILTER
 #endif
 
+#ifndef DEST_MEM_SPACES
+#define DEST_MEM_SPACES
+#endif
 
-constexpr const std::array mem_space_filters = make_array<const char*>({ MEM_SPACE_FILTER });
 
+constexpr const std::array mem_space_filters = as_array<const char*>(MEM_SPACE_FILTER);
 using FilteredMemorySpaceList = decltype(filter_spaces<mem_space_filters.size(), mem_space_filters>(MemorySpacesList{}));
 
+constexpr const std::array dst_mem_spaces = as_array<const char*>(DEST_MEM_SPACES);
+using DestMemSpaces = std::conditional_t<
+        dst_mem_spaces.empty(),
+        TList<>,
+        decltype(filter_spaces<dst_mem_spaces.size(), dst_mem_spaces>(MemorySpacesList{}))
+>;
+
+static_assert(mem_space_filters.empty() || mem_space_filters.size() == FilteredMemorySpaceList::size);
+static_assert(dst_mem_spaces.size() == DestMemSpaces::size);
 
 
 #endif //KOKKOS_WRAPPER_MEMORY_SPACES_H

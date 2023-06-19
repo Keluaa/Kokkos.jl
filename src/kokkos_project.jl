@@ -144,10 +144,10 @@ end
 
 Configure the project with its current options.
 """
-function configure(project::KokkosProject)
+function configure(project::KokkosProject; cmd_transform=identity)
     @debug "Configuring project at '$(source_dir(project))'"
     mkpath(build_dir(project))
-    run_cmd_print_on_error(configure_command(project))
+    run_cmd_print_on_error(configure_command(project) |> cmd_transform)
     configuration_changed!(project, false)
     return nothing
 end
@@ -160,12 +160,12 @@ Builds all source files of the project.
 
 If the project's configuration changed, it is reconfigured first.
 """
-function compile(project::KokkosProject; loading_bar=false)
+function compile(project::KokkosProject; loading_bar=false, cmd_transform=identity)
     if configuration_changed(project)
         configure(project)
     end
     @debug "Compiling project at '$(source_dir(project))' to '$(build_dir(project))'"
-    run_cmd_print_on_error(compile_command(project); loading_bar)
+    run_cmd_print_on_error(compile_command(project) |> cmd_transform; loading_bar)
     return nothing
 end
 

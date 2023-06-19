@@ -105,6 +105,9 @@ void define_execution_spaces_functions(jlcxx::Module& mod)
     mod.method("__default_host_space", [](){
         return jlcxx::julia_type<Kokkos::DefaultHostExecutionSpace>()->super->super;
     });
+    mod.method("__idx_type", [](){
+        return jlcxx::julia_base_type<Idx>();
+    });
 }
 
 

@@ -7,7 +7,7 @@
 
 #include "Kokkos_Core.hpp"
 
-#if !defined(COMPLETE_BUILD) || COMPLETE_BUILD == 0
+#ifndef WRAPPER_BUILD
 #include "parameters.h"
 #endif
 
@@ -149,9 +149,11 @@ using ExecutionSpaceList = BuildExecutionSpacesList<
 #endif
 
 
-constexpr const std::array exec_space_filters = make_array<const char*>({ EXEC_SPACE_FILTER });
-
+constexpr const std::array exec_space_filters = as_array<const char*>(EXEC_SPACE_FILTER);
 using FilteredExecutionSpaceList = decltype(filter_spaces<exec_space_filters.size(), exec_space_filters>(ExecutionSpaceList{}));
+
+
+using Idx = typename Kokkos::RangePolicy<>::index_type;
 
 
 #endif //KOKKOS_WRAPPER_EXECUTION_SPACES_H

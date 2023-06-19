@@ -1,16 +1,19 @@
 module Views
 
 using CxxWrap
+import ..Kokkos: DynamicCompilation
 import ..Kokkos: ExecutionSpace, MemorySpace, HostSpace
-import ..Kokkos: COMPILED_MEM_SPACES, DEFAULT_DEVICE_MEM_SPACE, DEFAULT_HOST_MEM_SPACE
+import ..Kokkos: COMPILED_MEM_SPACES, DEFAULT_DEVICE_MEM_SPACE, DEFAULT_HOST_MEM_SPACE, Idx
 import ..Kokkos: ensure_kokkos_wrapper_loaded, get_impl_module
 import ..Kokkos: memory_space, execution_space, accessible, array_layout, main_space_type, finalize
 
 export Layout, LayoutLeft, LayoutRight, LayoutStride, View, Idx
-export COMPILED_TYPES, COMPILED_DIMS, COMPILED_LAYOUTS
 export impl_view_type, main_view_type, label, view_wrap, view_data, memory_span, span_is_contiguous
 export subview, deep_copy, create_mirror, create_mirror_view
 
+
+# TODO: move Layouts to the main module
+# TODO: always pass 'right, left, stride' when compiling the wrapper
 
 """
     Layout
@@ -102,99 +105,96 @@ It is important to understand that for a view to be properly disposed of, there 
 abstract type View{T, D, L <: Layout, M <: MemorySpace} <: Base.AbstractArray{T, D} end
 
 
-# Internal functions, defined for each view in 'views.cpp', in 'register_view_types'
-function get_ptr end
-function get_dims end
-function get_strides end
+function _extract_view_params(views::Vararg{Type{<:View}})  # TODO: remove vararg
+    v_T, v_D, v_L, v_S = Type[], Int[], Type[], Type[]
 
-
-"""
-    Idx::Type{<:Integer}
-
-Integer type used by views for indexing on the default execution device. Usually either `Cint` or
-`Clonglong`.
-
-Equivalent to `Kokkos::RangePolicy<>::index_type`.
-
-`nothing` if Kokkos is not yet loaded.
-"""
-Idx = nothing
-
-
-"""
-    COMPILED_DIMS::Tuple{Vararg{Int32}}
-
-List of all View dimensions which are compiled.
-
-By default, dimensions 1 and 2 are compiled.
-
-`nothing` if Kokkos is not yet loaded.
-"""
-COMPILED_DIMS = nothing
-
-
-"""
-    COMPILED_TYPES::Tuple{Vararg{DataType}}
-
-List of all View element types which are compiled
-
-By default, the following types are compiled: Float64 (double), and Int64 (int64_t).
-
-`nothing` if Kokkos is not yet loaded.
-"""
-COMPILED_TYPES = nothing
-
-
-"""
-    COMPILED_LAYOUTS::Tuple{Vararg{DataType}}
-
-List of all [`Layouts`](@ref Layout) types which are compiled.
-
-By default, the default array layout for the device and host execution spaces are compiled.
-
-`nothing` if Kokkos is not yet loaded.
-"""
-COMPILED_LAYOUTS = nothing
-
-
-function error_view_not_compiled(::Type{View{T, D, L, S}}) where {T, D, L, S}
-    ensure_kokkos_wrapper_loaded()
-
-    if !(T in COMPILED_TYPES)
-        types_str = join(COMPILED_TYPES, ", ", " and ")
-        pluralized_str = length(COMPILED_TYPES) > 1 ? "are" : "is"
-        error("view type `$T` is not compiled. Only $types_str $pluralized_str compiled.")
+    for view_t in views
+        push!(v_T, eltype(view_t))
+        push!(v_D, ndims(view_t))
+        push!(v_L, array_layout(view_t))
+        push!(v_S, memory_space(view_t))
     end
 
-    if !(D in COMPILED_DIMS)
-        dims_str = join(string.(COMPILED_DIMS) .* 'D', ", ", " and ")
-        pluralized_str = length(COMPILED_DIMS) > 1 ? "are" : "is"
-        error("`Kokkos.View$(D)D` cannot be created, as this dimension was not compiled. \
-                Only $dims_str $pluralized_str compiled.")
-    end
-
-    if !(L in COMPILED_LAYOUTS)
-        layout_str = join(COMPILED_LAYOUTS, ", ", " and ")
-        pluralized_str = length(COMPILED_LAYOUTS) > 1 ? "are" : "is"
-        error("view layout `$L` is not compiled. Only $layout_str $pluralized_str compiled.") 
-    end
-
-    if !(S in COMPILED_MEM_SPACES)
-        spaces_str = join(COMPILED_MEM_SPACES, ", ", " and ")
-        pluralized_str = length(COMPILED_MEM_SPACES) > 1 ? "spaces are" : "space is"
-        error("memory space `$S` is not compiled. The only compiled $pluralized_str $spaces_str.")
-    end
-
-    error("$(D)D views of type $T stored in $S with a $L are not compiled.")
+    return v_T, v_D, v_L, v_S
 end
 
 
-# Instances of `alloc_view` for each compiled type, dimension, layout and memory space are defined
-# in 'views.cpp', in 'register_constructor'.
-function alloc_view(::Type{View{T, D, L, S}},
-        dims::Dims{D}, mem_space, layout, label, zero_fill, dim_pad) where {T, D, L, S}
-    # Fallback: error handler
-    error_view_not_compiled(View{T, D, L, S})
+const _COMPILED_VIEW_TYPES = Set{Type}()
+
+
+function compile_view(view_t::Type{<:View}; for_function=nothing, no_error=false)
+    view_t = main_view_type(view_t)
+
+    if view_t in _COMPILED_VIEW_TYPES
+        # This view type should already be compiled
+        if no_error
+            return false
+        elseif !isnothing(for_function)
+            error("View type `$view_t` is already compiled, but `$for_function` has no specific \
+                   method for it")
+        else
+            error("View type `$view_t` is already compiled, but there is no specific method for it")
+        end
+    end
+
+    view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(view_t)
+    DynamicCompilation.load_or_compile(@__MODULE__, "views";
+        view_types, view_dims, view_layouts, mem_spaces
+    )
+
+    push!(_COMPILED_VIEW_TYPES, view_t)
+
+    return true
+end
+
+
+function alloc_view(
+    view_t::Type{<:View},
+    dims::Dims, mem_space, layout,
+    label, zero_fill, dim_pad
+)
+    @nospecialize view_t dims mem_space layout label zero_fill dim_pad
+    return DynamicCompilation.@compile_and_call(
+        alloc_view, (view_t, dims, mem_space, layout, label, zero_fill, dim_pad),
+        begin
+            if ndims(view_t) != length(dims)
+                error("Dimension mismatch: view type is $(ndims(view_t))D ($view_t), \
+                       got $(length(dims))D dims tuple: $dims")
+            end
+            compile_view(view_t; for_function=alloc_view, no_error=true)
+        end
+    )
+end
+
+
+function _get_ptr(@nospecialize(v::View), @nospecialize(i::Vararg{Integer}))
+    # TODO: test when calling with weird indices
+    return DynamicCompilation.@compile_and_call(_get_ptr, (v, i...),
+        compile_view(typeof(v); for_function=_get_ptr, no_error=true)
+    )
+end
+
+_get_ptr(v::View, i::Tuple{Vararg{Integer}}) = _get_ptr(v, i...)
+
+
+function _get_dims(@nospecialize(v::View))
+    return DynamicCompilation.@compile_and_call(_get_dims, (v,),
+        compile_view(typeof(v); for_function=_get_dims, no_error=true)
+    )
+end
+
+
+function _get_strides(@nospecialize(v::View))
+    return DynamicCompilation.@compile_and_call(_get_strides, (v,),
+        compile_view(typeof(v); for_function=_get_strides, no_error=true)
+    )
+end
+
+
+function get_tracker(@nospecialize(v::View))
+    return DynamicCompilation.@compile_and_call(get_tracker, (v,),
+        compile_view(typeof(v); for_function=get_tracker, no_error=true)
+    )
 end
 
 
@@ -219,9 +219,10 @@ julia> view_impl_t <: view_t  # Julia types are contra-variant
 false
 ```
 """
-function impl_view_type(::Type{View{T, D, L, S}}) where {T, D, L, S}
-    # Fallback: error handler
-    error_view_not_compiled(View{T, D, L, S})
+function impl_view_type(@nospecialize(view_t::Type{<:View}))
+    return DynamicCompilation.@compile_and_call(impl_view_type, (view_t,),
+        compile_view(view_t; for_function=impl_view_type, no_error=true)
+    )
 end
 
 
@@ -240,22 +241,28 @@ main_view_type(v::View) = main_view_type(supertype(supertype(typeof(v))))
 
 """
     accessible(::View)
+    accessible(::Type{<:View})
 
 Return `true` if the view is accessible from the default host execution space.
 """
-accessible(::View{T, D, L, MemSpace}) where {T, D, L, MemSpace} = accessible(MemSpace)
+accessible(v::View) = accessible(typeof(v))
+accessible(::Type{<:View{T, D, L, MemSpace}}) where {T, D, L, MemSpace} = accessible(MemSpace)
 
 
 """
     array_layout(::View)
+    array_layout(::Type{<:View})
 
 Return the [`Layout`](@ref) type of the view.
 """
-array_layout(::View{T, D, L, M}) where {T, D, L, M} = L
+array_layout(v::View) = array_layout(typeof(v))
+array_layout(::Type{<:View{T, D, L, M}}) where {T, D, L, M} = L
+
 
 
 """
     memory_space(::View)
+    memory_space(::Type{<:View})
 
 The memory space type in which the view data is stored.
 
@@ -270,36 +277,8 @@ julia> memory_space(v)
 Kokkos.Spaces.CudaSpace
 ```
 """
-memory_space(::View{T, D, L, MemSpace}) where {T, D, L, MemSpace} = main_space_type(MemSpace)
-
-
-@generated function jit_deep_copy(
-    dst::View{T, D, Dst_L, Dst_S},
-    src::View{T, D, Src_L, Src_S}
-) where {T, D, Dst_L, Dst_S, Src_L, Src_S}
-    func_sym = Kokkos.Wrapper.get_symbol_for_prototype(
-        :deep_copy,
-        Cvoid,
-        (View{T, D, Dst_L, Dst_S}, View{T, D, Src_L, Src_S})
-    )
-
-    return quote
-        func_ptr = Kokkos.Wrapper.get_function_ptr($(func_sym))
-
-        if func_ptr === nothing
-            func_ptr = Kokkos.Wrapper.compile_and_load_function(
-                $(func_sym);
-                view_types = (T,), view_dims = (D,), view_layouts = (Src_L, Dst_L),
-                mem_spaces = (Dst_S, Src_S), exec_spaces = ()
-            )
-        end
-
-        ccall(func_ptr,
-            Cvoid, (Ref{View{T, D, Dst_L, Dst_S}}, Ref{View{T, D, Src_L, Src_S}}),
-            dst, src
-        )
-    end
-end
+memory_space(v::View) = memory_space(typeof(v))
+memory_space(::Type{<:View{T, D, L, MemSpace}}) where {T, D, L, MemSpace} = main_space_type(MemSpace)
 
 
 """
@@ -307,7 +286,11 @@ end
 
 Return the label of the `View`.
 """
-function label end
+function label(@nospecialize(v::View))
+    return DynamicCompilation.@compile_and_call(label, (v,),
+        compile_view(typeof(v); for_function=label, no_error=true)
+    )
+end
 
 
 """
@@ -317,7 +300,11 @@ The pointer to the data of the `View`. Using `Base.pointer(view)` is preferred o
 
 Equivalent to `view.data()`.
 """
-function view_data end
+function view_data(@nospecialize(v::View))
+    return DynamicCompilation.@compile_and_call(view_data, (v,),
+        compile_view(typeof(v); for_function=view_data, no_error=true)
+    )
+end
 
 
 """
@@ -327,7 +314,11 @@ Total size of the view data in memory, in bytes.
 
 Equivalent to `view.impl_map().memory_span()`.
 """
-function memory_span end
+function memory_span(@nospecialize(v::View))
+    return DynamicCompilation.@compile_and_call(memory_span, (v,),
+        compile_view(typeof(v); for_function=memory_span, no_error=true)
+    )
+end
 
 
 """
@@ -337,7 +328,11 @@ function memory_span end
 
 Equivalent to [`view.span_is_contiguous()`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/view.html?highlight=span_is_contiguous#_CPPv4NK18span_is_contiguousEv).
 """
-function span_is_contiguous end
+function span_is_contiguous(@nospecialize(v::View))
+    return DynamicCompilation.@compile_and_call(span_is_contiguous, (v,),
+        compile_view(typeof(v); for_function=span_is_contiguous, no_error=true)
+    )
+end
 
 
 """
@@ -354,7 +349,61 @@ If a `space` is given, the copy may be asynchronous. If not the copy will be syn
 Equivalent to `Kokkos::deep_copy(dest, src)` or `Kokkos::deep_copy(space, dest, src)`.
 [See the Kokkos docs about `Kokkos::deep_copy`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/deep_copy.html#deep-copy)
 """
-function deep_copy end
+function deep_copy(dest::View, src::View)
+    @nospecialize dest src
+    return DynamicCompilation.@compile_and_call(deep_copy, (dest, src), begin
+        compile_view.((typeof(dest), typeof(src)); for_function=deep_copy, no_error=true)
+
+        # Requirements in accordance with: https://kokkos.github.io/kokkos-core-wiki/API/core/view/deep_copy.html#requirements
+        if eltype(src) != eltype(dest)
+            error("`deep_copy` can only be used on Views with the same type: \
+                   src=$(eltype(src)), dest=$(eltype(dest))")
+        end
+
+        if ndims(src) != ndims(dest)
+            error("`deep_copy` can only be used on Views with the same number of dimensions: \
+                   src=$(ndims(src)), dest=$(ndims(dest))")
+        end
+
+        view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(typeof(src))
+        _, _, dest_layouts, dest_mem_spaces = _extract_view_params(typeof(dest))
+
+        DynamicCompilation.load_or_compile(@__MODULE__, "copy";
+            view_types, view_dims, view_layouts,
+            mem_spaces, dest_layouts, dest_mem_spaces,
+            without_exec_space_arg = true,
+        )
+    end)
+end
+
+
+function deep_copy(space::ExecutionSpace, dest::View, src::View)
+    @nospecialize space dest src
+    return DynamicCompilation.@compile_and_call(deep_copy, (dest, src), begin
+        compile_view.((typeof(dest), typeof(src)); for_function=deep_copy, no_error=true)
+
+        # Requirements in accordance with: https://kokkos.github.io/kokkos-core-wiki/API/core/view/deep_copy.html#requirements
+        if eltype(src) != eltype(dest)
+            error("`deep_copy` can only be used on Views with the same type: \
+                src=$(eltype(src)), dest=$(eltype(dest))")
+        end
+
+        if ndims(src) != ndims(dest)
+            error("`deep_copy` can only be used on Views with the same number of dimensions: \
+                src=$(ndims(src)), dest=$(ndims(dest))")
+        end
+
+        view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(typeof(src))
+        _, _, dest_layouts, dest_mem_spaces = _extract_view_params(typeof(dest))
+
+        exec_spaces = [typeof(space)]
+        DynamicCompilation.load_or_compile(@__MODULE__, "copy";
+            view_types, view_dims, view_layouts,
+            mem_spaces, exec_spaces, dest_layouts, dest_mem_spaces,
+            without_exec_space_arg = false
+        )
+    end)
+end
 
 
 """
@@ -375,6 +424,21 @@ function create_mirror(src::View; mem_space = nothing, zero_fill = false)
 end
 
 
+function create_mirror(src::View, mem_space, zero_fill)
+    @nospecialize src mem_space zero_fill
+    return DynamicCompilation.@compile_and_call(create_mirror, (src, mem_space, zero_fill), begin
+        compile_view(typeof(src); for_function=create_mirror, no_error=true)
+        view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(typeof(src))
+        dest_mem_spaces = isnothing(mem_space) ? DataType[] : [typeof(mem_space)]
+        DynamicCompilation.load_or_compile(@__MODULE__, "mirrors";
+            view_types, view_dims, view_layouts,
+            mem_spaces, dest_mem_spaces,
+            with_nothing_arg = isnothing(mem_space)
+        )
+    end)
+end
+
+
 """
     create_mirror_view(src::View; mem_space = nothing, zero_fill = false)
 
@@ -383,6 +447,22 @@ returned and no view is created.
 """
 function create_mirror_view(src::View; mem_space = nothing, zero_fill = false)
     return create_mirror_view(src, mem_space, zero_fill)
+end
+
+
+function create_mirror_view(src::View, mem_space, zero_fill)
+    @nospecialize src mem_space zero_fill
+    return DynamicCompilation.@compile_and_call(
+            create_mirror_view, (src, mem_space, zero_fill), begin
+        compile_view(typeof(src); for_function=create_mirror_view, no_error=true)
+        view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(typeof(src))
+        dest_mem_spaces = isnothing(mem_space) ? DataType[] : [typeof(mem_space)]
+        DynamicCompilation.load_or_compile(@__MODULE__, "mirrors";
+            view_types, view_dims, view_layouts,
+            mem_spaces, dest_mem_spaces,
+            with_nothing_arg = isnothing(mem_space)
+        )
+    end)
 end
 
 
@@ -441,9 +521,29 @@ julia> Kokkos.subview(v, (1,))  # Equivalent to `(1, :)`
     while `Base.view` returns a `SubArray`, which cannot be passed to a `ccall`.
 
 """
-function subview(::View{T, D, L, S}, ::Tuple, subview_dim::Type{Val{SD}}, subview_layout::Type{SL}) where {T, D, L, S, SD, SL}
-    # Fallback: error handler
-    error_view_not_compiled(View{T, SD, SL, S})
+function subview(view::View, indexes::Tuple, subview_dim::Type{<:Val}, subview_layout::Type)
+    @nospecialize view indexes subview_dim subview_layout
+    return DynamicCompilation.@compile_and_call(
+            subview, (view, indexes, subview_dim, subview_layout), begin
+        view_t = typeof(view)
+        sub_dim = first(subview_dim.parameters)
+
+        sub_view_t = View{eltype(view_t), sub_dim, array_layout(view_t), memory_space(view_t)}
+        compile_view.((view_t, sub_view_t); for_function=subview, no_error=true)
+
+        if (array_layout(view_t) != LayoutStride)
+            # We also need the strided version of the subview type since we are compiling for all
+            # `Kokkos::subview` instantiations which results in a view with `sub_dim` dimensions.
+            sub_view_strided = View{eltype(view_t), sub_dim, LayoutStride, memory_space(view_t)}
+            compile_view(sub_view_strided; for_function=subview, no_error=true)
+        end
+
+        view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(view_t)
+        subview_dims = [sub_dim]
+        DynamicCompilation.load_or_compile(@__MODULE__, "subviews";
+            view_types, view_dims, view_layouts, mem_spaces, subview_dims
+        )
+    end)
 end
 
 
@@ -471,7 +571,10 @@ function _get_subview_dim_and_layout(src_rank, src_layout, indexes_type)
 end
 
 
-function subview(v::View{T, D, L, S}, indexes::Tuple{Vararg{Union{Int, Colon, AbstractUnitRange}}}) where {T, D, L, S}
+function subview(
+    v::View{T, D, L, S},
+    indexes::Tuple{Vararg{Union{Int, Colon, AbstractUnitRange}}}
+) where {T, D, L, S}
     subview_dim, subview_layout = _get_subview_dim_and_layout(D, L, typeof(indexes))
     return subview(v, indexes, Val{subview_dim}, subview_layout)
 end
@@ -694,11 +797,17 @@ specifies the stride of each dimension.
 !!! warning
 
     The returned view does not hold a reference to the original array.
-    It is the responsability of the user to make sure the original array is kept alive as long as
+    It is the responsibility of the user to make sure the original array is kept alive as long as
     the view should be accessed.
 """
-view_wrap(::Type{View{T, D, L, S}}, ::Dims{D}, layout, ::Ptr{T}) where {T, D, L, S} =
-    error_view_not_compiled(View{T, D, L, S})
+function view_wrap(view_t::Type{View{T, D, L, S}}, d::Dims{D}, layout, p::Ptr{T}) where {T, D, L, S}
+    @nospecialize view_t d layout p
+    return DynamicCompilation.@compile_and_call(view_wrap, (view_t, d, layout, p), begin
+        compile_view(view_t; for_function=view_wrap, no_error=true) 
+    end)
+end
+
+
 view_wrap(::Type{View{T, D, L, S}}, d::Dims{D}, p::Ptr{T}; layout=nothing) where {T, D, L, S} =
     view_wrap(View{T, D, L, S}, d, layout, p)
 
@@ -722,11 +831,11 @@ view_wrap(a::AbstractArray{T, D}) where {T, D} =
 
 Base.IndexStyle(::Type{<:View}) = IndexCartesian()
 
-@inline Base.size(v::View) = get_dims(v)
+@inline Base.size(v::View) = _get_dims(v)
 
 @inline to_c_index(I::Vararg{Int, D}) where {D} = convert.(Idx, I .- 1)
 Base.@propagate_inbounds elem_ptr(v::View{T, D}, I::Vararg{Int, D}) where {T, D} =
-    (@boundscheck checkbounds(v, I...); get_ptr(v, to_c_index(I...)...))
+    (@boundscheck checkbounds(v, I...); _get_ptr(v, to_c_index(I...)...))
 
 Base.@propagate_inbounds Base.getindex(v::View{T, D}, I::Vararg{Int, D}) where {T, D} =
     elem_ptr(v, I...)[]
@@ -779,19 +888,10 @@ end
 
 # === Strided Array interface ===
 
-Base.strides(v::View) = get_strides(v)
+Base.strides(v::View) = _get_strides(v)
 
 Base.unsafe_convert(::Type{Ptr{T}}, v::V) where {T, V <: View{T}} = pointer(v)
 
 Base.elsize(::Type{<:View{T}}) where {T} = sizeof(T)
-
-
-function __init_vars()
-    impl = get_impl_module()
-    global Idx = Base.invokelatest(impl.__idx_type)
-    global COMPILED_DIMS = Base.invokelatest(impl.__compiled_dims)
-    global COMPILED_TYPES = Base.invokelatest(impl.__compiled_types)
-    global COMPILED_LAYOUTS = Base.invokelatest(impl.__compiled_layouts)
-end
 
 end

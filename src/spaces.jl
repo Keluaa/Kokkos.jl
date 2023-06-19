@@ -8,7 +8,7 @@ export Serial, OpenMP, OpenACC, OpenMPTarget, Threads, Cuda, HIP, HPX, SYCL
 export HostSpace, CudaSpace, CudaHostPinnedSpace, CudaUVMSpace, HIPSpace, HIPHostPinnedSpace, HIPManagedSpace
 export COMPILED_EXEC_SPACES, COMPILED_MEM_SPACES
 export DEFAULT_DEVICE_SPACE, DEFAULT_HOST_SPACE, DEFAULT_DEVICE_MEM_SPACE, DEFAULT_HOST_MEM_SPACE
-export SHARED_MEMORY_SPACE, SHARED_HOST_PINNED_MEMORY_SPACE
+export SHARED_MEMORY_SPACE, SHARED_HOST_PINNED_MEMORY_SPACE, Idx
 export memory_space, execution_space, enabled, kokkos_name
 export accessible, array_layout, main_space_type, impl_space_type
 export fence, concurrency, allocate, deallocate
@@ -375,6 +375,19 @@ Equivalent to `Kokkos::SharedHostPinnedSpace` if `Kokkos::has_shared_host_pinned
 SHARED_HOST_PINNED_MEMORY_SPACE = nothing
 
 
+"""
+    Idx::Type{<:Integer}
+
+Integer type used by views for indexing on the default execution space. Usually either `Cint` or
+`Clonglong`: a 32bit or 64bit signed integer.
+
+Equivalent to `Kokkos::RangePolicy<>::index_type`.
+
+`nothing` if Kokkos is not yet loaded.
+"""
+Idx = nothing  # TODO: add an index_type(::ExecutionSpace??)
+
+
 module BackendFunctions
 
 # OpenMP
@@ -445,6 +458,7 @@ function __init_vars()
     global DEFAULT_HOST_MEM_SPACE = Base.invokelatest(impl.__default_host_memory_space)
     global SHARED_MEMORY_SPACE = Base.invokelatest(impl.__shared_memory_space)
     global SHARED_HOST_PINNED_MEMORY_SPACE = Base.invokelatest(impl.__shared_host_pinned_space)
+    global Idx = Base.invokelatest(impl.__idx_type)
 end
 
 end

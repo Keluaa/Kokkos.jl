@@ -58,7 +58,9 @@ std::ostream& type_to_string(std::ostream& os, const std::string& indent, const 
         i++;
         if (i < sizeof...(T)) os << ", ";
     }(), ...);
-    os << "\n" << indent << ">";
+    if (sizeof...(T) > 0)
+        os << "\n" << indent;
+    os << ">";
     return os;
 }
 

@@ -64,12 +64,16 @@ function ensure_kokkos_wrapper_loaded()
 end
 
 
-include("dynamic_build.jl")
+include("kokkos_project.jl")
 include("kokkos_lib.jl")
 include("utils.jl")
 
 include("kokkos_wrapper.jl")
 using .Wrapper
+
+function __validate_parameters end
+include("dynamic_compilation.jl")
+using .DynamicCompilation
 
 include("spaces.jl")
 using .Spaces

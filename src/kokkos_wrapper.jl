@@ -143,7 +143,9 @@ function create_kokkos_lib_project(; no_git=false)
     end
 
     return CMakeKokkosProject(joinpath(@__DIR__, "../lib/kokkos_wrapper"), "libKokkosWrapper";
-        build_dir, build_type = KOKKOS_BUILD_TYPE, cmake_options, kokkos_path, kokkos_options
+        target = "KokkosWrapper",
+        build_dir, build_type = KOKKOS_BUILD_TYPE,
+        cmake_options, kokkos_path, kokkos_options
     )
 end
 
@@ -166,6 +168,7 @@ function compile_wrapper_lib(; no_compilation=false, no_git=false, loading_bar=t
 
     pretty_compile(KOKKOS_LIB_PROJECT; info=true, loading_bar)
     install_kokkos()
+    mkpath(joinpath(build_dir(KOKKOS_LIB_PROJECT), "func_libs"))
 end
 
 
@@ -199,6 +202,12 @@ in order to load Kokkos with the same options and backends as the ones used by `
 function get_kokkos_install_dir()
     ensure_kokkos_wrapper_loaded()
     return joinpath(build_dir(KOKKOS_LIB_PROJECT), "install")
+end
+
+
+function get_kokkos_func_libs_dir()
+    ensure_kokkos_wrapper_loaded()
+    return joinpath(build_dir(KOKKOS_LIB_PROJECT), "func_libs")
 end
 
 
@@ -248,7 +257,6 @@ function load_wrapper_lib(; no_compilation=false, no_git=false, loading_bar=true
     Kokkos = parentmodule(Wrapper)
     Kokkos.__init_vars()
     Kokkos.Spaces.__init_vars()
-    Kokkos.Views.__init_vars()
 
     return
 end

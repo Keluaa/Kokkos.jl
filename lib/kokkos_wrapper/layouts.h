@@ -5,8 +5,7 @@
 #include "jlcxx/jlcxx.hpp"
 #include "utils.h"
 
-
-#if !defined(COMPLETE_BUILD) || COMPLETE_BUILD == 0
+#ifndef WRAPPER_BUILD
 #include "parameters.h"
 #endif
 
@@ -27,6 +26,10 @@
 #warning "No explicit value set for VIEW_LAYOUTS, using the default of 'deviceDefault, hostDefault'"
 #endif
 
+#ifndef DEST_LAYOUTS
+#define DEST_LAYOUTS VIEW_LAYOUTS
+#endif
+
 
 namespace LayoutListHelper {
     using left = Kokkos::LayoutLeft;
@@ -36,9 +39,11 @@ namespace LayoutListHelper {
     using hostDefault = Kokkos::DefaultHostExecutionSpace::array_layout;
 
     using LayoutList = decltype(remove_duplicates(TList<VIEW_LAYOUTS>{}));
+    using DestLayoutList = decltype(remove_duplicates(TList<DEST_LAYOUTS>{}));
 }
 
 using LayoutListHelper::LayoutList;
+using LayoutListHelper::DestLayoutList;
 
 
 template<typename Layout>

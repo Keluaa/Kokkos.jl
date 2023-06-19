@@ -39,17 +39,17 @@ struct DeepCopyDetectorNoExecSpace
 void register_all_deep_copy_combinations(jlcxx::Module& mod)
 {
     auto combinations = build_all_combinations<
-#if defined(COMPLETE_BUILD) && COMPLETE_BUILD == 1
+#if COMPLETE_BUILD == 1
             decltype(TList<NoExecSpaceArg>{} + FilteredExecutionSpaceList{}),
-#elif WITHOUT_EXEC_SPACE_ARG == 1
+#elif WITHOUT_EXEC_SPACE_ARG == 0
             decltype(FilteredExecutionSpaceList{}),
 #else
             decltype(TList<NoExecSpaceArg>{}),
 #endif
             decltype(tlist_from_sequence(DimensionsToInstantiate{})),
             TList<VIEW_TYPES>,
-            LayoutList,
-            FilteredMemorySpaceList
+            DestLayoutList,
+            DestMemSpaces
     >();
 
     auto src_combinations = build_all_combinations<
@@ -99,10 +99,19 @@ void register_all_deep_copy_combinations(jlcxx::Module& mod)
 }
 
 
+#ifdef WRAPPER_BUILD
 void define_kokkos_deep_copy(jlcxx::Module& mod)
 {
+    // Called from 'Kokkos.Wrapper.Impl'
     jl_module_t* wrapper_module = mod.julia_module()->parent;
     auto* views_module = (jl_module_t*) jl_get_global(wrapper_module->parent, jl_symbol("Views"));
+#else
+JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
+{
+    // Called from 'Kokkos.Views.Impl<number>'
+    jl_module_t* views_module = mod.julia_module()->parent;
+#endif
+
     jl_module_import(mod.julia_module(), views_module, jl_symbol("deep_copy"));
 
     mod.set_override_module(views_module);

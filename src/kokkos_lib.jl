@@ -30,7 +30,7 @@ const PROJECTS_LIBS = Dict{String, CLibrary}()
 
 """
     load_lib(lib::Union{String, KokkosProject, CLibrary};
-             flags=Libdl.RTLD_LAZY | Libdl.RTLD_DEEPBIND | Libdl.RTLD_LOCAL)
+             flags=Libdl.RTLD_LAZY | Libdl.RTLD_LOCAL)
 
 Open a shared library.
 
@@ -42,10 +42,11 @@ If the library is already loaded, it is not opened another time: this guarantees
 `Libdl.dlclose` once will unload the library from memory, if the library wasn't opened from
 elsewhere.
 """
-function load_lib(lib::CLibrary; flags=Libdl.RTLD_LAZY | Libdl.RTLD_DEEPBIND | Libdl.RTLD_LOCAL)
+function load_lib(lib::CLibrary; flags=Libdl.RTLD_LAZY | Libdl.RTLD_LOCAL)
     if !is_valid(lib)
         lib.handle = Libdl.dlopen(lib.load_path, flags)
         lib.full_path = Libdl.dlpath(lib.handle)
+        # TODO: monitor https://github.com/kokkos/kokkos/issues/6178 and add a @warn
     end
     return lib
 end

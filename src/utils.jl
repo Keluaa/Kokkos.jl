@@ -226,6 +226,7 @@ function versioninfo(io::IO = stdout; internal=true, verbose=false)
     end
     println(io, "Kokkos installation dir: ", get_kokkos_install_dir())
     println(io, "Wrapper library compiled at ", build_dir(Wrapper.KOKKOS_LIB_PROJECT))
+    # TODO: rename to 'Available ... spaces:' + same for the constants
     println(io, "\nCompiled execution spaces:")
     for space in COMPILED_EXEC_SPACES
         println(io, " - $(nameof(space)) (default memory space: $(nameof(memory_space(space))))")
@@ -234,10 +235,6 @@ function versioninfo(io::IO = stdout; internal=true, verbose=false)
     for space in COMPILED_MEM_SPACES
         println(io, " - $(nameof(space)) (associated execution space: $(nameof(execution_space(space))))")
     end
-    println(io, "\nCompiled view options:")
-    println(io, " - types:      ", join(COMPILED_TYPES, ", ", " and "))
-    println(io, " - dimensions: ", join(string.(COMPILED_DIMS) .* "D", ", ", " and "))
-    println(io, " - layouts:    ", join(nameof.(COMPILED_LAYOUTS), ", ", " and "))
 
     if internal
         println(io, "\nKokkos internal configuration:")
@@ -252,7 +249,7 @@ requirement_fail(msg, constraint::String, expected, value) = "$msg: $expected $c
 requirement_fail(msg, args...) = "$msg"
 
 
-function require_config(version, dims, types, layouts, idx, exec_spaces, mem_spaces)
+function require_config(version, exec_spaces, mem_spaces)
     failures = []
 
     if !isnothing(version)
@@ -260,30 +257,6 @@ function require_config(version, dims, types, layouts, idx, exec_spaces, mem_spa
             @warn "Cannot check the Kokkos version of a custom installation when Kokkos is not loaded" maxlog=1
         elseif !version(VersionNumber(LOCAL_KOKKOS_VERSION_STR))
             push!(failures, requirement_fail("Kokkos version $LOCAL_KOKKOS_VERSION_STR", version, "VERSION"))
-        end
-    end
-
-    if !isnothing(idx)
-        @warn "Cannot check the index type when Kokkos is not loaded" maxlog=1
-    end
-
-    if !isnothing(dims) && !issubset(dims, KOKKOS_VIEW_DIMS)
-        push!(failures, requirement_fail("view dimensions", "⊈", tuple(dims...), KOKKOS_VIEW_DIMS))
-    end
-
-    if !isnothing(types)
-        types_str = string.(nameof.(types))
-        if !issubset(types_str, KOKKOS_VIEW_TYPES)
-            push!(failures, requirement_fail("view types", "⊈", tuple(types_str...), KOKKOS_VIEW_TYPES))
-        end
-    end
-
-    if !isnothing(layouts)
-        layouts_str = layouts .|> nameof .|> string .|> lowercase
-        layouts_str = chop.(layouts_str; head=length("Layout"), tail=0)
-        layouts_str = string.(layouts_str)
-        if !issubset(layouts_str, KOKKOS_VIEW_LAYOUTS)
-            push!(failures, requirement_fail("view layouts", "⊈", tuple(layouts...), KOKKOS_VIEW_LAYOUTS))
         end
     end
 
@@ -302,27 +275,11 @@ function require_config(version, dims, types, layouts, idx, exec_spaces, mem_spa
 end
 
 
-function require_compiled(version, dims, types, layouts, idx, exec_spaces, mem_spaces)
+function require_compiled(version, exec_spaces, mem_spaces)
     failures = []
 
     if !isnothing(version) && !version(KOKKOS_VERSION)
         push!(failures, requirement_fail("Kokkos version $KOKKOS_VERSION", version, "VERSION"))
-    end
-
-    if !isnothing(idx) && !idx(Idx)
-        push!(failures, requirement_fail("index type $Idx", idx, "Idx"))
-    end
-
-    if !isnothing(dims) && !issubset(dims, COMPILED_DIMS)
-        push!(failures, requirement_fail("view dimensions", "⊈", tuple(dims...), COMPILED_DIMS))
-    end
-
-    if !isnothing(types) && !issubset(types, COMPILED_TYPES)
-        push!(failures, requirement_fail("view types", "⊈", tuple(types...), COMPILED_TYPES))
-    end
-
-    if !isnothing(layouts) && !issubset(layouts, COMPILED_LAYOUTS)
-        push!(failures, requirement_fail("view layouts", "⊈", tuple(layouts...), COMPILED_LAYOUTS))
     end
 
     if !isnothing(exec_spaces) && !issubset(exec_spaces, COMPILED_EXEC_SPACES)
@@ -336,12 +293,10 @@ function require_compiled(version, dims, types, layouts, idx, exec_spaces, mem_s
     return failures
 end
 
-
+# TODO: remove
 """
     require(;
         version=nothing,
-        dims=nothing, types=nothing, layouts=nothing,
-        idx=nothing,
         exec_spaces=nothing, mem_spaces=nothing,
         no_error=false
     )
@@ -350,44 +305,32 @@ Asserts that the underlying Kokkos wrapper library of `Kokkos.jl` respects the g
 
 An argument with a value of `nothing` is considered to have no requirements.
 
-`version` checks for the version of Kokkos.
+`version` checks for the version of Kokkos. It is given as a callable returning a `Bool` and taking
+a single `VersionNumber`, e.g. passing `version = >=(v"4.0.0")` will match all Kokkos versions
+including `v4.0.0` and above.
 
-`idx` checks the type of the index variables used when accessing a view.
-
-`version` and `idx` are given as callables returning a `Bool` and taking a single argument:
-respectively a `VersionNumber` and a `Type`, e.g. passing `version = >=(v"4.0.0")` will match all
-Kokkos versions including `v4.0.0` and above.
-
-`dims`, `types`, `layouts`, `exec_spaces` and `mem_spaces` are lists of the required values. 
-
-`dims`, `types` and `layouts` check the available dimensions, types and layouts of views, while
-`exec_spaces` and `mem_spaces` do the same for execution and memory spaces.
+`exec_spaces` and `mem_spaces` are lists of the required execution and memory spaces.
 
 If `no_error` is true, then this function will return `false` if any requirement is not met.
 
 This function does not require for Kokkos to be initialized, but for the wrapper library to be
 loaded.
 If the wrapper is not loaded, the configuration options will be checked instead, however they cannot
-cover all possible requirements (`idx` and `mem_spaces` do not work and `version` works only if the
-packaged Kokkos installation is used).
+cover all possible requirements (`mem_spaces` does not work and `version` works only if the packaged
+Kokkos installation is used).
 
 
 # Examples
 
 ```julia
-# Require Kokkos version 4.0.0 (exactly), and for 1D and 2D views of Float64 to be compiled with
-# a column or row major layout:
+# Require Kokkos version 4.0.0 (exactly)
 Kokkos.require(;
-    version = ==(v"4.0.0"),
-    types = [Float64],
-    dims = [1, 2],
-    layouts = [Kokkos.LayoutLeft, Kokkos.LayoutRight]    
+    version = ==(v"4.0.0")
 )
 
-# Require an index type of 8 bytes, the Cuda and OpenMP backends of Kokkos, as well as the Cuda UVM
+# Require the Cuda and OpenMP backends of Kokkos, as well as the Cuda UVM
 # memory space to be available:
 Kokkos.require(;
-    idx = (==(8) ∘ sizeof),
     exec_spaces = [Kokkos.Cuda, Kokkos.OpenMP],
     mem_spaces = [Kokkos.CudaUVMSpace]
 )
@@ -395,15 +338,13 @@ Kokkos.require(;
 """
 function require(;
     version=nothing,
-    dims=nothing, types=nothing, layouts=nothing,
-    idx=nothing,
     exec_spaces=nothing, mem_spaces=nothing,
     no_error=false
 )
     if is_kokkos_wrapper_loaded()
-        failures = require_compiled(version, dims, types, layouts, idx, exec_spaces, mem_spaces)
+        failures = require_compiled(version, exec_spaces, mem_spaces)
     else
-        failures = require_config(version, dims, types, layouts, idx, exec_spaces, mem_spaces)
+        failures = require_config(version, exec_spaces, mem_spaces)
     end
 
     if !isempty(failures)
@@ -427,6 +368,71 @@ See [kokkos_version](@ref) for the version of the packaged installation of Kokko
 is defined before loading Kokkos.
 """
 KOKKOS_VERSION = nothing
+
+
+function __validate_parameters(;
+    view_layouts, view_dims, view_types,
+    exec_spaces, mem_spaces,
+    dest_layouts, dest_mem_spaces,
+    subview_dims
+)
+    view_layouts    = @something view_layouts    DataType[]
+    view_dims       = @something view_dims       Int[]
+    view_types      = @something view_types      DataType[]
+    exec_spaces     = @something exec_spaces     DataType[]
+    mem_spaces      = @something mem_spaces      DataType[]
+    dest_layouts    = @something dest_layouts    DataType[]
+    dest_mem_spaces = @something dest_mem_spaces DataType[]
+    subview_dims    = @something subview_dims    Int[]
+
+    view_layouts    = unique(view_layouts)
+    view_dims       = unique(view_dims)
+    view_types      = unique(view_types)
+    exec_spaces     = unique(exec_spaces)
+    mem_spaces      = unique(mem_spaces)
+    dest_layouts    = unique(dest_layouts)
+    dest_mem_spaces = unique(dest_mem_spaces)
+    subview_dims    = unique(subview_dims)
+
+    exec_spaces     = main_space_type.(exec_spaces)
+    mem_spaces      = main_space_type.(mem_spaces)
+    dest_mem_spaces = main_space_type.(dest_mem_spaces)
+
+    all_dims = union(view_dims, subview_dims)
+    if !all(d -> (0 ≤ d ≤ 8), all_dims)
+        wrong_dims = filter(d -> (0 ≤ d ≤ 8), all_dims)
+        wrong_dims_str = join(wrong_dims, ", ", " and ")
+        error("Kokkos only supports dimensions from 0 to 8, got: " * wrong_dims_str)
+    end
+
+    if any((!enabled).(exec_spaces))
+        wrong_exec = filter(!enabled, exec_spaces)
+        wrong_exec_str = join(wrong_exec, ", ", " and ")
+        error("Cannot compile for disabled execution space: " * wrong_exec_str)
+    end
+
+    all_mem_spaces = union(mem_spaces, dest_mem_spaces)
+    if any((!enabled).(all_mem_spaces))
+        wrong_mem = filter(!enabled, all_mem_spaces)
+        wrong_mem_str = join(wrong_mem, ", ", " and ")
+        error("Cannot compile for disabled memory space: " * wrong_mem_str)
+    end
+
+    # Convert to string
+    view_types      = Wrapper.julia_type_to_c.(view_types)
+    view_layouts    = [lowercase(string(nameof(l)))[7:end] for l in view_layouts]  # Remove leading 'Layout'
+    dest_layouts    = [lowercase(string(nameof(l)))[7:end] for l in dest_layouts]
+    view_dims       = string.(view_dims)
+    subview_dims    = string.(subview_dims)
+    exec_spaces     = nameof.(exec_spaces)     .|> string
+    mem_spaces      = nameof.(mem_spaces)      .|> string
+    dest_mem_spaces = nameof.(dest_mem_spaces) .|> string
+
+    return view_layouts, view_dims, view_types,
+           exec_spaces, mem_spaces,
+           dest_layouts, dest_mem_spaces,
+           subview_dims
+end
 
 
 function __init_vars()

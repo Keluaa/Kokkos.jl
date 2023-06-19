@@ -4,6 +4,10 @@
 #include <tuple>
 
 
+template <class...>
+constexpr bool always_false = false;
+
+
 /**
  * Template list where the N-th argument can be accessed with 'TList<...>::Arg<N>', and which can be combined with other
  * template lists.
@@ -46,6 +50,7 @@ constexpr auto tlist_from_sequence(std::integer_sequence<I, Dims...>)
         return (TList<std::integral_constant<std::size_t, Dims>>{} + ...);
     }
 }
+
 
 template<typename Element, typename... Args>
 constexpr bool is_element_in_list(TList<Args...>)
@@ -122,7 +127,11 @@ auto sub_tlist(TList<T...> l)
 template<typename... Stack, typename... List>
 constexpr auto build_all_combinations(TList<Stack...>, TList<List...>)
 {
-    return (TList<TList<Stack..., List>>{} + ...);
+    if constexpr (sizeof...(List) == 0) {
+        static_assert(always_false<List...>, "Empty list passed to 'build_all_combinations'");
+    } else {
+        return (TList<TList<Stack..., List>>{} + ...);
+    }
 }
 
 
@@ -242,27 +251,16 @@ constexpr auto filter_types(Functor&& f, TList<T...>)
 }
 
 
-template<typename T, std::size_t N, std::size_t... I>
-constexpr std::array<T, N> make_array(T (&a)[N], std::index_sequence<I...>)
-{
-    return { {a[I]...} };
-}
-
-
 /**
- * Creates a `std::array<T, N>` from a C array reference. Supports inlined C arrays of size 0 if `T` is specified.
+ * Creates a `std::array<T, N>` from the arguments. Supports arrays of size 0.
  */
-template<typename T, std::size_t N = 0L, typename arg_t = std::enable_if_t<(N > 0L), T(&)[N]>>
-constexpr std::array<T, N> make_array(arg_t a)
+template<typename T, typename... A>
+constexpr auto as_array(A... args)
 {
-    return make_array(a, std::make_index_sequence<N>{});
-}
-
-
-template<typename T, std::size_t N = 0L, typename arg_t = std::enable_if_t<(N == 0L), T>>
-constexpr std::array<T, 0> make_array(arg_t)
-{
-    return {};
+    std::array<T, sizeof...(A)> array{};
+    int i = 0;
+    ([&](){ array[i++] = args; }(), ...);
+    return array;
 }
 
 

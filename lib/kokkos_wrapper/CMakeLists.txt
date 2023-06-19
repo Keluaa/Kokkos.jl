@@ -32,26 +32,42 @@ if (NOT DEFINED VIEW_LAYOUTS)
     set(VIEW_LAYOUTS "deviceDefault,hostDefault")
 endif()
 
+if (NOT DEFINED COMPLETE_BUILD)
+    set(COMPLETE_BUILD OFF)
+endif()
 
-add_library(KokkosWrapper SHARED
+
+set(WRAPPER_SOURCES
         kokkos_wrapper.cpp kokkos_wrapper.h
         execution_spaces.h
         memory_spaces.h
         spaces.cpp spaces.h
         space_specific_methods.cpp
         layouts.cpp layouts.h
-        views.cpp views.h
-        copy.cpp copy.h
-        mirrors.cpp mirrors.h
-        subviews.cpp subviews.h
+        views.h
+        copy.h
+        mirrors.h
+        subviews.h
         utils.h printing_utils.h)
-target_link_libraries(KokkosWrapper PUBLIC JlCxx::cxxwrap_julia)
-target_link_libraries(KokkosWrapper PRIVATE Kokkos::kokkos)
+
+
+if (COMPLETE_BUILD)
+    list(APPEND WRAPPER_SOURCES
+            views.cpp
+            copy.cpp
+            mirrors.cpp
+            subviews.cpp)
+endif()
+
+
+add_library(KokkosWrapper SHARED ${WRAPPER_SOURCES})
+target_link_libraries(KokkosWrapper PUBLIC JlCxx::cxxwrap_julia Kokkos::kokkos)
 target_compile_definitions(KokkosWrapper PRIVATE
         VIEW_DIMENSIONS=${VIEW_DIMENSIONS}
         VIEW_TYPES=${VIEW_TYPES}
         VIEW_LAYOUTS=${VIEW_LAYOUTS}
-        COMPLETE_BUILD=1
+        COMPLETE_BUILD=${COMPLETE_BUILD}
+        WRAPPER_BUILD
 )
 target_compile_options(KokkosWrapper PRIVATE
         $<$<CONFIG:Debug>:-Wall -Wextra -Wpedantic>
