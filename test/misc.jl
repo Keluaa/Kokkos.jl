@@ -20,6 +20,7 @@ prev_backends = copy(Kokkos.KOKKOS_BACKENDS)
 # Only present here to keep the expected configuration without extra logging
 @test_logs (:info, r"Restart your Julia session") Kokkos.set_backends(prev_backends)
 
-# TODO: test Kokkos.DynamicCompilation.clean_libs()
+Kokkos.DynamicCompilation.clean_libs()
+@test isempty(readdir(Kokkos.Wrapper.get_kokkos_func_libs_dir()))
 
 end

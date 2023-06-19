@@ -105,17 +105,8 @@ It is important to understand that for a view to be properly disposed of, there 
 abstract type View{T, D, L <: Layout, M <: MemorySpace} <: Base.AbstractArray{T, D} end
 
 
-function _extract_view_params(views::Vararg{Type{<:View}})  # TODO: remove vararg
-    v_T, v_D, v_L, v_S = Type[], Int[], Type[], Type[]
-
-    for view_t in views
-        push!(v_T, eltype(view_t))
-        push!(v_D, ndims(view_t))
-        push!(v_L, array_layout(view_t))
-        push!(v_S, memory_space(view_t))
-    end
-
-    return v_T, v_D, v_L, v_S
+function _extract_view_params(view_t::Type{<:View})
+    return [eltype(view_t)], [ndims(view_t)], [array_layout(view_t)], [memory_space(view_t)]
 end
 
 
@@ -168,7 +159,6 @@ end
 
 
 function _get_ptr(@nospecialize(v::View), @nospecialize(i::Vararg{Integer}))
-    # TODO: test when calling with weird indices
     return DynamicCompilation.@compile_and_call(_get_ptr, (v, i...),
         compile_view(typeof(v); for_function=_get_ptr, no_error=true)
     )

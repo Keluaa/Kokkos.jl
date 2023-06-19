@@ -27,7 +27,10 @@ const TEST_MEM_SHARED = TEST_CUDA ? Kokkos.CudaUVMSpace        : Kokkos.HostSpac
 const TEST_MEM_PINNED = TEST_CUDA ? Kokkos.CudaHostPinnedSpace : Kokkos.HostSpace
 
 const TEST_DEVICE_ACCESSIBLE = !TEST_CUDA
-const TEST_IDX_SIZE = TEST_DEVICE_IS_HOST ? 8 : 4
+
+const TEST_VIEW_DIMS = (1, 2)
+const TEST_VIEW_TYPES = (Float64, Int64)
+const TEST_VIEW_LAYOUTS = (Kokkos.LayoutLeft, Kokkos.LayoutRight, Kokkos.LayoutStride)
 
 
 TEST_CUDA && using CUDA
@@ -71,13 +74,15 @@ end
             include("backends/cuda.jl")
         end
 
-        include("utils.jl")
         include("projects.jl")
         include("simple_lib_tests.jl")
-        include("misc.jl")
     end
 
     TEST_MPI && include("mpi.jl")
+
+    @info "Tests needed $(length(Kokkos.DynamicCompilation.LOADED_FUNCTION_LIBS)) function libraries"
+
+    !TEST_MPI_ONLY && include("misc.jl")
 
     GC.gc(true)  # Call the finalizers of all created views
     @test_nowarn Kokkos.finalize()
