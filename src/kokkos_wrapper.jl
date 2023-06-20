@@ -151,6 +151,9 @@ function install_kokkos()
 end
 
 
+function clear_compilation_lock end  # Defined in DynamicCompilation
+
+
 function compile_wrapper_lib(; no_compilation=false, no_git=false, loading_bar=true)
     global KOKKOS_LIB_PROJECT = create_kokkos_lib_project(; no_git)
     global KOKKOS_LIB_PATH = lib_path(KOKKOS_LIB_PROJECT)
@@ -163,6 +166,7 @@ function compile_wrapper_lib(; no_compilation=false, no_git=false, loading_bar=t
     pretty_compile(KOKKOS_LIB_PROJECT; info=true, loading_bar)
     install_kokkos()
     mkpath(joinpath(build_dir(KOKKOS_LIB_PROJECT), "func_libs"))
+    clear_compilation_lock()
 end
 
 

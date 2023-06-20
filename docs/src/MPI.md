@@ -44,6 +44,10 @@ If configuration options need to be changed before initializing Kokkos, then it 
 perform the changes on the root process before `using Kokkos` is called on the others, since
 changing options will modify the `LocalPreferrences.toml` file.
 
+### Dynamic Compilation and MPI
+
+See [`DynamicCompilation.compilation_lock`](@ref)
+
 
 ## Passing views to MPI
 

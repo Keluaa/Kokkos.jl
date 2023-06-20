@@ -1,15 +1,24 @@
 module DynamicCompilation
 
-using UUIDs
 import ..Kokkos: Wrapper
 import ..Kokkos: CMakeKokkosProject, CLibrary
 import ..Kokkos: ensure_kokkos_wrapper_loaded, compile, lib_path, load_lib, __validate_parameters
+
+@static if VERSION >= v"1.9"
+    import FileWatching.Pidfile: mkpidlock
+else
+    import Pidfile: mkpidlock
+end
+
 
 export @compile_and_call, compile_and_load
 
 
 const COMPILATION_LOCK_FILE = "__compilation.lock"
-const PROCESS_ID = string(UUIDs.uuid1())  # getpid() is not guaranteed to be unique in an MPI app
+# TODO: remove UUIDs
+#const PROCESS_ID = string(UUIDs.uuid1())  # getpid() is not guaranteed to be unique in an MPI app
+const PROCESS_ID = rand(Cint)  # getpid() is not guaranteed to be unique in an MPI app
+const INTRA_PROCESS_LOCK = ReentrantLock()  # Multi-threading lock
 
 const LOADED_FUNCTION_LIBS = Dict{String, CLibrary}()
 
@@ -50,43 +59,41 @@ function clean_libs()
 end
 
 
+const MPI_PKG_ID = Base.PkgId(Base.UUID("da04e1cc-30fd-572f-bb4f-1f8673147195"), "MPI")
+is_MPI_loaded() = !isnothing(get(Base.loaded_modules, MPI_PKG_ID, nothing))
+
+
+function use_compilation_lock()
+    user_opinion = get(ENV, "JULIA_KOKKOS_USE_COMPILATION_LOCK_FILE", nothing)
+    !isnothing(user_opinion) && return user_opinion
+    return is_MPI_loaded()
+end
+
+
+lock_file_path() = joinpath(Wrapper.KOKKOS_BUILD_DIR, COMPILATION_LOCK_FILE)
+
+Wrapper.clear_compilation_lock() = rm(lock_file_path(); force=true)
+
+
 """
     compilation_lock(func)
 
-Attemps to lock 
+Asserts that only a single process (and single thread) is compiling at once.
 
-TODO
+By default, there is only a lock on tasks of the current process.
+
+If `MPI.jl` is loaded, a PID lock file is also used
+(see [FileWatching.Pidfile](https://docs.julialang.org/en/v1/stdlib/FileWatching/#Pidfile),
+or [Pidfile.jl](https://github.com/vtjnash/Pidfile.jl) before 1.9).
+Lock files have the advantage that no collective MPI operations are needed, however they only work
+if all MPI ranks share the same filesystem, and if this is not the case then there is no need for
+lock files.
+This can be overloaded with the `JULIA_KOKKOS_USE_COMPILATION_LOCK_FILE` environment variable.
 """
 function compilation_lock(func)
-    return func()
-
-    # In case we are in a MPI application, we must make sure that only one process is compiling at a
-    # time. Since calls to Kokkos API are maybe not the same on all processes, we cannot use any
-    # MPI collective operation to do this. The solution used here exploits the filesystem.
-    # Obviously we suppose that we are working in a shared filesystem.
-
-    lock_file = joinpath(Wrapper.KOKKOS_BUILD_DIR, COMPILATION_LOCK_FILE)
-
-    # TODO: maybe update and require Julia 1.9 to use the proper stdlib FileWatching.Pidfile
-    #  put pids are not unique across an MPI app...
-
-    # TODO: make root clear the lock file at startup, and at each change of build dir
-
-    if !isempty(readchomp(lock_file))
-        # Another process is compiling
-    end
-
-    open(lock_file, "w") do file
-        println(file, PROCESS_ID)
-    end
-
-    if readchomp(lock_file) == PROCESS_ID
-        # We acquired the lock
-        try
-            func()
-        finally
-
-        end
+    lock(INTRA_PROCESS_LOCK) do
+        !use_compilation_lock() && return func()
+        return mkpidlock(func, lock_file_path(), PROCESS_ID; stale_age=0, wait=true, poll_interval=5)
     end
 end
 
@@ -185,14 +192,19 @@ end
 
 function compile_lib(cmake_target, out_lib_path, parameters)
     ensure_kokkos_wrapper_loaded()
+    compilation_lock() do
+        # The lock may have been acquired after another process compiled the library, therefore we
+        # must check if the library is update again.
+        is_lib_up_to_date(out_lib_path) && return
 
-    target_output = CMAKE_TARGETS[cmake_target]
+        target_output = CMAKE_TARGETS[cmake_target]
 
-    lib_proj = CMakeKokkosProject(Wrapper.KOKKOS_LIB_PROJECT, cmake_target, target_output)
-    compile(lib_proj; cmd_transform=cmd -> addenv(cmd, parameters))
+        lib_proj = CMakeKokkosProject(Wrapper.KOKKOS_LIB_PROJECT, cmake_target, target_output)
+        compile(lib_proj; cmd_transform=cmd -> addenv(cmd, parameters))
 
-    output_path = lib_path(lib_proj) * SHARED_LIB_EXT
-    mv(output_path, out_lib_path; force=true)
+        output_path = lib_path(lib_proj) * SHARED_LIB_EXT
+        mv(output_path, out_lib_path; force=true)
+    end
 end
 
 

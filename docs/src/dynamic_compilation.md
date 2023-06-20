@@ -10,8 +10,10 @@ This mechanism allows to create new methods without degrading performance (after
 invalidation).
 
 Only functions operating on views are dynamically compiled, the rest are compiled with the wrapper
-library. 
+library.
 
+Compilation is not thread-safe and must be done by a single process (and single thread) at once.
+This is ensured by [`compilation_lock`](@ref).
 
 ```@docs
 @compile_and_call
