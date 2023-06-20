@@ -50,8 +50,14 @@ function clean_libs()
 end
 
 
+"""
+    compilation_lock(func)
+
+Attemps to lock 
+
+TODO
+"""
 function compilation_lock(func)
-    @warn "TODO: compilation lock" maxlog=1
     return func()
 
     # In case we are in a MPI application, we must make sure that only one process is compiling at a

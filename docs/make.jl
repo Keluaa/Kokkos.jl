@@ -32,7 +32,10 @@ makedocs(;
         "Views" => "views.md",
         "Compilation" => "compilation.md",
         "Library Management" => "library_management.md",
-        "Configuration options" => "config_options.md"
+        "Configuration options" => "config_options.md",
+        "Internals" => [
+            "Dynamic Compilation" => "dynamic_compilation.md"
+        ]
     ],
 )
 

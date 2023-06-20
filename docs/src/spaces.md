@@ -25,8 +25,8 @@ deallocate
 ## Constants
 
 ```@docs
-COMPILED_EXEC_SPACES
-COMPILED_MEM_SPACES
+ENABLED_EXEC_SPACES
+ENABLED_MEM_SPACES
 ```
 
 ## Default spaces

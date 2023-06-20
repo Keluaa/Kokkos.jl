@@ -385,7 +385,7 @@ Equivalent to `Kokkos::RangePolicy<>::index_type`.
 
 `nothing` if Kokkos is not yet loaded.
 """
-Idx = nothing  # TODO: add an index_type(::ExecutionSpace??)
+Idx = nothing
 
 
 module BackendFunctions

@@ -142,6 +142,8 @@ Kokkos.Views.View{Float64, 2, Kokkos.Views.LayoutRight, Kokkos.Wrapper.Impl.Host
 julia> view_impl_t <: view_t  # Julia types are contra-variant
 false
 ```
+
+This function relies on [Dynamic Compilation](@ref).
 """
 function impl_view_type(@nospecialize(view_t::Type{<:View}))
     return DynamicCompilation.@compile_and_call(impl_view_type, (view_t,),
@@ -209,6 +211,8 @@ memory_space(::Type{<:View{T, D, L, MemSpace}}) where {T, D, L, MemSpace} = main
     label(::View)
 
 Return the label of the `View`.
+
+This function relies on [Dynamic Compilation](@ref).
 """
 function label(@nospecialize(v::View))
     return DynamicCompilation.@compile_and_call(label, (v,),
@@ -223,6 +227,8 @@ end
 The pointer to the data of the `View`. Using `Base.pointer(view)` is preferred over this method.
 
 Equivalent to `view.data()`.
+
+This function relies on [Dynamic Compilation](@ref).
 """
 function view_data(@nospecialize(v::View))
     return DynamicCompilation.@compile_and_call(view_data, (v,),
@@ -237,6 +243,8 @@ end
 Total size of the view data in memory, in bytes.
 
 Equivalent to `view.impl_map().memory_span()`.
+
+This function relies on [Dynamic Compilation](@ref).
 """
 function memory_span(@nospecialize(v::View))
     return DynamicCompilation.@compile_and_call(memory_span, (v,),
@@ -251,6 +259,8 @@ end
 `true` if the view stores all its elements contiguously in memory.
 
 Equivalent to [`view.span_is_contiguous()`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/view.html?highlight=span_is_contiguous#_CPPv4NK18span_is_contiguousEv).
+
+This function relies on [Dynamic Compilation](@ref).
 """
 function span_is_contiguous(@nospecialize(v::View))
     return DynamicCompilation.@compile_and_call(span_is_contiguous, (v,),
@@ -272,6 +282,8 @@ If a `space` is given, the copy may be asynchronous. If not the copy will be syn
 
 Equivalent to `Kokkos::deep_copy(dest, src)` or `Kokkos::deep_copy(space, dest, src)`.
 [See the Kokkos docs about `Kokkos::deep_copy`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/deep_copy.html#deep-copy)
+
+This function relies on [Dynamic Compilation](@ref).
 """
 function deep_copy(dest::View, src::View)
     @nospecialize dest src
@@ -342,6 +354,8 @@ it must be a memory space instance where the new view will be allocated.
 If `zero_fill` is true, the new view will have all of its elements set to their default value.
 
 [See the Kokkos docs about `Kokkos::create_mirror`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/create_mirror.html)
+
+This function relies on [Dynamic Compilation](@ref).
 """
 function create_mirror(src::View; mem_space = nothing, zero_fill = false)
     return create_mirror(src, mem_space, zero_fill)
@@ -368,6 +382,8 @@ end
 
 Equivalent to [`create_mirror`](@ref), but if `src` is already accessible by the host, `src` is
 returned and no view is created.
+
+This function relies on [Dynamic Compilation](@ref).
 """
 function create_mirror_view(src::View; mem_space = nothing, zero_fill = false)
     return create_mirror_view(src, mem_space, zero_fill)
@@ -439,11 +455,12 @@ julia> Kokkos.subview(v, (1,))  # Equivalent to `(1, :)`
  13.0
 ```
 
-# !!! warning
+!!! warning
 
     `Kokkos.subview` is __not__ equivalent to `Base.view`, as it returns a new `Kokkos.View` object,
     while `Base.view` returns a `SubArray`, which cannot be passed to a `ccall`.
 
+This function relies on [Dynamic Compilation](@ref).
 """
 function subview(view::View, indexes::Tuple, subview_dim::Type{<:Val}, subview_layout::Type)
     @nospecialize view indexes subview_dim subview_layout
@@ -576,6 +593,8 @@ then a view might not have a layout identical to a classic `Array`, for better m
 
 See [the Kokkos documentation about `Kokkos::view_alloc()`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/view_alloc.html)
 for more info.
+
+This function relies on [Dynamic Compilation](@ref).
 """
 function View{T, D, L, S}(dims::Dims{D};
     mem_space = DEFAULT_DEVICE_MEM_SPACE,
@@ -723,6 +742,8 @@ specifies the stride of each dimension.
     The returned view does not hold a reference to the original array.
     It is the responsibility of the user to make sure the original array is kept alive as long as
     the view should be accessed.
+
+This function relies on [Dynamic Compilation](@ref).
 """
 function view_wrap(view_t::Type{View{T, D, L, S}}, d::Dims{D}, layout, p::Ptr{T}) where {T, D, L, S}
     @nospecialize view_t d layout p

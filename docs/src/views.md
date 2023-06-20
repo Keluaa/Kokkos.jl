@@ -37,7 +37,4 @@ LayoutStride
 
 ```@docs
 Idx
-COMPILED_DIMS
-COMPILED_TYPES
-COMPILED_LAYOUTS
 ```

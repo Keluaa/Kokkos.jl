@@ -73,39 +73,6 @@ subtypes.
 The value for the current Julia session is stored in `Kokkos.KOKKOS_BACKENDS`.
 
 
-### view_dims
-
-List of `Int`s for which view dimensions will be compiled.
-
-Can be set using `Kokkos.set_view_dims()`.
-The value for the current Julia session is stored in `Kokkos.KOKKOS_VIEW_DIMS`.
-
-
-### view_types
-
-List of `Type`s for which views will be compiled.
-
-Can be set using `Kokkos.set_view_types()`, using a `Vector` of `String` or `Type`.
-The value for the current Julia session is stored in `Kokkos.KOKKOS_VIEW_TYPES`.
-
-
-## view_layouts
-
-List of layouts for which views will be compiled.
-The following layouts are supported:
- - 'left', for [`Kokkos::LayoutLeft`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/layoutLeft.html)
- - 'right', for [`Kokkos::LayoutRight`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/layoutRight.html)
- - 'stride', for [`Kokkos::LayoutStride`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/layoutStride.html)
- - 'deviceDefault', for the default layout of the default device execution space: `Kokkos::DefaultExecutionSpace::array_layout`
- - 'hostDefault', for the default layout of the default host execution space: `Kokkos::DefaultHostExecutionSpace::array_layout`
-
-Can be set using `Kokkos.set_view_layouts()`, using a `Vector` of `String` or `Kokkos.Layout` types.
-The value for the current Julia session is stored in `Kokkos.KOKKOS_LAYOUT_TYPES`.
-
-Note that 'deviceDefault' and 'hostDefault' resolve to one of 'left', 'right' or 'stride', and
-appear as such through [`Kokkos.COMPILED_LAYOUTS`](@ref).
-
-
 ### build_type
 
 CMake build type.
