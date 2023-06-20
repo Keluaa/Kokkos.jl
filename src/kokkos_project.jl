@@ -329,11 +329,11 @@ function CMakeKokkosProject(source_dir, target_lib_path;
     new_kokkos_options = Dict{String, String}()
 
     if inherit_options
-        if isnothing(KokkosWrapper.KOKKOS_LIB_PROJECT)
+        if isnothing(Wrapper.KOKKOS_LIB_PROJECT)
             error("cannot inherit options: the Kokkos wrapper project is not set up. \
                    Call one of `Kokkos.load_wrapper_lib` or `Kokkos.initialize` first.")
         end
-        pushfirst!(cmake_options, KokkosWrapper.KOKKOS_LIB_PROJECT.cmake_options...)
+        pushfirst!(cmake_options, Wrapper.KOKKOS_LIB_PROJECT.cmake_options...)
     end
 
     for (name, value) in something(kokkos_options, ())
