@@ -298,6 +298,12 @@ v10 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_
             @test v_dst == v_src
         end
     end
+
+    dc_v1 = Kokkos.View{Int64}(undef, 1)
+    dc_v2 = Kokkos.View{Float64}(undef, 1)
+    dc_v3 = Kokkos.View{Int64}(undef, 1, 1)
+    @test_throws @error_match(r"Views with the same type") Kokkos.deep_copy(dc_v1, dc_v2)
+    @test_throws @error_match(r"Views with the same number of dimensions") Kokkos.deep_copy(dc_v1, dc_v3)
 end
 
 
