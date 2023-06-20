@@ -20,8 +20,12 @@ written in a separate C++ shared library.
 If the library you want to use is configured with CMake, it is possible to configure the project
 with `Kokkos.jl`.
 
-This package uses a wrapper library which is compiled before initializing Kokkos.
+This package relies on a wrapper library which is compiled when initializing Kokkos, which is
+configured with the CMake and Kokkos options set in the configuration options.
 Because it is not pre-compiled as an artifact, this maximizes the flexibility of usage of `Kokkos.jl`.
+However, most Kokkos functions (and views) are compiled separately on demand, when their respective
+Julia method is called for the first time.
+The resulting shared library is then cached for the next session.
 
 `Kokkos.jl` currently supports Kokkos v3.7.0, v3.7.1, v4.0.0 and above.
 All Kokkos backends should be supported by this package, but not all of them were tested (yet).

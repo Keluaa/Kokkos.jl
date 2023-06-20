@@ -1,7 +1,7 @@
 name = "Kokkos"
 uuid = "3296cea9-b0de-4b57-aba0-ce554b517c3b"
 authors = ["Keluaa <34173752+Keluaa@users.noreply.github.com> and contributors"]
-version = "0.4.0"
+version = "0.5.0"
 
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
@@ -12,12 +12,15 @@ Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
 Pidfile = "fa939f87-e72e-5be4-a000-7fc836dbe307"
 Preferences = "21216c6a-2e73-6563-6e65-726566657250"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 Scratch = "6c6a2e73-6563-6170-7368-637461726353"
+UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 libcxxwrap_julia_jll = "3eaa8342-bff7-56a5-9981-c04077f7cee7"
 
 [compat]
+CUDA = "4"
 CxxWrap = "0.13"
 MPI = "0.20"
 Pidfile = "1.3.0"
@@ -33,9 +36,9 @@ CUDAExt = "CUDA"
 MPIExt = "MPI"
 
 [extras]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
-CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 Preferences = "21216c6a-2e73-6563-6e65-726566657250"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
@@ -43,5 +46,5 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 test = ["Test", "Preferences", "Logging", "MPI", "CUDA"]
 
 [weakdeps]
-MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
