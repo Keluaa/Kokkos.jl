@@ -143,51 +143,62 @@ flat_v5 = v5[:]
 @test flat_v5 == view(v5, :)
 
 
-# View constructors
-v6 = View{Float64, 2}(undef, (1, 2))
-v6_simili = [
-    View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}(undef, (1, 2)),
-    View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}(undef, 1, 2),
-    View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}((1, 2)),
-    View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}(1, 2),
-    View{Float64, 2, Kokkos.LayoutRight}(undef, (1, 2)),
-    View{Float64, 2, Kokkos.LayoutRight}(undef, 1, 2),
-    View{Float64, 2, Kokkos.LayoutRight}((1, 2)),
-    View{Float64, 2, Kokkos.LayoutRight}(1, 2),
-    View{Float64, 2}(undef, (1, 2); layout=Kokkos.LayoutRight),
-    View{Float64, 2}(undef, 1, 2; layout=Kokkos.LayoutRight),
-    View{Float64, 2}((1, 2); layout=Kokkos.LayoutRight),
-    View{Float64, 2}(1, 2; layout=Kokkos.LayoutRight),
-    View{Float64, 2}(undef, (1, 2)),
-    View{Float64, 2}(undef, 1, 2),
-    View{Float64, 2}((1, 2)),
-    View{Float64, 2}(1, 2),
-    View{Float64}(undef, (1, 2)),
-    View{Float64}(undef, 1, 2),
-    View{Float64}((1, 2)),
-    View{Float64}(1, 2),
-    View{Float64}(1, 2; dim_pad=true),
-    View{Float64}(1, 2; label=""),
-    View{Float64}(1, 2; mem_space=Kokkos.HostSpace),
-    View{Float64}(1, 2; mem_space=Kokkos.HostSpace()),
-    View{Float64}(1, 2; mem_space=Kokkos.HostSpace, layout=Kokkos.LayoutRight),
-    View{Float64}(1, 2; mem_space=Kokkos.HostSpace, layout=Kokkos.LayoutRight())
-]
-for v6_s in v6_simili
-    @test typeof(v6) == typeof(v6_s)
-    @test size(v6) == size(v6_s)
-    @test strides(v6) == strides(v6_s)
+@testset "Constructors" begin
+    v6 = View{Float64, 2}(undef, (1, 2))
+    v6_simili = [
+        View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}(undef, (1, 2)),
+        View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}(undef, 1, 2),
+        View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}((1, 2)),
+        View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}(1, 2),
+        View{Float64, 2, Kokkos.LayoutRight}(undef, (1, 2)),
+        View{Float64, 2, Kokkos.LayoutRight}(undef, 1, 2),
+        View{Float64, 2, Kokkos.LayoutRight}((1, 2)),
+        View{Float64, 2, Kokkos.LayoutRight}(1, 2),
+        View{Float64, 2}(undef, (1, 2); layout=Kokkos.LayoutRight),
+        View{Float64, 2}(undef, 1, 2; layout=Kokkos.LayoutRight),
+        View{Float64, 2}((1, 2); layout=Kokkos.LayoutRight),
+        View{Float64, 2}(1, 2; layout=Kokkos.LayoutRight),
+        View{Float64, 2}(undef, (1, 2)),
+        View{Float64, 2}(undef, 1, 2),
+        View{Float64, 2}((1, 2)),
+        View{Float64, 2}(1, 2),
+        View{Float64}(undef, (1, 2)),
+        View{Float64}(undef, 1, 2),
+        View{Float64}((1, 2)),
+        View{Float64}(1, 2),
+        View{Float64}(1, 2; dim_pad=true),
+        View{Float64}(1, 2; label=""),
+        View{Float64}(1, 2; mem_space=Kokkos.HostSpace),
+        View{Float64}(1, 2; mem_space=Kokkos.HostSpace()),
+        View{Float64}(1, 2; mem_space=Kokkos.HostSpace, layout=Kokkos.LayoutRight),
+        View{Float64}(1, 2; mem_space=Kokkos.HostSpace, layout=Kokkos.LayoutRight())
+    ]
+    for v6_s in v6_simili
+        @test typeof(v6) == typeof(v6_s)
+        @test size(v6) == size(v6_s)
+        @test strides(v6) == strides(v6_s)
+    end
+
+    @test_throws @error_match(r"`mem_space` to be a Kokkos.Spaces.CudaSpace") begin
+        View{Float64, 1, Kokkos.LayoutLeft, Kokkos.CudaSpace}(undef, n1; mem_space=Kokkos.HostSpace)
+    end
+    @test_throws @error_match(r"`mem_space` kwarg") begin
+        View{Float64, 1, Kokkos.LayoutLeft, Kokkos.CudaSpace}(undef, n1; mem_space=Kokkos.HostSpace())
+    end
+    @test_throws @error_match(r"Kokkos.LayoutLeft type") begin
+        View{Float64, 1, Kokkos.LayoutLeft}(undef, n1; layout=Kokkos.LayoutRight)
+    end
+
+    @test size(View{Float64}()) == (0,)
+    @test size(View{Float64, 2}()) == (0, 0)
+    @test size(View{Float64, 2, Kokkos.LayoutRight}()) == (0, 0)
+    @test size(View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}()) == (0, 0)
+
+    @test_throws @error_match(r"requires a instance") View{Float64}(undef, n1; layout=Kokkos.LayoutStride)
+    @test_throws @error_match(r"CudaSpace is not compiled") begin
+        View{Int64}(undef, n1; mem_space=Kokkos.CudaSpace)
+    end
 end
-
-@test size(View{Float64}()) == (0,)
-@test size(View{Float64, 2}()) == (0, 0)
-@test size(View{Float64, 2, Kokkos.LayoutRight}()) == (0, 0)
-@test size(View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}()) == (0, 0)
-
-@test_throws @error_match("CudaSpace is not compiled") View{Int64}(undef, n1; mem_space=Kokkos.CudaSpace)
-@test_throws @error_match("`mem_space` kwarg") View{Float64, 1, Kokkos.LayoutLeft, Kokkos.Wrapper.Impl.HostSpaceImplDereferenced}(undef, n1; mem_space=Kokkos.HostSpace)
-@test_throws @error_match("Kokkos.LayoutLeft type") View{Float64, 1, Kokkos.LayoutLeft}(undef, n1; layout=Kokkos.LayoutRight)
-@test_throws @error_match("requires a instance") View{Float64}(undef, n1; layout=Kokkos.LayoutStride)
 
 
 @testset "layout matching" begin
@@ -250,83 +261,87 @@ v10 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_
 @test Kokkos.memory_span(v10) == prod(size(v10)) * sizeof(Float64) * 2 
 
 
-@testset "Deep copy on $exec_space_type in $(dim)D with $type" for 
-        exec_space_type in (:no_exec_space, Kokkos.ENABLED_EXEC_SPACES...),
-        dim in TEST_VIEW_DIMS,
-        type in TEST_VIEW_TYPES
+@testset "Deep copy" begin
+    @testset "$exec_space_type in $(dim)D with $type" for
+            exec_space_type in (:no_exec_space, Kokkos.ENABLED_EXEC_SPACES...),
+            dim in TEST_VIEW_DIMS,
+            type in TEST_VIEW_TYPES
 
-    exec_space = exec_space_type === :no_exec_space ? nothing : exec_space_type()
-    n = ntuple(Returns(7), dim)
+        exec_space = exec_space_type === :no_exec_space ? nothing : exec_space_type()
+        n = ntuple(Returns(7), dim)
 
-    @testset "View{$type, $dim, $src_layout, $src_space} => View{$type, $dim, $dst_layout, $dst_space}" for
-            src_space in Kokkos.ENABLED_MEM_SPACES, dst_space in Kokkos.ENABLED_MEM_SPACES,
-            src_layout in TEST_VIEW_LAYOUTS,
-            dst_layout in TEST_VIEW_LAYOUTS
+        @testset "View{$type, $dim, $src_layout, $src_space} => View{$type, $dim, $dst_layout, $dst_space}" for
+                src_space in Kokkos.ENABLED_MEM_SPACES, dst_space in Kokkos.ENABLED_MEM_SPACES,
+                src_layout in TEST_VIEW_LAYOUTS,
+                dst_layout in TEST_VIEW_LAYOUTS
 
-        if src_layout == Kokkos.LayoutStride
-            src_layout = Kokkos.LayoutStride(Base.size_to_strides(1, n...))
+            if src_layout == Kokkos.LayoutStride
+                src_layout = Kokkos.LayoutStride(Base.size_to_strides(1, n...))
+            end
+
+            if dst_layout == Kokkos.LayoutStride
+                dst_layout = Kokkos.LayoutStride(Base.size_to_strides(1, n...))
+            end
+
+            v_src = View{type}(undef, n; mem_space=src_space, layout=src_layout)
+            v_dst = View{type}(n; mem_space=dst_space, layout=dst_layout)
+
+            v_src .= rand(type, n) * 10
+
+            if isnothing(exec_space)
+                Kokkos.deep_copy(v_dst, v_src)
+            else
+                Kokkos.deep_copy(exec_space, v_dst, v_src)
+                Kokkos.fence(exec_space)
+            end
+
+            @test v_dst == v_src
         end
-
-        if dst_layout == Kokkos.LayoutStride
-            dst_layout = Kokkos.LayoutStride(Base.size_to_strides(1, n...))
-        end
-
-        v_src = View{type}(undef, n; mem_space=src_space, layout=src_layout)
-        v_dst = View{type}(n; mem_space=dst_space, layout=dst_layout)
-
-        v_src .= rand(type, n) * 10
-
-        if isnothing(exec_space)
-            Kokkos.deep_copy(v_dst, v_src)
-        else
-            Kokkos.deep_copy(exec_space, v_dst, v_src)
-            Kokkos.fence(exec_space)
-        end
-
-        @test v_dst == v_src
     end
 end
 
 
-@testset "create_mirror to $dst_space_type in $(dim)D" for 
-        dst_space_type in (:default_mem_space, Kokkos.ENABLED_MEM_SPACES...),
-        dim in TEST_VIEW_DIMS
+@testset "create_mirror" begin
+    @testset "$dst_space_type in $(dim)D" for
+            dst_space_type in (:default_mem_space, Kokkos.ENABLED_MEM_SPACES...),
+            dim in TEST_VIEW_DIMS
 
-    dst_mem_space = dst_space_type === :default_mem_space ? nothing : dst_space_type()
-    n = ntuple(Returns(7), dim)
+        dst_mem_space = dst_space_type === :default_mem_space ? nothing : dst_space_type()
+        n = ntuple(Returns(7), dim)
 
-    @testset "View{$src_type, $dim, $src_layout, $src_space}" for
-            src_type in TEST_VIEW_TYPES,
-            src_space in Kokkos.ENABLED_MEM_SPACES,
-            src_layout in TEST_VIEW_LAYOUTS
+        @testset "View{$src_type, $dim, $src_layout, $src_space}" for
+                src_type in TEST_VIEW_TYPES,
+                src_space in Kokkos.ENABLED_MEM_SPACES,
+                src_layout in TEST_VIEW_LAYOUTS
 
-        if src_layout == Kokkos.LayoutStride
-            src_layout = Kokkos.LayoutStride(Base.size_to_strides(1, n...))
-        end
+            if src_layout == Kokkos.LayoutStride
+                src_layout = Kokkos.LayoutStride(Base.size_to_strides(1, n...))
+            end
 
-        v_src = View{src_type}(undef, n; mem_space=src_space, layout=src_layout)
-        v_src .= reshape(collect(1:length(v_src)), n)
-        v_src_m = Kokkos.create_mirror(v_src; mem_space=dst_mem_space, zero_fill=true)
+            v_src = View{src_type}(undef, n; mem_space=src_space, layout=src_layout)
+            v_src .= reshape(collect(1:length(v_src)), n)
+            v_src_m = Kokkos.create_mirror(v_src; mem_space=dst_mem_space, zero_fill=true)
 
-        @test all(v_src_m .== 0)
+            @test all(v_src_m .== 0)
 
-        if isnothing(dst_mem_space)
-            @test Kokkos.accessible(Kokkos.memory_space(v_src_m))
-        else
-            @test Kokkos.memory_space(v_src_m) == Kokkos.main_space_type(dst_mem_space)
-        end
+            if isnothing(dst_mem_space)
+                @test Kokkos.accessible(Kokkos.memory_space(v_src_m))
+            else
+                @test Kokkos.memory_space(v_src_m) == Kokkos.main_space_type(dst_mem_space)
+            end
 
-        v_src_m2 = Kokkos.create_mirror_view(v_src; mem_space=dst_mem_space, zero_fill=true)
+            v_src_m2 = Kokkos.create_mirror_view(v_src; mem_space=dst_mem_space, zero_fill=true)
 
-        if isnothing(dst_mem_space)
-            @test Kokkos.accessible(Kokkos.memory_space(v_src_m2))
-        elseif Kokkos.memory_space(v_src) == Kokkos.main_space_type(dst_mem_space)
-            @test v_src_m2 == v_src
-            @test pointer(v_src_m2) == pointer(v_src)
-        else
-            @test v_src_m2 != v_src
-            @test pointer(v_src_m2) != pointer(v_src)
-            @test all(v_src_m2 .== 0)
+            if isnothing(dst_mem_space)
+                @test Kokkos.accessible(Kokkos.memory_space(v_src_m2))
+            elseif Kokkos.memory_space(v_src) == Kokkos.main_space_type(dst_mem_space)
+                @test v_src_m2 == v_src
+                @test pointer(v_src_m2) == pointer(v_src)
+            else
+                @test v_src_m2 != v_src
+                @test pointer(v_src_m2) != pointer(v_src)
+                @test all(v_src_m2 .== 0)
+            end
         end
     end
 end

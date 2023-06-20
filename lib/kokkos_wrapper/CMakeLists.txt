@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.22)
 project(KokkosWrapper)
 
 if(NOT DEFINED CMAKE_CXX_STANDARD)
@@ -9,16 +9,46 @@ if(NOT DEFINED CMAKE_CXX_EXTENSIONS)
     set(CMAKE_CXX_EXTENSIONS OFF)
 endif()
 
+if(NOT DEFINED CMAKE_INSTALL_MODE)
+    # Symlinks are faster to create than copies. This should reduce initialization time.
+    set(CMAKE_INSTALL_MODE ABS_SYMLINK_OR_COPY)
+endif()
+
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)  # Needed to include the Kokkos libs in the shared library
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+
 find_package(JlCxx)
+
 
 if(Kokkos_ENABLE_OPENMP)
     find_package(OpenMP REQUIRED)
 endif()
 
+
+if(Kokkos_ENABLE_CUDA)
+    set(Kokkos_ENABLE_CUDA_CONSTEXPR ON)  # Needed by KokkosWrapper
+    if (NOT DEFINED Kokkos_ENABLE_CUDA_LAMBDA)
+        set(Kokkos_ENABLE_CUDA_LAMBDA ON)
+    endif()
+endif()
+
+
+if(CMAKE_BUILD_TYPE EQUAL "Debug")
+    if (NOT DEFINED Kokkos_ENABLE_DEBUG)
+        set(Kokkos_ENABLE_DEBUG ON)
+    endif()
+    if (NOT DEFINED Kokkos_ENABLE_DEBUG_BOUNDS_CHECK)
+        set(Kokkos_ENABLE_DEBUG_BOUNDS_CHECK ON)
+    endif()
+    if (NOT DEFINED Kokkos_ENABLE_DEBUG_DUALVIEW_MODIFY_CHECK)
+        set(Kokkos_ENABLE_DEBUG_DUALVIEW_MODIFY_CHECK ON)
+    endif()
+endif()
+
+
 add_subdirectory(${Kokkos_ROOT} lib/kokkos)
+
 
 if(NOT DEFINED COMPLETE_BUILD)
     set(COMPLETE_BUILD OFF)

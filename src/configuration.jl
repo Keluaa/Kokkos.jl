@@ -2,7 +2,7 @@
 HAS_CONFIGURATION_CHANGED = false
 
 
-function set_kokkos_version(version::Union{Nothing, Missing, String})
+function set_kokkos_version(version::Union{Nothing, Missing, AbstractString})
     if version isa String && findlast('.', version) != length(version) - 2
         error("Invalid Kokkos version. The version must be a valid tag in the Kokkos repo: \
                the patch version must have two digits. Use '3.7.02' and not '3.7.2'.")
@@ -27,7 +27,7 @@ function set_kokkos_version(version::VersionNumber)
 end
 
 
-function set_kokkos_path(path::Union{Nothing, Missing, String})
+function set_kokkos_path(path::Union{Nothing, Missing, AbstractString})
     @set_preferences!("kokkos_path" => path)
     if !is_kokkos_wrapper_loaded()
         global KOKKOS_PATH = @load_preference("kokkos_path", LOCAL_KOKKOS_DIR)
@@ -40,7 +40,7 @@ function set_kokkos_path(path::Union{Nothing, Missing, String})
 end
 
 
-function set_cmake_options(options::Union{Nothing, Missing, Vector{String}})
+function set_cmake_options(options::Union{Nothing, Missing, Vector{<:AbstractString}})
     @set_preferences!("cmake_options" => options)
     if !is_kokkos_wrapper_loaded()
         global KOKKOS_CMAKE_OPTIONS = @load_preference("cmake_options", __DEFAULT_KOKKOS_CMAKE_OPTIONS)
@@ -53,7 +53,7 @@ function set_cmake_options(options::Union{Nothing, Missing, Vector{String}})
 end
 
 
-function set_kokkos_options(options::Union{Nothing, Missing, Vector{String}})
+function set_kokkos_options(options::Union{Nothing, Missing, Vector{<:AbstractString}})
     @set_preferences!("kokkos_options" => options)
     if !is_kokkos_wrapper_loaded()
         global KOKKOS_LIB_OPTIONS = @load_preference("kokkos_options", __DEFAULT_KOKKOS_LIB_OPTIONS)
@@ -77,7 +77,7 @@ function set_kokkos_options(options::Dict{String, <:Any})
 end
 
 
-function set_backends(backends::Union{Nothing, Missing, Vector{String}})
+function set_backends(backends::Union{Nothing, Missing, Vector{<:AbstractString}})
     @set_preferences!("backends" => backends)
     if !is_kokkos_wrapper_loaded()
         global KOKKOS_BACKENDS = @load_preference("backends", __DEFAULT_KOKKOS_BACKENDS)
@@ -108,7 +108,13 @@ function set_build_type(build_type::Union{Nothing, Missing, String})
 end
 
 
-function set_build_dir(build_dir::Union{Nothing, Missing, String})
+function set_build_dir(build_dir::Union{Nothing, Missing, AbstractString}; local_only=false)
+    if local_only
+        # KOKKOS_BUILD_DIR is the only option which should be set on all processes in a MPI app
+        global KOKKOS_BUILD_DIR = build_dir
+        return KOKKOS_BUILD_DIR
+    end
+
     @set_preferences!("build_dir" => build_dir)
     if !is_kokkos_wrapper_loaded()
         global KOKKOS_BUILD_DIR = @load_preference("build_dir", __DEFAULT_KOKKOS_BUILD_DIR)

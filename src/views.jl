@@ -562,15 +562,15 @@ end
 
 
 """
-    View{T, D, Layout, MemSpace}(dims;
-        mem_space = DEFAULT_DEVICE_MEM_SPACE,
+    View{T, D, Layout, MemSpace}([undef,] dims;
+        mem_space = nothing,
         layout = nothing,
         label = "",
         zero_fill = true,
         dim_pad = false
     )
 
-Construct an N-dimensional `View{T}`.
+Construct an N-dimensional `View{T}`. `Layout` and `MemSpace` are optional type arguments.
 
 `D` can be deduced from `dims`, which can either be a `NTuple{D, Integer}` or `D` integers.
 
@@ -583,6 +583,7 @@ which case it is converted to a [`MemorySpace`](@ref) with [`memory_space`](@ref
 be either an instance of a [`MemorySpace`](@ref), or one of the main types of memory spaces, in
 which case an instance of a [`MemorySpace`](@ref) is default constructed (behaviour of Kokkos by
 default).
+If both `MemSpace` and `mem_space` are not specified, they default to [`DEFAULT_DEVICE_MEM_SPACE`](@ref).
 
 The `label` is the debug label of the view.
 
@@ -597,16 +598,22 @@ for more info.
 This function relies on [Dynamic Compilation](@ref).
 """
 function View{T, D, L, S}(dims::Dims{D};
-    mem_space = DEFAULT_DEVICE_MEM_SPACE,
+    mem_space = nothing,
     layout = nothing,
     label = "",
     zero_fill = true,
     dim_pad = false
 ) where {T, D, L, S}
-    mem_space_t = mem_space isa DataType ? mem_space : typeof(mem_space)
-    if !(main_space_type(mem_space_t) <: S)
+    if isnothing(mem_space)
+        # ok
+    elseif mem_space isa DataType
+        if !(main_space_type(mem_space) <: S)
+            error("expected `mem_space` to be a $S type or an instance, got: $mem_space")
+        end
+        mem_space = nothing  # Let `alloc_view` call the memory space constructor
+    elseif !(mem_space isa S)
         error("Conficting types for `View` constructor typing `$S` and `mem_space` kwarg: $mem_space \
-               (type: $(main_space_type(mem_space_t)))")
+               (type: $(main_space_type(typeof(mem_space))))")
     end
 
     if isnothing(layout)
@@ -622,12 +629,7 @@ function View{T, D, L, S}(dims::Dims{D};
         error("the `View` constructor with a `LayoutStride` requires a instance of the layout")
     end
 
-    if mem_space isa DataType
-        # Let `alloc_view` call the memory space constructor
-        return alloc_view(View{T, D, L, S}, dims, nothing, layout, label, zero_fill, dim_pad)
-    else
-        return alloc_view(View{T, D, L, S}, dims, mem_space, layout, label, zero_fill, dim_pad)
-    end
+    return alloc_view(View{T, D, L, S}, dims, mem_space, layout, label, zero_fill, dim_pad)
 end
 
 View{T, D, L, S}(::UndefInitializer, dims::Dims{D}; kwargs...) where {T, D, L, S} =

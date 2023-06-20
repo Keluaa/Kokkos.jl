@@ -89,3 +89,13 @@ The wrapping library is built in `$(build_dir)/wrapper-build-$(build_type)/`.
 Can be set using `Kokkos.set_build_dir()`, [`Kokkos.build_in_scratch`](@ref build_in_scratch),
 [`Kokkos.build_in_tmp`](@ref build_in_tmp) or [`Kokkos.build_in_project`](@ref build_in_project).
 The value for the current Julia session is stored in `Kokkos.KOKKOS_BUILD_DIR`.
+
+!!! note
+
+    `Kokkos.set_build_dir()` accepts a kwarg `local_only` (default: `false`) which allows to set the
+    build directory without writing to `LocalPreferences.toml`.
+    
+    This is only useful in MPI applications, where only one process should modify the confiuration
+    options and compile code.
+    Calling `Kokkos.set_build_dir(build_dir; local_only=true)` on non-root processes will allow them
+    to find the libraries compiled by the root process.

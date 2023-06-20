@@ -113,6 +113,12 @@ function create_kokkos_lib_project(; no_git=false)
 
     cmake_options = [
         "-DCMAKE_INSTALL_PREFIX=$install_dir",
+        # Kokkos build options
+        # Required: else Kokkos is statically linked, as well as any library built
+        # afterwards. This will create a nasty invisible problem where a process could have several
+        # Kokkos independent runtimes: therefore shared libs is a must.
+        "-DBUILD_SHARED_LIBS=ON",
+        # CxxWrap options
         "-DJulia_EXECUTABLE=$julia_exe_path",
         "-DJlCxx_ROOT=$jlcxx_root"
     ]
@@ -139,7 +145,8 @@ function create_kokkos_lib_project(; no_git=false)
     return CMakeKokkosProject(joinpath(@__DIR__, "../lib/kokkos_wrapper"), "libKokkosWrapper";
         target = "KokkosWrapper",
         build_dir, build_type = KOKKOS_BUILD_TYPE,
-        cmake_options, kokkos_path, kokkos_options
+        cmake_options, kokkos_path, kokkos_options,
+        inherit_options = false
     )
 end
 
@@ -173,9 +180,6 @@ end
 KOKKOS_LIB_PROJECT = nothing
 KOKKOS_LIB_PATH = nothing
 KOKKOS_LIB = nothing
-
-
-is_kokkos_wrapper_compiled() = !isnothing(KOKKOS_LIB_PATH)
 
 
 """
@@ -235,7 +239,8 @@ processes.
 """
 function load_wrapper_lib(; no_compilation=false, no_git=false, loading_bar=true)
     !isnothing(KOKKOS_LIB) && return
-    !is_kokkos_wrapper_compiled() && compile_wrapper_lib(; no_compilation, no_git, loading_bar)
+
+    compile_wrapper_lib(; no_compilation, no_git, loading_bar)
 
     @debug "Loading the Kokkos Wrapper library..."
 
