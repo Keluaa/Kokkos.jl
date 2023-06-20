@@ -387,6 +387,9 @@ void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_modul
             RegUtils::register_access_operator(wrapped);
 
             wrapped.method("impl_view_type", [](jlcxx::SingletonType<ctor_type>) { return jlcxx::julia_type<Wrapped_t>(); });
+            wrapped.method("host_mirror_space", [](jlcxx::SingletonType<ctor_type>) {
+                return jlcxx::julia_type<typename Wrapped_t::traits::host_mirror_space>()->super->super;
+            });
             wrapped.method("view_data", &Wrapped_t::data);
             wrapped.method("label", &Wrapped_t::label);
             wrapped.method("memory_span", [](const Wrapped_t& view) { return view.impl_map().memory_span(); });
@@ -419,7 +422,8 @@ void import_all_views_methods(jl_module_t* impl_module, jl_module_t* views_modul
         "_get_dims",
         "_get_strides",
         "get_tracker",
-        "impl_view_type"
+        "impl_view_type",
+        "host_mirror_space"
     };
 
     for (auto& method : declared_methods) {

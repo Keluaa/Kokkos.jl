@@ -62,6 +62,8 @@ function compile_view(view_t::Type{<:View}; for_function=nothing, no_error=false
         end
     end
 
+    @debug "Compiling view $view_t"
+
     view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(view_t)
     DynamicCompilation.compile_and_load(@__MODULE__, "views";
         view_types, view_dims, view_layouts, mem_spaces
@@ -343,6 +345,47 @@ end
 
 
 """
+    host_mirror_space(view_t::Type{<:View})
+    host_mirror_space(view::View)
+
+The type of the host execution space which mirrors this view's space.
+
+Equivalent to `Kokkos::View<...>::traits::host_mirror_space`.
+
+This function relies on [Dynamic Compilation](@ref).
+"""
+function host_mirror_space(@nospecialize(view_t::Type{<:View}))
+    view_t = main_view_type(view_t)
+    return DynamicCompilation.@compile_and_call(host_mirror_space, (view_t,),
+        compile_view(view_t; for_function=host_mirror_space, no_error=true)
+    )
+end
+
+host_mirror_space(view::View) = host_mirror_space(typeof(view))
+
+
+"""
+    host_mirror(view_t::Type{<:View})
+    host_mirror(view::View)
+
+The view type which mirrors the given view on host space.
+
+Not rigorously equivalent to `Kokkos::View<...>::HostMirror`, since view hooks are not supported,
+but apart from this, it should be exactly equivalent.
+"""
+function host_mirror(view_t::Type{<:View{T, D, L, S}}) where {T, D, L, S}
+    # NOTE: memory traits should not be carried over to the mirror type
+    host_space = host_mirror_space(view_t)
+
+    # Kokkos::View::HostMirror, as defined in:
+    # https://github.com/kokkos/kokkos/blob/32e1bfb6975a9bc0ddbfd6c138aab127c11071dd/core/src/Kokkos_View.hpp#L612-L616
+    return View{T, D, L, host_space}
+end
+
+host_mirror(v::View) = host_mirror(typeof(v))
+
+
+"""
     create_mirror(src::View; mem_space = nothing, zero_fill = false)
 
 Create a new [`View`](@ref) in the same way as `similar(src)`, with the same layout and padding as
@@ -366,6 +409,7 @@ function create_mirror(src::View, mem_space, zero_fill)
     @nospecialize src mem_space zero_fill
     return DynamicCompilation.@compile_and_call(create_mirror, (src, mem_space, zero_fill), begin
         compile_view(typeof(src); for_function=create_mirror, no_error=true)
+        compile_view(host_mirror(typeof(src)); for_function=create_mirror, no_error=true)
         view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(typeof(src))
         dest_mem_spaces = isnothing(mem_space) ? DataType[] : [typeof(mem_space)]
         DynamicCompilation.compile_and_load(@__MODULE__, "mirrors";
@@ -395,6 +439,7 @@ function create_mirror_view(src::View, mem_space, zero_fill)
     return DynamicCompilation.@compile_and_call(
             create_mirror_view, (src, mem_space, zero_fill), begin
         compile_view(typeof(src); for_function=create_mirror_view, no_error=true)
+        compile_view(host_mirror(typeof(src)); for_function=create_mirror_view, no_error=true)
         view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(typeof(src))
         dest_mem_spaces = isnothing(mem_space) ? DataType[] : [typeof(mem_space)]
         DynamicCompilation.compile_and_load(@__MODULE__, "mirrors";
