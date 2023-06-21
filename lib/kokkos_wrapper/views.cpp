@@ -387,14 +387,17 @@ void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_modul
             RegUtils::template register_constructor<Wrapped_t, ctor_type>(mod, views_module);
             RegUtils::register_access_operator(wrapped);
 
-            wrapped.method("impl_view_type", [](jlcxx::SingletonType<ctor_type>) { return jlcxx::julia_type<Wrapped_t>(); });
+            wrapped.method("impl_view_type", [](jlcxx::SingletonType<ctor_type>) {
+                return jlcxx::julia_type<Wrapped_t>();
+            });
+
             wrapped.method("host_mirror_space", [](jlcxx::SingletonType<ctor_type>) {
-                return jlcxx::julia_type<typename Wrapped_t::traits::host_mirror_space>()->super->super;
+                return jlcxx::julia_type<typename Wrapped_t::host_mirror_space>()->super->super;
             });
 
             wrapped.method("cxx_type_name", [](jlcxx::SingletonType<ctor_type>, bool mangled) {
                 if (mangled) {
-                    return std::string(std::string_view(typeid(typename Wrapped_t::kokkos_view_t).name()));
+                    return std::string(typeid(typename Wrapped_t::kokkos_view_t).name());
                 } else {
                     return std::string(get_type_name<typename Wrapped_t::kokkos_view_t>());
                 }

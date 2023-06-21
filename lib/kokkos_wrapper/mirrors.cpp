@@ -28,7 +28,7 @@ void register_mirror_methods(jlcxx::Module& mod)
             DimsList,
             TList<VIEW_TYPES>,
             LayoutList,
-            MemorySpacesList,
+            FilteredMemorySpaceList,
             DstMemSpacesList
     >();
 
