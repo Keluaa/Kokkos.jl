@@ -2,6 +2,7 @@
 #include "views.h"
 #include "memory_spaces.h"
 #include "utils.h"
+#include "printing_utils.h"
 
 #include <type_traits>
 
@@ -390,6 +391,15 @@ void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_modul
             wrapped.method("host_mirror_space", [](jlcxx::SingletonType<ctor_type>) {
                 return jlcxx::julia_type<typename Wrapped_t::traits::host_mirror_space>()->super->super;
             });
+
+            wrapped.method("cxx_type_name", [](jlcxx::SingletonType<ctor_type>, bool mangled) {
+                if (mangled) {
+                    return std::string(std::string_view(typeid(typename Wrapped_t::kokkos_view_t).name()));
+                } else {
+                    return std::string(get_type_name<typename Wrapped_t::kokkos_view_t>());
+                }
+            });
+
             wrapped.method("view_data", &Wrapped_t::data);
             wrapped.method("label", &Wrapped_t::label);
             wrapped.method("memory_span", [](const Wrapped_t& view) { return view.impl_map().memory_span(); });
@@ -423,7 +433,8 @@ void import_all_views_methods(jl_module_t* impl_module, jl_module_t* views_modul
         "_get_strides",
         "get_tracker",
         "impl_view_type",
-        "host_mirror_space"
+        "host_mirror_space",
+        "cxx_type_name"
     };
 
     for (auto& method : declared_methods) {

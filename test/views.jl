@@ -261,6 +261,13 @@ v10 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_
 @test Kokkos.memory_span(v10) == prod(size(v10)) * sizeof(Float64) * 2 
 
 
+view_t = Kokkos.View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}
+@test Kokkos.cxx_type_name(view_t) == "Kokkos::View<double**, Kokkos::LayoutRight, Kokkos::Device<Kokkos::OpenMP, Kokkos::HostSpace>, Kokkos::MemoryTraits<0> >"
+@test Kokkos.cxx_type_name(view_t(undef, 2, 2)) == Kokkos.cxx_type_name(view_t)
+@test Kokkos.cxx_type_name(Kokkos.impl_view_type(view_t)) == Kokkos.cxx_type_name(view_t)
+@test "MemoryTraits" in Kokkos.cxx_type_name(view_t, true)  # This should be broad enough to pass on all compilers
+
+
 @testset "Deep copy" begin
     @testset "$exec_space_type in $(dim)D with $type" for
             exec_space_type in (:no_exec_space, Kokkos.ENABLED_EXEC_SPACES...),

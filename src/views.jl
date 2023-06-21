@@ -10,7 +10,7 @@ import ..Kokkos: memory_space, execution_space, accessible, array_layout, main_s
 
 export View
 export impl_view_type, main_view_type, label, view_wrap, view_data, memory_span, span_is_contiguous
-export subview, deep_copy, create_mirror, create_mirror_view
+export cxx_type_name, subview, deep_copy, create_mirror, create_mirror_view
 
 
 """
@@ -269,6 +269,38 @@ function span_is_contiguous(@nospecialize(v::View))
         compile_view(typeof(v); for_function=span_is_contiguous, no_error=true)
     )
 end
+
+
+"""
+    cxx_type_name(::Type{<:View}, mangled::Bool = false)
+    cxx_type_name(::View, mangled::Bool = false)
+
+Return as a `String` the name of the exact C++ type wrapped by the given view type.
+
+If `mangled` is `true`, then the mangled type name is returned. This name is compiler-dependant.
+
+```julia-repl
+julia> view_t = Kokkos.View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}
+Kokkos.Views.View{Float64, 2, Kokkos.Views.LayoutRight, Kokkos.Spaces.HostSpace}
+
+julia> Kokkos.Views.cxx_type_name(view_t)
+"Kokkos::View<double**, Kokkos::LayoutRight, Kokkos::Device<Kokkos::OpenMP, Kokkos::HostSpace>, Kokkos::MemoryTraits<0> >"
+
+julia> Kokkos.Views.cxx_type_name(view_t, true)
+"N6Kokkos4ViewIPPdJNS_11LayoutRightENS_6DeviceINS_6OpenMPENS_9HostSpaceEEENS_12MemoryTraitsILj0EEEEEE"
+```
+
+This function relies on [Dynamic Compilation](@ref).
+"""
+function cxx_type_name(@nospecialize(view_t::Type{<:View}), @nospecialize(mangled = false))
+    view_t = main_view_type(view_t)
+    mangled::Bool  # Type assert here to prevent ambiguous methods
+    return DynamicCompilation.@compile_and_call(cxx_type_name, (view_t, mangled),
+        compile_view(view_t; for_function=cxx_type_name, no_error=true)
+    )
+end
+
+cxx_type_name(v::View, mangled = false) = cxx_type_name(typeof(v), mangled)
 
 
 """

@@ -22,6 +22,7 @@ create_mirror
 create_mirror_view
 impl_view_type
 main_view_type
+cxx_type_name
 ```
 
 ## Layouts
