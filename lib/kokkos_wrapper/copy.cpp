@@ -5,6 +5,7 @@
 #include "memory_spaces.h"
 #include "execution_spaces.h"
 #include "utils.h"
+#include "printing_utils.h"
 
 #ifndef WITHOUT_EXEC_SPACE_ARG
 #define WITHOUT_EXEC_SPACE_ARG 0
@@ -57,6 +58,19 @@ void register_all_deep_copy_combinations(jlcxx::Module& mod)
             FilteredMemorySpaceList
     >();
 
+    std::cout << "register_all_deep_copy_combinations for:\n";
+#if WITHOUT_EXEC_SPACE_ARG == 0
+    std::cout << " - exec spc: " << FilteredExecutionSpaceList{} << "\n";
+#else
+    std::cout << " - exec spc: " << TList<NoExecSpaceArg>{} << "\n";
+#endif
+    std::cout << " - dims:     " << tlist_from_sequence(DimensionsToInstantiate{}) << "\n";
+    std::cout << " - types:    " << TList<VIEW_TYPES>{} << "\n";
+    std::cout << " - layouts:  " << DestLayoutList{} << "\n";
+    std::cout << " - dst mem:  " << DestMemSpaces{} << "\n";
+    std::cout << " - src lts:  " << LayoutList{} << "\n";
+    std::cout << " - src mem:  " << FilteredMemorySpaceList{} << "\n";
+
     apply_to_all(combinations, [&](auto combination)
     {
         using ExecSpace = typename decltype(combination)::template Arg<0>;
@@ -81,12 +95,23 @@ void register_all_deep_copy_combinations(jlcxx::Module& mod)
 
             if constexpr (Detector::template is_deep_copyable<typename SrcView::kokkos_view_t>::value) {
                 if constexpr (std::is_same_v<ExecSpace, NoExecSpaceArg>) {
+
+                    std::cout << "DEFINING deep_copy for:\n";
+                    std::cout << " - dst: " << get_type_name<DestView>() << "\n";
+                    std::cout << " - src: " << get_type_name<SrcView>()  << "\n";
+
                     mod.method("deep_copy",
                     [](const DestView& dest_view, const SrcView& src_view)
                     {
                         Kokkos::deep_copy(dest_view, src_view);
                     });
                 } else {
+
+                    std::cout << "DEFINING deep_copy for:\n";
+                    std::cout << " - spc: " << get_type_name<ExecSpace>() << "\n";
+                    std::cout << " - dst: " << get_type_name<DestView>()  << "\n";
+                    std::cout << " - src: " << get_type_name<SrcView>()   << "\n";
+
                     mod.method("deep_copy",
                     [](const ExecSpace& exec_space, const DestView& dest_view, const SrcView& src_view)
                     {
