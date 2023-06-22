@@ -349,7 +349,7 @@ end
 
 function deep_copy(space::ExecutionSpace, dest::View, src::View)
     @nospecialize space dest src
-    return DynamicCompilation.@compile_and_call(deep_copy, (dest, src), begin
+    return DynamicCompilation.@compile_and_call(deep_copy, (space, dest, src), begin
         compile_view.((typeof(dest), typeof(src)); for_function=deep_copy, no_error=true)
 
         # Requirements in accordance with: https://kokkos.github.io/kokkos-core-wiki/API/core/view/deep_copy.html#requirements
