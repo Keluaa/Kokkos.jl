@@ -26,13 +26,13 @@ Main subtypes:
 All Kokkos spaces have a main abstract type (`Serial`, `Cuda`, `HostSpace`, `HIPSpace`...) which are
 defined even if it has not been compiled on the C++ side. Those main abstract types should be the
 ones used when specifying a space. This allows methods like `enabled` to work independently from the
-compiled internal library.
+wrapper library.
 
-When a space is compiled, a sub-type of its main type is defined by `CxxWrap`, leading to the
+When a space is enabled, a sub-type of its main type is defined by `CxxWrap`, leading to the
 following type structure:
 `SerialImplAllocated <: SerialImpl <: Serial <: ExecutionSpace <: Space`.
-Below the main space type (here, `Serial`), the sub-types are only defined if they are compiled, and
-therefore they should not be relied upon. 
+Below the main space type (here, `Serial`), the sub-types are only defined if they are enabled, and
+therefore they should not be relied upon.
 
 Navigating the type tree can be made easier through [`main_space_type`](@ref).
 """
@@ -115,7 +115,7 @@ Return the execution space associated by default to the given memory space.
 """
 execution_space(::S) where {S <: Space} = execution_space(main_space_type(S))
 execution_space(::Type{S}) where {S <: ExecutionSpace} = error("space $S must be a memory space")
-execution_space(::Type{S}) where {S <: MemorySpace} = error("space $S is not compiled")
+execution_space(::Type{S}) where {S <: MemorySpace} = error("space $S is not enabled")
 
 
 # Defined in 'spaces.cpp', in 'post_register_space'
@@ -126,14 +126,14 @@ Return the memory space associated by default to the given execution space.
 """
 memory_space(::S) where {S <: Space} = memory_space(main_space_type(S))
 memory_space(::Type{S}) where {S <: MemorySpace} = error("space $S must be an execution space")
-memory_space(::Type{S}) where {S <: ExecutionSpace} = error("space $S is not compiled")
+memory_space(::Type{S}) where {S <: ExecutionSpace} = error("space $S is not enabled")
 
 
 # Defined in 'spaces.cpp', in 'register_space'
 """
     enabled(space::Union{Space, Type{<:Space}})
 
-Return true if the given execution or memory space is compiled.
+Return true if the given execution or memory space is enabled.
 """
 enabled(::S) where {S <: Space} = enabled(main_space_type(S))
 enabled(::Type{<:Space}) = false
@@ -147,7 +147,7 @@ Return the name of the execution or memory space as defined by Kokkos.
 
 Equivalent to `Kokkos::space::name()`
 """
-kokkos_name(::Type{<:Space}) = error("space $S is not compiled")
+kokkos_name(::Type{<:Space}) = error("space $S is not enabled")
 
 
 # Defined in 'spaces.cpp', in 'post_register_all'
@@ -189,7 +189,7 @@ array_layout(::S) where {S <: Space} = array_layout(S)
 function array_layout(S::Type{<:ExecutionSpace})
     main_S_type = main_space_type(S)
     main_S_type !== S && return array_layout(main_S_type)
-    error("execution space $S is not compiled")
+    error("execution space $S is not enabled")
 end
 
 
@@ -218,9 +218,9 @@ main_space_type(::S) where {S <: Space} = main_space_type(S)
 
 Opposite of [`main_space_type`](@ref): from the main space type (`Serial`, `OpenMP`, `HostSpace`...)
 return the implementation type (`SerialImpl`, `OpenMPImpl`, `HostSpaceImpl`...).
-The given space must be compiled.
+The given space must be enabled.
 """
-impl_space_type(::Type{S}) where {S <: Space} = error("space $S is not compiled")
+impl_space_type(::Type{S}) where {S <: Space} = error("space $S is not enabled")
 
 
 # Space constructors
