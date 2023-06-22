@@ -6,6 +6,7 @@ using Logging
 using Preferences
 using Kokkos
 
+# All environment variables affecting tests are mentioned here.
 
 const TEST_CUDA = parse(Bool, get(ENV, "TEST_KOKKOS_CUDA", "false"))
 const TEST_OPENMP = !TEST_CUDA
@@ -36,6 +37,26 @@ const TEST_VIEW_LAYOUTS = (Kokkos.LayoutLeft, Kokkos.LayoutRight, Kokkos.LayoutS
 TEST_CUDA && using CUDA
 
 
+function print_test_config()
+    println("Test configuration:")
+    println(" - TEST_OPENMP:           $TEST_OPENMP")
+    println(" - TEST_CUDA:             $TEST_CUDA")
+    println(" - TEST_MPI:              $TEST_MPI (only MPI: $TEST_MPI_ONLY)")
+    println(" - BACKEND_HOST:          $(nameof(TEST_BACKEND_HOST))")
+    println(" - BACKEND_DEVICE:        $(nameof(TEST_BACKEND_DEVICE))")
+    println(" - UNAVAILABLE_BACKEND:   $(nameof(TEST_UNAVAILABLE_BACKEND))")
+    println(" - UNAVAILABLE_MEM_SPACE: $(nameof(TEST_UNAVAILABLE_MEM_SPACE))")
+    println(" - MEM_SPACE_HOST:        $(nameof(TEST_MEM_SPACE_HOST))")
+    println(" - MEM_SPACES_DEVICE:     $(nameof(TEST_MEM_SPACES_DEVICE))")
+    println(" - MAIN_MEM_SPACE_DEVICE: $(nameof(TEST_MAIN_MEM_SPACE_DEVICE))")
+    println(" - MEM_SHARED:            $(nameof(TEST_MEM_SHARED))")
+    println(" - MEM_PINNED:            $(nameof(TEST_MEM_PINNED))")
+    println(" - VIEW_DIMS:             $(TEST_VIEW_DIMS)")
+    println(" - VIEW_TYPES:            $(TEST_VIEW_TYPES)")
+    println(" - VIEW_LAYOUTS:          $(TEST_VIEW_LAYOUTS)")
+end
+
+
 macro error_match(exception)
     # To make @test_throws work in most cases in version 1.7 and above
     if exception isa Symbol
@@ -49,6 +70,8 @@ end
 
 
 @testset "Kokkos.jl" begin
+    print_test_config()
+
     include("pre_wrapper_load.jl")
 
     Kokkos.build_in_project()  # Use the same directory as Pkg.test uses, forcing a complete compilation

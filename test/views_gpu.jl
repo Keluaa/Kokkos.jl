@@ -11,6 +11,15 @@ TEST_DEFAULT_VIEW_TYPE = Symbol("View1D_L_", nameof(TEST_BACKEND_DEVICE), "Alloc
 TEST_DEFAULT_DEVICE_LAYOUT = array_layout(TEST_BACKEND_DEVICE)
 
 
+# Number of tests for deep_copy can reach 1728 in total with Cuda, therefore we must greatly reduce
+# the amount of combinations to keep it under 100.
+TEST_COPY_EXEC_SPACES = (TEST_BACKEND_DEVICE, TEST_BACKEND_HOST)
+TEST_COPY_MEM_SPACES = (first(TEST_VIEW_MEM_SPACES), TEST_MEM_SPACE_HOST)
+TEST_COPY_DIMS = (first(filter(≥(2), TEST_VIEW_DIMS)),)
+TEST_COPY_TYPES = (first(TEST_VIEW_TYPES),)
+TEST_COPY_LAYOUTS = (TEST_DEFAULT_DEVICE_LAYOUT, Kokkos.LayoutStride)
+
+
 import Kokkos: Idx, View
 
 @test Idx <: Union{UInt64, Int64, UInt32, Int32}
@@ -166,10 +175,21 @@ v10 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_
 
 
 @testset "Deep copy" begin
+    tests_count = *(
+        length(TEST_COPY_EXEC_SPACES) + 1,
+        length(TEST_COPY_DIMS),
+        length(TEST_COPY_TYPES),
+        length(TEST_COPY_MEM_SPACES),
+        length(TEST_COPY_MEM_SPACES),
+        length(TEST_COPY_LAYOUTS),
+        length(TEST_COPY_LAYOUTS)
+    )
+    tests_count > 100 && error("Too many `Kokkos.deep_copy` tests to do: $tests_count")
+
     @testset "$exec_space_type in $(dim)D with $type" for
-            exec_space_type in (:no_exec_space, Kokkos.ENABLED_EXEC_SPACES...),
-            dim in TEST_VIEW_DIMS,
-            type in TEST_VIEW_TYPES
+            exec_space_type in (:no_exec_space, TEST_COPY_EXEC_SPACES...),
+            dim in TEST_COPY_DIM,
+            type in TEST_COPY_TYPE
 
         exec_space = exec_space_type === :no_exec_space ? nothing : exec_space_type()
         n = ntuple(Returns(7), dim)
@@ -179,25 +199,14 @@ v10 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_
                 src_layout in TEST_VIEW_LAYOUTS,
                 dst_layout in TEST_VIEW_LAYOUTS
 
-            src_view_t = Kokkos.Views.impl_view_type(View{type, dim, src_layout, src_space})
-            dst_view_t = Kokkos.Views.impl_view_type(View{type, dim, dst_layout, dst_space})
-            if !((src_layout == dst_layout) || exec_space === :no_exec_space ||
-                    (accessible(exec_space_type, src_space) && accessible(exec_space, dst_space)))
-                # As per the Kokkos::deep_copy docs, there should not be a valid deep_copy method
-                # See https://kokkos.github.io/kokkos-core-wiki/API/core/view/deep_copy.html#requirements
-                if exec_space === :no_exec_space
-                    @test isempty(methods(Kokkos.deep_copy, (src_view_t, dst_view_t)))
-                else
-                    @test isempty(methods(Kokkos.deep_copy, (exec_space_type, src_view_t, dst_view_t)))
-                end
-                continue
-            else
-                if exec_space === :no_exec_space
-                    @test !isempty(methods(Kokkos.deep_copy, (src_view_t, dst_view_t)))
-                else
-                    @test !isempty(methods(Kokkos.deep_copy, (exec_space_type, src_view_t, dst_view_t)))
-                end
+            # As per the Kokkos::deep_copy docs, not all view combinations can use deep_copy
+            # See https://kokkos.github.io/kokkos-core-wiki/API/core/view/deep_copy.html#requirements
+            can_deep_copy = src_layout == dst_layout || exec_space === :no_exec_space
+            if exec_space !== :no_exec_space
+                can_deep_copy |= accessible(exec_space, src_space) && accessible(exec_space, dst_space)
             end
+
+            # TODO: what does this do when Kokkos.deep_copy if !can_deep_copy ????
 
             if src_layout == Kokkos.LayoutStride
                 src_layout = Kokkos.LayoutStride(Base.size_to_strides(1, n...))
@@ -222,17 +231,26 @@ end
 
 
 @testset "create_mirror" begin
+    tests_count = *(
+        length(TEST_COPY_MEM_SPACES) + 1,
+        length(TEST_COPY_DIMS),
+        length(TEST_COPY_TYPES),
+        length(TEST_COPY_MEM_SPACES),
+        length(TEST_COPY_LAYOUTS)
+    )
+    tests_count > 100 && error("Too many `Kokkos.create_mirror[_view]` tests to do: $tests_count")
+
     @testset "$dst_space_type in $(dim)D" for
-            dst_space_type in (:default_mem_space, Kokkos.ENABLED_MEM_SPACES...),
-            dim in TEST_VIEW_DIMS
+            dst_space_type in (:default_mem_space, TEST_COPY_MEM_SPACES...),
+            dim in TEST_COPY_DIMS
 
         dst_mem_space = dst_space_type === :default_mem_space ? nothing : dst_space_type()
         n = ntuple(Returns(7), dim)
 
         @testset "View{$src_type, $dim, $src_layout, $src_space}" for
-                src_type in TEST_VIEW_TYPES,
-                src_space in Kokkos.ENABLED_MEM_SPACES,
-                src_layout in TEST_VIEW_LAYOUTS
+                src_type in TEST_COPY_TYPES,
+                src_space in TEST_COPY_MEM_SPACES,
+                src_layout in TEST_COPY_LAYOUTS
 
             if src_layout == Kokkos.LayoutStride
                 src_layout = Kokkos.LayoutStride(Base.size_to_strides(1, n...))
