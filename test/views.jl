@@ -265,7 +265,7 @@ view_t = Kokkos.View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}
 @test Kokkos.cxx_type_name(view_t) == "Kokkos::View<double**, Kokkos::LayoutRight, Kokkos::Device<Kokkos::OpenMP, Kokkos::HostSpace>, Kokkos::MemoryTraits<0> >"
 @test Kokkos.cxx_type_name(view_t(undef, 2, 2)) == Kokkos.cxx_type_name(view_t)
 @test Kokkos.cxx_type_name(Kokkos.impl_view_type(view_t)) == Kokkos.cxx_type_name(view_t)
-@test occursin("MemoryTraits", Kokkos.cxx_type_name(view_t, true))  # This should be broad enough to pass on all compilers
+@test occursin("MemoryTraits", String(Kokkos.cxx_type_name(view_t, true)))  # This should be broad enough to pass on all compilers
 
 
 @testset "Deep copy" begin
