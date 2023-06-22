@@ -1,7 +1,7 @@
-# Kokkos.jl: A Kokkos wrapper for Julia 
+# Kokkos.jl: A Kokkos wrapper for Julia
 
-[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://keluaa.github.io/Kokkos.jl/stable)
-[![](https://img.shields.io/badge/docs-dev-blue.svg)](https://keluaa.github.io/Kokkos.jl/dev)
+[![Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://keluaa.github.io/Kokkos.jl/stable)
+[![Dev documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://keluaa.github.io/Kokkos.jl/dev)
 [![Build Status](https://github.com/Keluaa/Kokkos.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Keluaa/Kokkos.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/Keluaa/Kokkos.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/Keluaa/Kokkos.jl)
 
@@ -30,28 +30,31 @@ The resulting shared library is then cached for the next session.
 `Kokkos.jl` currently supports Kokkos v3.7.0, v3.7.1, v4.0.0 and above.
 All Kokkos backends should be supported by this package, but not all of them were tested (yet).
 
-### Supported functionalities
- * :heavy_check_mark: `Kokkos::initialize`, `Kokkos::finalize` and `Kokkos::InitializationSettings`
- * :heavy_check_mark: `Kokkos::View`, `Kokkos::View<T, MyLayout, SomeMemorySpace>` and `Kokkos::view_alloc`
- * :x: `Kokkos::MemoryTraits` (planned)
- * :heavy_check_mark: `Kokkos::create_mirror`, `Kokkos::create_mirror_view`
- * :heavy_check_mark: `Kokkos::deep_copy`
- * :heavy_check_mark: `Kokkos::subview`
- * :x: `Kokkos::resize`, `Kokkos::realloc` (planned)
- * :heavy_check_mark: `Kokkos::fence`
- * :heavy_check_mark: All execution spaces (`Kokkos::OpenMP`, `Kokkos::Cuda`...) and memory spaces (`Kokkos::HostSpace`, `Kokkos::CudaSpace`...)
- * :x: All parallel patterns (`Kokkos::parallel_for`, `Kokkos::parallel_reduce`, `Kokkos::parallel_scan`), reducers, execution policies and tasking
- * :x: Atomics
- * :x: All containers (`Kokkos::DualView`, `Kokkos::ScatterView`...) (planned)
- * :x: SIMD
+## Supported functionalities
 
-### Tested backends
- * :heavy_check_mark: `Kokkos::Serial`
- * :heavy_check_mark: `Kokkos::OpenMP`
- * :x: `Kokkos::Threads`
- * :x: `Kokkos::HPX`
- * :x: `Kokkos::OpenMPTarget`
- * :heavy_check_mark: `Kokkos::Cuda` + interop with [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl)
- * :x: `Kokkos::HIP`
- * :x: `Kokkos::SYCL`
- * :x: `Kokkos::OpenACC`
+* :heavy_check_mark: `Kokkos::initialize`, `Kokkos::finalize` and `Kokkos::InitializationSettings`
+* :heavy_check_mark: `Kokkos::View`, `Kokkos::View<T, MyLayout, SomeMemorySpace>` and `Kokkos::view_alloc`
+* :x: `Kokkos::MemoryTraits` (planned)
+* :heavy_check_mark: `Kokkos::create_mirror`, `Kokkos::create_mirror_view`
+* :heavy_check_mark: `Kokkos::deep_copy`
+* :heavy_check_mark: `Kokkos::subview`
+* :x: `Kokkos::resize`, `Kokkos::realloc` (planned)
+* :heavy_check_mark: `Kokkos::fence`
+* :heavy_check_mark: All execution spaces (`Kokkos::OpenMP`, `Kokkos::Cuda`...) and memory spaces (`Kokkos::HostSpace`, `Kokkos::CudaSpace`...)
+* :x: All parallel patterns (`Kokkos::parallel_for`, `Kokkos::parallel_reduce`, `Kokkos::parallel_scan`), reducers, execution policies and tasking
+* :x: Atomics
+* :x: All containers (`Kokkos::DualView`, `Kokkos::ScatterView`...) (planned)
+* :x: SIMD
+* :x: View hooks
+
+## Tested backends
+
+* :heavy_check_mark: `Kokkos::Serial`
+* :heavy_check_mark: `Kokkos::OpenMP`
+* :x: `Kokkos::Threads`
+* :x: `Kokkos::HPX`
+* :x: `Kokkos::OpenMPTarget`
+* :heavy_check_mark: `Kokkos::Cuda` + interop with [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl)
+* :x: `Kokkos::HIP`
+* :x: `Kokkos::SYCL`
+* :x: `Kokkos::OpenACC`
