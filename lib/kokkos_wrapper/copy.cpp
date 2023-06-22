@@ -79,20 +79,33 @@ void register_all_deep_copy_combinations(jlcxx::Module& mod)
 
             using SrcView = ViewWrap<Type, Dimension, SrcLayout, SrcMemSpace>;
 
-            if constexpr (Detector::template is_deep_copyable<typename SrcView::kokkos_view_t>::value) {
-                if constexpr (std::is_same_v<ExecSpace, NoExecSpaceArg>) {
-                    mod.method("deep_copy",
-                    [](const DestView& dest_view, const SrcView& src_view)
-                    {
+            constexpr bool is_deep_copyable = Detector::template is_deep_copyable<typename SrcView::kokkos_view_t>::value;
+
+            if constexpr (std::is_same_v<ExecSpace, NoExecSpaceArg>) {
+                mod.method("deep_copy",
+                [](const DestView& dest_view, const SrcView& src_view)
+                {
+                    if constexpr (!is_deep_copyable) {
                         Kokkos::deep_copy(dest_view, src_view);
-                    });
-                } else {
-                    mod.method("deep_copy",
-                    [](const ExecSpace& exec_space, const DestView& dest_view, const SrcView& src_view)
-                    {
+                    } else {
+                        jl_errorf("Deep copy is not possible from `%s` to `%s`",
+                                  jl_typename_str((jl_value_t*) jlcxx::julia_type<SrcView>()),
+                                  jl_typename_str((jl_value_t*) jlcxx::julia_type<DestView>()));
+                    }
+                });
+            } else {
+                mod.method("deep_copy",
+                [](const ExecSpace& exec_space, const DestView& dest_view, const SrcView& src_view)
+                {
+                    if constexpr (!is_deep_copyable) {
                         Kokkos::deep_copy(exec_space, dest_view, src_view);
-                    });
-                }
+                    } else {
+                        jl_errorf("Deep copy is not possible from `%s` to `%s` in `%s`",
+                                  jl_typename_str((jl_value_t*) jlcxx::julia_type<SrcView>()),
+                                  jl_typename_str((jl_value_t*) jlcxx::julia_type<DestView>()),
+                                  jl_typename_str((jl_value_t*) jlcxx::julia_type<ExecSpace>()->super->super));
+                    }
+                });
             }
         });
     });

@@ -206,8 +206,6 @@ v10 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_
                 can_deep_copy |= accessible(exec_space, src_space) && accessible(exec_space, dst_space)
             end
 
-            # TODO: what does this do when Kokkos.deep_copy if !can_deep_copy ????
-
             if src_layout == Kokkos.LayoutStride
                 src_layout = Kokkos.LayoutStride(Base.size_to_strides(1, n...))
             end
@@ -220,9 +218,17 @@ v10 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_
             v_dst = View{type}(n; mem_space=dst_space, layout=dst_layout)
 
             if isnothing(exec_space)
-                Kokkos.deep_copy(v_dst, v_src)
+                if can_deep_copy
+                    @test Kokkos.deep_copy(v_dst, v_src) === nothing
+                else
+                    @test_throws @error_match(r"Deep copy is not possible") Kokkos.deep_copy(v_dst, v_src)
+                end
             else
-                Kokkos.deep_copy(exec_space, v_dst, v_src)
+                if can_deep_copy
+                    @test Kokkos.deep_copy(exec_space, v_dst, v_src) === nothing
+                else
+                    @test_throws @error_match(r"Deep copy is not possible") Kokkos.deep_copy(exec_space, v_dst, v_src)
+                end
                 Kokkos.fence(exec_space)
             end
         end
