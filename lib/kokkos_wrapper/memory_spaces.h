@@ -2,10 +2,11 @@
 #ifndef KOKKOS_WRAPPER_MEMORY_SPACES_H
 #define KOKKOS_WRAPPER_MEMORY_SPACES_H
 
+#include "Kokkos_Core.hpp"
+
 #include "spaces.h"
 #include "utils.h"
-
-#include "Kokkos_Core.hpp"
+#include "Kokkos_utils.h"
 
 #ifndef WRAPPER_BUILD
 #include "parameters.h"
@@ -34,7 +35,7 @@ struct SpaceInfo<Kokkos::CudaHostPinnedSpace>
     static constexpr std::string_view julia_name = "CudaHostPinnedSpace";
 };
 
-#if (KOKKOS_VERSION >= 40000) || defined(KOKKOS_ENABLE_CUDA_UVM)
+#if KOKKOS_VERSION_CMP(>=, 4, 0, 0) || defined(KOKKOS_ENABLE_CUDA_UVM)
 // KOKKOS_ENABLE_CUDA_UVM is implicitly ON after version 4
 template<>
 struct SpaceInfo<Kokkos::CudaUVMSpace>
@@ -42,16 +43,10 @@ struct SpaceInfo<Kokkos::CudaUVMSpace>
     using space = Kokkos::CudaUVMSpace;
     static constexpr std::string_view julia_name = "CudaUVMSpace";
 };
-#endif // (KOKKOS_VERSION >= 40000) || defined(KOKKOS_ENABLE_CUDA_UVM)
+#endif // KOKKOS_VERSION_CMP(>=, 4, 0, 0) || defined(KOKKOS_ENABLE_CUDA_UVM)
 #endif // KOKKOS_ENABLE_CUDA
 
 #if KOKKOS_ENABLE_HIP
-#if KOKKOS_VERSION >= 40000
-namespace Kokkos_HIP = Kokkos;
-#else
-namespace Kokkos_HIP = Kokkos::Experimental;
-#endif // KOKKOS_VERSION >= 40000
-
 template<>
 struct SpaceInfo<Kokkos_HIP::HIPSpace>
 {
@@ -84,9 +79,9 @@ using MemorySpacesList = TList<
 #ifdef KOKKOS_ENABLE_CUDA
         , Kokkos::CudaSpace
         , Kokkos::CudaHostPinnedSpace
-#if (KOKKOS_VERSION >= 40000) || defined(KOKKOS_ENABLE_CUDA_UVM)
+#if KOKKOS_VERSION_CMP(>=, 4, 0, 0) || defined(KOKKOS_ENABLE_CUDA_UVM)
         , Kokkos::CudaUVMSpace
-#endif // (KOKKOS_VERSION >= 40000) || defined(KOKKOS_ENABLE_CUDA_UVM)
+#endif // KOKKOS_VERSION_CMP(>=, 4, 0, 0) || defined(KOKKOS_ENABLE_CUDA_UVM)
 #endif // KOKKOS_ENABLE_CUDA
 
 #if KOKKOS_ENABLE_HIP

@@ -2,10 +2,11 @@
 #ifndef KOKKOS_WRAPPER_EXECUTION_SPACES_H
 #define KOKKOS_WRAPPER_EXECUTION_SPACES_H
 
+#include "Kokkos_Core.hpp"
+
 #include "spaces.h"
 #include "utils.h"
-
-#include "Kokkos_Core.hpp"
+#include "Kokkos_utils.h"
 
 #ifndef WRAPPER_BUILD
 #include "parameters.h"
@@ -68,8 +69,8 @@ struct SpaceInfo<Kokkos::Cuda> {
 
 #ifdef KOKKOS_ENABLE_HIP
 template<>
-struct SpaceInfo<Kokkos::HIP> {
-    using space = Kokkos::HIP;
+struct SpaceInfo<Kokkos_HIP::HIP> {
+    using space = Kokkos_HIP::HIP;
     static constexpr std::string_view julia_name = "HIP";
 };
 #endif
@@ -127,11 +128,7 @@ using ExecutionSpaceList = BuildExecutionSpacesList<
 #endif // KOKKOS_ENABLE_CUDA
 
 #ifdef KOKKOS_ENABLE_HIP
-#if KOKKOS_VERSION >= 40000
-        , Kokkos::HIP
-#else
-        , Kokkos::Experimental::HIP
-#endif // KOKKOS_VERSION >= 40000
+        , Kokkos_HIP::HIP
 #endif // KOKKOS_ENABLE_HIP
 
 #ifdef KOKKOS_ENABLE_HPX

@@ -120,21 +120,21 @@ void define_memory_spaces_functions(jlcxx::Module& mod)
         return jlcxx::julia_type<Kokkos::DefaultHostExecutionSpace::memory_space>()->super->super;
     });
     mod.method("__shared_memory_space", [](){
-#if KOKKOS_VERSION >= 40000
+#if KOKKOS_VERSION_CMP(>=, 4, 0, 0)
         if constexpr (Kokkos::has_shared_space) {
             return jlcxx::julia_type<Kokkos::SharedSpace>()->super->super;
         } else
-#endif // KOKKOS_VERSION >= 40000
+#endif // KOKKOS_VERSION_CMP(>=, 4, 0, 0)
         {
             return jl_nothing;
         }
     });
     mod.method("__shared_host_pinned_space", [](){
-#if KOKKOS_VERSION >= 40000
+#if KOKKOS_VERSION_CMP(>=, 4, 0, 0)
         if constexpr (Kokkos::has_shared_host_pinned_space) {
             return jlcxx::julia_type<Kokkos::SharedHostPinnedSpace>()->super->super;
         } else
-#endif // KOKKOS_VERSION >= 40000
+#endif // KOKKOS_VERSION_CMP(>=, 4, 0, 0)
         {
             return jl_nothing;
         }

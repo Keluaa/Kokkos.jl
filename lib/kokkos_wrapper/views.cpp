@@ -2,6 +2,7 @@
 #include "views.h"
 #include "memory_spaces.h"
 #include "utils.h"
+#include "Kokkos_utils.h"
 #include "printing_utils.h"
 
 #include <type_traits>
@@ -271,13 +272,13 @@ struct RegisterUtils
         auto dims_array = unpack_dims(dims);
         auto layout = unbox_layout_arg<Layout, Dims...>(boxed_layout, dims_array);
 
-#if KOKKOS_VERSION >= 40000
+#if KOKKOS_VERSION_CMP(>=, 4, 0, 0)
         auto ctor_prop = Kokkos::view_wrap(data_ptr);
 #else
         // Circumventing a Kokkos bug in 3.7. Maybe related to the compiler version.
         using ctor_prop_t = Kokkos::Impl::ViewCtorProp<typename Kokkos::Impl::ViewCtorProp<void, T*>::type>;
         auto ctor_prop = ctor_prop_t(data_ptr);
-#endif // KOKKOS_VERSION >= 40000
+#endif // KOKKOS_VERSION_CMP(>=, 4, 0, 0)
         return ViewWrap<T, Dimension, Layout, MemSpace>(ctor_prop, layout);
     }
 
