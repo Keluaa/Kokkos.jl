@@ -258,7 +258,7 @@ template<typename T, typename... A>
 constexpr auto as_array(A... args)
 {
     std::array<T, sizeof...(A)> array{};
-    int i = 0;
+    [[maybe_unused]] int i = 0;
     ([&](){ array[i++] = args; }(), ...);
     return array;
 }

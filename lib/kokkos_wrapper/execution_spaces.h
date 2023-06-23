@@ -127,11 +127,11 @@ using ExecutionSpaceList = BuildExecutionSpacesList<
 #endif // KOKKOS_ENABLE_CUDA
 
 #ifdef KOKKOS_ENABLE_HIP
-#if KOKKOS_VERSION_GREATER_EQUAL(4, 0, 0)
+#if KOKKOS_VERSION >= 40000
         , Kokkos::HIP
 #else
         , Kokkos::Experimental::HIP
-#endif
+#endif // KOKKOS_VERSION >= 40000
 #endif // KOKKOS_ENABLE_HIP
 
 #ifdef KOKKOS_ENABLE_HPX

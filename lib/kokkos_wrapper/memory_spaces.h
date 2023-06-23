@@ -46,11 +46,11 @@ struct SpaceInfo<Kokkos::CudaUVMSpace>
 #endif // KOKKOS_ENABLE_CUDA
 
 #if KOKKOS_ENABLE_HIP
-#if KOKKOS_VERSION_GREATER_EQUAL(4, 0, 0)
+#if KOKKOS_VERSION >= 40000
 namespace Kokkos_HIP = Kokkos;
 #else
 namespace Kokkos_HIP = Kokkos::Experimental;
-#endif
+#endif // KOKKOS_VERSION >= 40000
 
 template<>
 struct SpaceInfo<Kokkos_HIP::HIPSpace>
