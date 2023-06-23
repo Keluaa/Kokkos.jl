@@ -38,6 +38,7 @@ else
 end
 
 # Set the configuration back to what other tests expect (on top of the default values)
+Kokkos.set_kokkos_version(TEST_KOKKOS_VERSION)
 Kokkos.set_backends([TEST_BACKEND_HOST, TEST_BACKEND_DEVICE])
 
 end

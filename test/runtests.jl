@@ -8,6 +8,8 @@ using Kokkos
 
 # All environment variables affecting tests are mentioned here.
 
+const TEST_KOKKOS_VERSION = get(ENV, "TEST_KOKKOS_VERSION", "4.0.01")
+
 const TEST_CUDA = parse(Bool, get(ENV, "TEST_KOKKOS_CUDA", "false"))
 const TEST_OPENMP = !TEST_CUDA
 const TEST_DEVICE_IS_HOST = TEST_OPENMP
@@ -39,6 +41,7 @@ TEST_CUDA && using CUDA
 
 function print_test_config()
     println("Test configuration:")
+    println(" - TEST_KOKKOS_VERSION:   $TEST_KOKKOS_VERSION")
     println(" - TEST_OPENMP:           $TEST_OPENMP")
     println(" - TEST_CUDA:             $TEST_CUDA")
     println(" - TEST_MPI:              $TEST_MPI (only MPI: $TEST_MPI_ONLY)")
@@ -60,9 +63,9 @@ end
 macro error_match(exception)
     # To make @test_throws work in most cases in version 1.7 and above
     if exception isa Symbol
-        return exception
+        return esc(exception)
     elseif VERSION ≥ v"1.8"
-        return exception
+        return esc(exception)
     else
         return ErrorException
     end
@@ -77,8 +80,17 @@ end
     Kokkos.build_in_project()  # Use the same directory as Pkg.test uses, forcing a complete compilation
 
     Kokkos.set_omp_vars()
-    @test_logs min_level=Logging.Warn @test_nowarn Kokkos.load_wrapper_lib(; loading_bar=false)
+    if TEST_OPENMP
+        @test_logs min_level=Logging.Warn @test_nowarn Kokkos.load_wrapper_lib(; loading_bar=false)
+    else
+        # GPU backends add some warnings which I can't get rid of
+        @test_logs min_level=Logging.Warn Kokkos.load_wrapper_lib(; loading_bar=false)
+    end
     @test_nowarn Kokkos.initialize()
+
+    if Kokkos.KOKKOS_VERSION != VersionNumber(TEST_KOKKOS_VERSION)
+        error("Expected Kokkos v$TEST_KOKKOS_VERSION, got: $(Kokkos.KOKKOS_VERSION)")
+    end
 
     if [TEST_BACKEND_HOST, TEST_BACKEND_DEVICE] ⊈ Kokkos.ENABLED_EXEC_SPACES
         error("Invalid execution spaces: $([TEST_BACKEND_HOST, TEST_BACKEND_DEVICE]) ⊈ $(Kokkos.ENABLED_EXEC_SPACES)")
