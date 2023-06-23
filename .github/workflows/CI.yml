@@ -30,6 +30,8 @@ jobs:
           - '4.0.01'
         include:
           - version: '1.9'
+            os: ubuntu-latest
+            arch: x64
             kokkos: '3.7.02'
     steps:
       - uses: actions/checkout@v2
