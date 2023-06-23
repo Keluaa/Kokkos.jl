@@ -57,7 +57,7 @@ end
 
     sub_V = Kokkos.subview(V, (1:3, 1:3))
     @test !Kokkos.span_is_contiguous(sub_V)
-    @test_throws @error_match(r"non-contiguous views cannot") unsafe_wrap(CuArray, sub_V)
+    @test_throws @error_match(r"non-contiguous (or strided) views cannot") unsafe_wrap(CuArray, sub_V)
 
     sub_V2 = Kokkos.subview(V, (:, 1:3))
     @test Kokkos.span_is_contiguous(sub_V2)

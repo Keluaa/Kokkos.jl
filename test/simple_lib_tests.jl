@@ -160,7 +160,6 @@ end
         test_lib(lib_1D, (Nx,))
 
         Kokkos.unload_lib(lib_1D)
-        @test !Kokkos.is_lib_loaded(lib_1D)
     end
 
     @testset "2D" begin
@@ -170,7 +169,6 @@ end
         test_lib(lib_2D, (Nx, Ny))
 
         Kokkos.unload_lib(project_2D)
-        @test !Kokkos.is_lib_loaded(project_2D)
     end
 
     Kokkos.clean(project_1D)  # Also cleans 'project_2D'

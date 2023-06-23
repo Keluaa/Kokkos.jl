@@ -189,20 +189,20 @@ v10 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_
     @testset "$exec_space_type in $(dim)D with $type" for
             exec_space_type in (:no_exec_space, TEST_COPY_EXEC_SPACES...),
             dim in TEST_COPY_DIMS,
-            type in TEST_COPY_TYPE
+            type in TEST_COPY_TYPES
 
         exec_space = exec_space_type === :no_exec_space ? nothing : exec_space_type()
         n = ntuple(Returns(7), dim)
 
         @testset "View{$type, $dim, $src_layout, $src_space} => View{$type, $dim, $dst_layout, $dst_space}" for
-                src_space in Kokkos.ENABLED_MEM_SPACES, dst_space in Kokkos.ENABLED_MEM_SPACES,
-                src_layout in TEST_VIEW_LAYOUTS,
-                dst_layout in TEST_VIEW_LAYOUTS
+                src_space in TEST_COPY_MEM_SPACES, dst_space in TEST_COPY_MEM_SPACES,
+                src_layout in TEST_COPY_LAYOUTS,
+                dst_layout in TEST_COPY_LAYOUTS
 
             # As per the Kokkos::deep_copy docs, not all view combinations can use deep_copy
             # See https://kokkos.github.io/kokkos-core-wiki/API/core/view/deep_copy.html#requirements
             can_deep_copy = src_layout == dst_layout || exec_space === :no_exec_space
-            if exec_space !== :no_exec_space
+            if exec_space_type !== :no_exec_space
                 can_deep_copy |= accessible(exec_space, src_space) && accessible(exec_space, dst_space)
             end
 
@@ -221,13 +221,13 @@ v10 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_
                 if can_deep_copy
                     @test Kokkos.deep_copy(v_dst, v_src) === nothing
                 else
-                    @test_throws @error_match(r"Deep copy is not possible") Kokkos.deep_copy(v_dst, v_src)
+                    @test_throws @error_match(r"require a temporary allocation") Kokkos.deep_copy(v_dst, v_src)
                 end
             else
                 if can_deep_copy
                     @test Kokkos.deep_copy(exec_space, v_dst, v_src) === nothing
                 else
-                    @test_throws @error_match(r"Deep copy is not possible") Kokkos.deep_copy(exec_space, v_dst, v_src)
+                    @test_throws @error_match(r"require a temporary allocation") Kokkos.deep_copy(exec_space, v_dst, v_src)
                 end
                 Kokkos.fence(exec_space)
             end
