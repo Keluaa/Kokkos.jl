@@ -40,7 +40,7 @@ function set_kokkos_path(path::Union{Nothing, Missing, AbstractString})
 end
 
 
-function set_cmake_options(options::Union{Nothing, Missing, Vector{<:AbstractString}})
+function set_cmake_options(options::Union{Nothing, Missing, Vector})
     @set_preferences!("cmake_options" => options)
     if !is_kokkos_wrapper_loaded()
         global KOKKOS_CMAKE_OPTIONS = @load_preference("cmake_options", __DEFAULT_KOKKOS_CMAKE_OPTIONS)
@@ -53,7 +53,7 @@ function set_cmake_options(options::Union{Nothing, Missing, Vector{<:AbstractStr
 end
 
 
-function set_kokkos_options(options::Union{Nothing, Missing, Vector{<:AbstractString}})
+function set_kokkos_options(options::Union{Nothing, Missing, Vector})
     @set_preferences!("kokkos_options" => options)
     if !is_kokkos_wrapper_loaded()
         global KOKKOS_LIB_OPTIONS = @load_preference("kokkos_options", __DEFAULT_KOKKOS_LIB_OPTIONS)

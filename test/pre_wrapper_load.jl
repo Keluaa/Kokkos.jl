@@ -10,6 +10,8 @@ Kokkos.is_initialized() && error("Kokkos should not be loaded for those tests")
 @test_throws @error_match("is not loaded") Kokkos.versioninfo()
 @test_throws @error_match("is not loaded") Kokkos.View{Float64}()
 
+test_options = Kokkos.KOKKOS_CMAKE_OPTIONS
+test_kokkos_options = Kokkos.KOKKOS_LIB_OPTIONS
 
 default_path = Kokkos.LOCAL_KOKKOS_DIR
 @test Kokkos.set_kokkos_version("3.7.01")                       == Kokkos.LOCAL_KOKKOS_VERSION_STR == "3.7.01"
@@ -39,6 +41,8 @@ end
 
 # Set the configuration back to what other tests expect (on top of the default values)
 Kokkos.set_kokkos_version(TEST_KOKKOS_VERSION)
+Kokkos.set_cmake_options(test_options)
+Kokkos.set_kokkos_options(test_kokkos_options)
 Kokkos.set_backends([TEST_BACKEND_HOST, TEST_BACKEND_DEVICE])
 
 end
