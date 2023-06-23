@@ -1,4 +1,4 @@
-@testset "ROCm" begin
+@testset "HIP" begin
 
 # TODO
 

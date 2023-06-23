@@ -295,8 +295,8 @@ end
     @test typeof(sv1) === typeof(v)
 
     sv2 = Kokkos.subview(v, (:, 1))
-    @test typeof(sv2) === Kokkos.impl_view_type(View{Float64, 1, array_layout(v), Kokkos.CudaSpace})
-    @test Kokkos.main_view_type(sv2) === View{Float64, 1, array_layout(v), Kokkos.CudaSpace}
+    @test typeof(sv2) === Kokkos.impl_view_type(View{Float64, 1, array_layout(v), TEST_MAIN_MEM_SPACE_DEVICE})
+    @test Kokkos.main_view_type(sv2) === View{Float64, 1, array_layout(v), TEST_MAIN_MEM_SPACE_DEVICE}
 
     sv3 = Kokkos.subview(v, (1,))
     @test typeof(sv3) === Kokkos.impl_view_type(View{Float64, 1, Kokkos.LayoutStride, memory_space(v)})

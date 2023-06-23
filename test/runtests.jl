@@ -38,7 +38,7 @@ elseif TEST_HIP
 
     const TEST_MEM_SPACE_HOST        = Kokkos.HostSpace
     const TEST_MEM_SPACES_DEVICE     = (Kokkos.HIPSpace, Kokkos.HIPManagedSpace)
-    const TEST_UNAVAILABLE_MEM_SPACE = Kokkos.HIPSpace
+    const TEST_UNAVAILABLE_MEM_SPACE = Kokkos.CudaSpace
 
     const TEST_MEM_SHARED            = Kokkos.HIPManagedSpace
     const TEST_MEM_PINNED            = Kokkos.HIPHostPinnedSpace
