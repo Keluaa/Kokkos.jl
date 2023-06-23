@@ -46,7 +46,7 @@ struct SpaceInfo<Kokkos::CudaUVMSpace>
 #endif // KOKKOS_VERSION_CMP(>=, 4, 0, 0) || defined(KOKKOS_ENABLE_CUDA_UVM)
 #endif // KOKKOS_ENABLE_CUDA
 
-#if KOKKOS_ENABLE_HIP
+#ifdef KOKKOS_ENABLE_HIP
 template<>
 struct SpaceInfo<Kokkos_HIP::HIPSpace>
 {
@@ -84,13 +84,13 @@ using MemorySpacesList = TList<
 #endif // KOKKOS_VERSION_CMP(>=, 4, 0, 0) || defined(KOKKOS_ENABLE_CUDA_UVM)
 #endif // KOKKOS_ENABLE_CUDA
 
-#if KOKKOS_ENABLE_HIP
+#ifdef KOKKOS_ENABLE_HIP
         , Kokkos_HIP::HIPSpace
         , Kokkos_HIP::HIPHostPinnedSpace
         , Kokkos_HIP::HIPManagedSpace
 #endif // KOKKOS_ENABLE_HIP
 
-#if KOKKOS_ENABLE_SYCL
+#ifdef KOKKOS_ENABLE_SYCL
 #error "SYCL memory spaces are not yet supported"
 //        , Kokkos::Experimental::SYCLDeviceUSMSpace
 //        , Kokkos::Experimental::SYCLSharedUSMSpace
