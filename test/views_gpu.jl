@@ -11,8 +11,8 @@ TEST_DEFAULT_VIEW_TYPE = Symbol("View1D_L_", nameof(TEST_BACKEND_DEVICE), "Alloc
 TEST_DEFAULT_DEVICE_LAYOUT = array_layout(TEST_BACKEND_DEVICE)
 
 
-# Number of tests for deep_copy can reach 1728 in total with Cuda, therefore we must greatly reduce
-# the amount of combinations to keep it under 100.
+# Number of tests for deep_copy can reach 1728 in total with Cuda or HIP, therefore we must greatly
+# reduce the amount of combinations to keep it under 100.
 TEST_COPY_EXEC_SPACES = (TEST_BACKEND_DEVICE, TEST_BACKEND_HOST)
 TEST_COPY_MEM_SPACES = (first(TEST_VIEW_MEM_SPACES), TEST_MEM_SPACE_HOST)
 TEST_COPY_DIMS = (first(filter(≥(2), TEST_VIEW_DIMS)),)

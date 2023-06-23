@@ -10,7 +10,7 @@ str = String(take!(io))
 io = IOBuffer()
 Kokkos.configinfo(io) === nothing
 str = String(take!(io))
-@test occursin(string(Kokkos.KOKKOS_VERSION), str)
+@test occursin(string(Kokkos.LOCAL_KOKKOS_VERSION_STR), str)
 
 prev_backends = copy(Kokkos.KOKKOS_BACKENDS)
 @test_logs (:info, r"Restart your Julia session") Kokkos.set_backends([TEST_UNAVAILABLE_BACKEND])

@@ -195,7 +195,7 @@ flat_v5 = v5[:]
     @test size(View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}()) == (0, 0)
 
     @test_throws @error_match(r"requires a instance") View{Float64}(undef, n1; layout=Kokkos.LayoutStride)
-    @test_throws @error_match(r"CudaSpace is not compiled") begin
+    @test_throws @error_match(r"CudaSpace is not enabled") begin
         View{Int64}(undef, n1; mem_space=Kokkos.CudaSpace)
     end
 end

@@ -11,25 +11,53 @@ using Kokkos
 const TEST_KOKKOS_VERSION = get(ENV, "TEST_KOKKOS_VERSION", "4.0.01")
 
 const TEST_CUDA = parse(Bool, get(ENV, "TEST_KOKKOS_CUDA", "false"))
-const TEST_OPENMP = !TEST_CUDA
+const TEST_HIP  = parse(Bool, get(ENV, "TEST_KOKKOS_HIP", "false"))
+TEST_CUDA && TEST_HIP && error("Only a single GPU backend can be enabled at once")
+
+const TEST_OPENMP = !(TEST_CUDA || TEST_HIP)
 const TEST_DEVICE_IS_HOST = TEST_OPENMP
 
 const TEST_MPI_ONLY = parse(Bool, get(ENV, "TEST_KOKKOS_MPI_ONLY", "false"))
 const TEST_MPI = parse(Bool, get(ENV, "TEST_KOKKOS_MPI", "true")) || TEST_MPI_ONLY
 
-const TEST_BACKEND_HOST          = Kokkos.Serial
-const TEST_BACKEND_DEVICE        = TEST_CUDA ? Kokkos.Cuda      : Kokkos.OpenMP
-const TEST_UNAVAILABLE_BACKEND   = TEST_CUDA ? Kokkos.HIP       : Kokkos.Cuda
-const TEST_UNAVAILABLE_MEM_SPACE = TEST_CUDA ? Kokkos.HIPSpace  : Kokkos.CudaSpace
+if TEST_CUDA
+    const TEST_BACKEND_HOST          = Kokkos.Serial
+    const TEST_BACKEND_DEVICE        = Kokkos.Cuda
+    const TEST_UNAVAILABLE_BACKEND   = Kokkos.HIP
 
-const TEST_MEM_SPACE_HOST = Kokkos.HostSpace
-const TEST_MEM_SPACES_DEVICE = TEST_CUDA ? (Kokkos.CudaSpace, Kokkos.CudaUVMSpace) : (Kokkos.HostSpace,)
+    const TEST_MEM_SPACE_HOST        = Kokkos.HostSpace
+    const TEST_MEM_SPACES_DEVICE     = (Kokkos.CudaSpace, Kokkos.CudaUVMSpace)
+    const TEST_UNAVAILABLE_MEM_SPACE = Kokkos.HIPSpace
+
+    const TEST_MEM_SHARED            = Kokkos.CudaUVMSpace
+    const TEST_MEM_PINNED            = Kokkos.CudaHostPinnedSpace
+elseif TEST_HIP
+    const TEST_BACKEND_HOST          = Kokkos.Serial
+    const TEST_BACKEND_DEVICE        = Kokkos.HIP
+    const TEST_UNAVAILABLE_BACKEND   = Kokkos.Cuda
+
+    const TEST_MEM_SPACE_HOST        = Kokkos.HostSpace
+    const TEST_MEM_SPACES_DEVICE     = (Kokkos.HIPSpace, Kokkos.HIPManagedSpace)
+    const TEST_UNAVAILABLE_MEM_SPACE = Kokkos.HIPSpace
+
+    const TEST_MEM_SHARED            = Kokkos.HIPManagedSpace
+    const TEST_MEM_PINNED            = Kokkos.HIPHostPinnedSpace
+else
+    const TEST_BACKEND_HOST          = Kokkos.Serial
+    const TEST_BACKEND_DEVICE        = Kokkos.OpenMP
+    const TEST_UNAVAILABLE_BACKEND   = Kokkos.Cuda
+
+    const TEST_MEM_SPACE_HOST        = Kokkos.HostSpace
+    const TEST_MEM_SPACES_DEVICE     = (Kokkos.HostSpace,)
+    const TEST_UNAVAILABLE_MEM_SPACE = Kokkos.CudaSpace
+
+    const TEST_MEM_SHARED            = Kokkos.HostSpace
+    const TEST_MEM_PINNED            = Kokkos.HostSpace
+end
+
 const TEST_MAIN_MEM_SPACE_DEVICE = first(TEST_MEM_SPACES_DEVICE)
 
-const TEST_MEM_SHARED = TEST_CUDA ? Kokkos.CudaUVMSpace        : Kokkos.HostSpace
-const TEST_MEM_PINNED = TEST_CUDA ? Kokkos.CudaHostPinnedSpace : Kokkos.HostSpace
-
-const TEST_DEVICE_ACCESSIBLE = !TEST_CUDA
+const TEST_DEVICE_ACCESSIBLE = !(TEST_CUDA || TEST_HIP)
 
 const TEST_VIEW_DIMS = (1, 2)
 const TEST_VIEW_TYPES = (Float64, Int64)
@@ -37,6 +65,7 @@ const TEST_VIEW_LAYOUTS = (Kokkos.LayoutLeft, Kokkos.LayoutRight, Kokkos.LayoutS
 
 
 TEST_CUDA && using CUDA
+# TEST_HIP && using AMDGPU # TODO: add when we have AMDGPU interop
 
 
 function print_test_config()
@@ -44,6 +73,7 @@ function print_test_config()
     println(" - TEST_KOKKOS_VERSION:   $TEST_KOKKOS_VERSION")
     println(" - TEST_OPENMP:           $TEST_OPENMP")
     println(" - TEST_CUDA:             $TEST_CUDA")
+    println(" - TEST_HIP:              $TEST_HIP")
     println(" - TEST_MPI:              $TEST_MPI (only MPI: $TEST_MPI_ONLY)")
     println(" - BACKEND_HOST:          $(nameof(TEST_BACKEND_HOST))")
     println(" - BACKEND_DEVICE:        $(nameof(TEST_BACKEND_DEVICE))")
@@ -107,6 +137,8 @@ end
 
         if TEST_CUDA
             include("backends/cuda.jl")
+        elseif TEST_HIP
+            include("backends/hip.jl")
         end
 
         include("projects.jl")
