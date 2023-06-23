@@ -56,7 +56,7 @@ end
 @test Kokkos.impl_space_type(Kokkos.Serial) === Kokkos.Wrapper.Impl.SerialImpl
 @test Kokkos.impl_space_type(Kokkos.HostSpace) === Kokkos.Wrapper.Impl.HostSpaceImpl
 
-@test_throws @error_match("is not compiled") Kokkos.impl_space_type(TEST_UNAVAILABLE_BACKEND)
+@test_throws @error_match("is not enabled") Kokkos.impl_space_type(TEST_UNAVAILABLE_BACKEND)
 
 serial = Kokkos.Serial()
 @test Kokkos.main_space_type(serial) === Kokkos.Serial

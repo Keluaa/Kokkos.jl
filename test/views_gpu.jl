@@ -154,7 +154,7 @@ flat_v4 = @view v4[:]
     @test size(View{Float64, 2, TEST_DEFAULT_DEVICE_LAYOUT, TEST_MAIN_MEM_SPACE_DEVICE}()) == (0, 0)
 
     @test_throws @error_match("requires a instance") View{Float64}(undef, n1; layout=Kokkos.LayoutStride)
-    @test_throws @error_match("$(nameof(TEST_UNAVAILABLE_MEM_SPACE)) is not compiled") begin
+    @test_throws @error_match("$(nameof(TEST_UNAVAILABLE_MEM_SPACE)) is not enabled") begin
         View{Int64}(undef, n1; mem_space=TEST_UNAVAILABLE_MEM_SPACE)
     end
 end
@@ -188,7 +188,7 @@ v10 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_
 
     @testset "$exec_space_type in $(dim)D with $type" for
             exec_space_type in (:no_exec_space, TEST_COPY_EXEC_SPACES...),
-            dim in TEST_COPY_DIM,
+            dim in TEST_COPY_DIMS,
             type in TEST_COPY_TYPE
 
         exec_space = exec_space_type === :no_exec_space ? nothing : exec_space_type()

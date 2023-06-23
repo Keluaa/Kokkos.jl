@@ -85,7 +85,7 @@ void register_all_deep_copy_combinations(jlcxx::Module& mod)
                 mod.method("deep_copy",
                 [](const DestView& dest_view, const SrcView& src_view)
                 {
-                    if constexpr (!is_deep_copyable) {
+                    if constexpr (is_deep_copyable) {
                         Kokkos::deep_copy(dest_view, src_view);
                     } else {
                         jl_errorf("Deep copy is not possible from `%s` to `%s`",
@@ -97,7 +97,7 @@ void register_all_deep_copy_combinations(jlcxx::Module& mod)
                 mod.method("deep_copy",
                 [](const ExecSpace& exec_space, const DestView& dest_view, const SrcView& src_view)
                 {
-                    if constexpr (!is_deep_copyable) {
+                    if constexpr (is_deep_copyable) {
                         Kokkos::deep_copy(exec_space, dest_view, src_view);
                     } else {
                         jl_errorf("Deep copy is not possible from `%s` to `%s` in `%s`",

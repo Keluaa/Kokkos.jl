@@ -6,6 +6,7 @@ if(NOT DEFINED CMAKE_CXX_STANDARD)
 endif()
 
 if(NOT DEFINED CMAKE_CXX_EXTENSIONS)
+    # Required to be OFF when using Clang CUDA to avoid errors like '__float128 is not supported on this target'
     set(CMAKE_CXX_EXTENSIONS OFF)
 endif()
 
