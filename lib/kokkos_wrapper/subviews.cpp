@@ -262,8 +262,6 @@ JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
 
     jl_module_import(mod.julia_module(), views_module, jl_symbol("subview"));
 
-    mod.set_override_module(views_module);
     setup_type_mappings();
     register_all_subviews(mod);
-    mod.unset_override_module();
 }

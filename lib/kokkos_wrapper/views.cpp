@@ -476,7 +476,5 @@ JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
 
     import_all_views_methods(mod.julia_module(), views_module);
 
-    mod.set_override_module(views_module);
     register_all_view_combinations(mod, views_module);
-    mod.unset_override_module();
 }

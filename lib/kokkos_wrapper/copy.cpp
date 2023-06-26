@@ -127,7 +127,5 @@ JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
 
     jl_module_import(mod.julia_module(), views_module, jl_symbol("deep_copy"));
 
-    mod.set_override_module(views_module);
     register_all_deep_copy_combinations(mod);
-    mod.unset_override_module();
 }

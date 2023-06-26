@@ -111,7 +111,5 @@ JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
     jl_module_import(mod.julia_module(), views_module, jl_symbol("create_mirror"));
     jl_module_import(mod.julia_module(), views_module, jl_symbol("create_mirror_view"));
 
-    mod.set_override_module(views_module);
     register_mirror_methods(mod);
-    mod.unset_override_module();
 }
