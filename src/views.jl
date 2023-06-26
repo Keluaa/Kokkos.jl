@@ -69,10 +69,16 @@ function compile_view(view_t::Type{<:View}; for_function=nothing, no_error=false
 
     @debug "Compiling view $view_t"
 
-    view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(view_t)
-    DynamicCompilation.compile_and_load(@__MODULE__, "views";
-        view_types, view_dims, view_layouts, mem_spaces
-    )
+    try
+        view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(view_t)
+        DynamicCompilation.compile_and_load(@__MODULE__, "views";
+            view_types, view_dims, view_layouts, mem_spaces
+        )
+    catch
+        println(stderr, "Defined types: ")
+        foreach(t -> println(stderr, t), _COMPILED_VIEW_TYPES)
+        rethrow()
+    end
 
     lock(_COMPILED_VIEW_TYPES_LOCK) do 
         push!(_COMPILED_VIEW_TYPES, view_t)
