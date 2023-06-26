@@ -21,6 +21,7 @@ const PROCESS_ID = rand(Cint)  # getpid() is not guaranteed to be unique in an M
 const INTRA_PROCESS_LOCK = ReentrantLock()  # Multi-threading lock
 
 const LOADED_FUNCTION_LIBS = Dict{String, CLibrary}()
+const LOADED_FUNCTION_LIBS_LOCK = ReentrantLock()
 
 # CMake targets to their output
 const CMAKE_TARGETS = Dict{String, String}(
@@ -40,7 +41,7 @@ else
 end
 
 
-const NEXT_LIB_NUMBER = Ref(1)
+const NEXT_LIB_NUMBER = Threads.Atomic{Int64}(0)
 
 
 """
@@ -209,8 +210,7 @@ end
 
 
 function register_new_functions(current_module, new_lib_path)
-    lib_number = NEXT_LIB_NUMBER[]
-    NEXT_LIB_NUMBER[] += 1
+    lib_number = (NEXT_LIB_NUMBER[] += 1)
     name = Symbol("Impl", lib_number)
 
     module_expr = quote
@@ -297,7 +297,9 @@ function compile_and_load(current_module, cmake_target;
 
     # Get the function pointer from the lib
     func_lib = load_lib(lib_path)
-    LOADED_FUNCTION_LIBS[lib_name] = func_lib
+    lock(LOADED_FUNCTION_LIBS_LOCK) do
+        LOADED_FUNCTION_LIBS[lib_name] = func_lib
+    end
 
     register_new_functions(current_module, lib_path)
 end

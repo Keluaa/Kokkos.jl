@@ -45,14 +45,19 @@ end
 
 
 const _COMPILED_VIEW_TYPES = Set{Type}()
+const _COMPILED_VIEW_TYPES_LOCK = ReentrantLock()
 
 
 function compile_view(view_t::Type{<:View}; for_function=nothing, no_error=false)
     view_t = main_view_type(view_t)
 
-    println(stderr, "`compile_view`: $view_t is compiled = $(view_t in _COMPILED_VIEW_TYPES)")
+    is_compiled = lock(_COMPILED_VIEW_TYPES_LOCK) do 
+        view_t in _COMPILED_VIEW_TYPES
+    end
 
-    if view_t in _COMPILED_VIEW_TYPES
+    println(stderr, "`compile_view`: $view_t is compiled = $is_compiled")
+
+    if is_compiled
         # This view type should already be compiled
         if no_error
             return false
@@ -71,7 +76,9 @@ function compile_view(view_t::Type{<:View}; for_function=nothing, no_error=false
         view_types, view_dims, view_layouts, mem_spaces
     )
 
-    push!(_COMPILED_VIEW_TYPES, view_t)
+    lock(_COMPILED_VIEW_TYPES_LOCK) do 
+        push!(_COMPILED_VIEW_TYPES, view_t)
+    end
 
     return true
 end
