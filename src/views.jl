@@ -50,6 +50,8 @@ const _COMPILED_VIEW_TYPES = Set{Type}()
 function compile_view(view_t::Type{<:View}; for_function=nothing, no_error=false)
     view_t = main_view_type(view_t)
 
+    println(stderr, "`compile_view`: $view_t is compiled = $(view_t in _COMPILED_VIEW_TYPES)")
+
     if view_t in _COMPILED_VIEW_TYPES
         # This view type should already be compiled
         if no_error
