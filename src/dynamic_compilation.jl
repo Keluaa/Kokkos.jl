@@ -20,8 +20,11 @@ const COMPILATION_LOCK_FILE = "__compilation.lock"
 const PROCESS_ID = rand(Cint)  # getpid() is not guaranteed to be unique in an MPI app
 const INTRA_PROCESS_LOCK = ReentrantLock()  # Multi-threading lock
 
+
 const LOADED_FUNCTION_LIBS = Dict{String, CLibrary}()
-const LOADED_FUNCTION_LIBS_LOCK = ReentrantLock()
+const NEXT_LIB_NUMBER = Ref(0)
+const LOAD_LIB_LOCK = ReentrantLock()
+
 
 # CMake targets to their output
 const CMAKE_TARGETS = Dict{String, String}(
@@ -39,9 +42,6 @@ elseif Sys.isapple()
 else
     ".so"
 end
-
-
-const NEXT_LIB_NUMBER = Threads.Atomic{Int64}(0)
 
 
 """
@@ -209,19 +209,25 @@ function compile_lib(cmake_target, out_lib_path, parameters)
 end
 
 
-function register_new_functions(current_module, new_lib_path)
-    lib_number = (NEXT_LIB_NUMBER[] += 1)
-    name = Symbol("Impl", lib_number)
+function register_new_functions(current_module, lib_path, lib_name)
+    lock(LOAD_LIB_LOCK) do
+        # Get the function pointer from the lib
+        func_lib = load_lib(lib_path)
+        LOADED_FUNCTION_LIBS[lib_name] = func_lib
 
-    module_expr = quote
-        module $name
-            using CxxWrap
-            @wrapmodule($new_lib_path, :define_kokkos_module)
+        lib_number = (NEXT_LIB_NUMBER[] += 1)
+        name = Symbol("Impl_", lib_number)
+
+        module_expr = quote
+            module $name
+                using CxxWrap
+                @wrapmodule($lib_path, :define_kokkos_module)
+            end
         end
-    end
-    module_expr = module_expr.args[2]  # Needed because of the error '"module" expression not at top level'
+        module_expr = module_expr.args[2]  # Needed because of the error '"module" expression not at top level'
 
-    Core.eval(current_module, module_expr)
+        Core.eval(current_module, module_expr)
+    end
 end
 
 
@@ -295,13 +301,7 @@ function compile_and_load(current_module, cmake_target;
         @debug "Getting '$cmake_target' in lib from '$lib_path' (already compiled)"
     end
 
-    # Get the function pointer from the lib
-    func_lib = load_lib(lib_path)
-    lock(LOADED_FUNCTION_LIBS_LOCK) do
-        LOADED_FUNCTION_LIBS[lib_name] = func_lib
-    end
-
-    register_new_functions(current_module, lib_path)
+    register_new_functions(current_module, lib_path, lib_name)
 end
 
 

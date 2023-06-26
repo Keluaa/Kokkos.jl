@@ -55,8 +55,6 @@ function compile_view(view_t::Type{<:View}; for_function=nothing, no_error=false
         view_t in _COMPILED_VIEW_TYPES
     end
 
-    println(stderr, "`compile_view`: $view_t is compiled = $is_compiled")
-
     if is_compiled
         # This view type should already be compiled
         if no_error

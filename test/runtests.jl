@@ -118,6 +118,8 @@ end
     end
     @test_nowarn Kokkos.initialize()
 
+    Kokkos.DynamicCompilation.clean_libs()  # Make sure no leftover lib influences the test results
+
     if Kokkos.KOKKOS_VERSION != VersionNumber(TEST_KOKKOS_VERSION)
         error("Expected Kokkos v$TEST_KOKKOS_VERSION, got: $(Kokkos.KOKKOS_VERSION)")
     end
