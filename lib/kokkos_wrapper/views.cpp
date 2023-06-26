@@ -184,7 +184,7 @@ struct RegisterUtils
 
 
     template<typename T>
-    static jl_datatype_t* build_array_constructor_type(jl_module_t* views_module)
+    static jl_datatype_t* build_array_complete_type(jl_module_t* views_module)
     {
         jl_value_t** stack;
         JL_GC_PUSHARGS(stack, 5);
@@ -329,25 +329,25 @@ struct RegisterUtils
     }
 
 
-    template<typename Wrapped, typename ctor_type>
+    template<typename Wrapped, typename complete_type>
     static void register_constructor(jlcxx::Module& mod, jl_module_t* views_module) {
         using type = typename Wrapped::type;
 
-        jl_datatype_t* view_ctor_type = build_array_constructor_type<type>(views_module);
-        jlcxx::set_julia_type<ctor_type>(view_ctor_type);
+        jl_datatype_t* view_complete_type = build_array_complete_type<type>(views_module);
+        jlcxx::set_julia_type<complete_type>(view_complete_type);
 
         using DimsTuple = decltype(std::tuple_cat(std::array<int64_t, D>()));
 
         mod.method("alloc_view",
-        [](jlcxx::SingletonType<ctor_type>, const DimsTuple& dims,
-                jl_value_t* boxed_memory_space, jl_value_t* boxed_layout,
-                const char* label, bool init, bool pad)
+        [](jlcxx::SingletonType<complete_type>, const DimsTuple& dims,
+           jl_value_t* boxed_memory_space, jl_value_t* boxed_layout,
+           const char* label, bool init, bool pad)
         {
             return create_view<type>(dims, boxed_memory_space, boxed_layout, label, init, pad);
         });
 
         mod.method("view_wrap",
-        [](jlcxx::SingletonType<ctor_type>, const DimsTuple& dims, jl_value_t* boxed_layout, type* data_ptr)
+        [](jlcxx::SingletonType<complete_type>, const DimsTuple& dims, jl_value_t* boxed_layout, type* data_ptr)
         {
             return view_wrap<type>(dims, boxed_layout, data_ptr);
         });
@@ -365,8 +365,7 @@ void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_modul
             DimsList
     >();
 
-    apply_to_all(combinations, [&](auto params)
-    {
+    apply_to_all(combinations, [&](auto params) {
         using MemSpace = typename decltype(params)::template Arg<0>;
         using Layout = typename decltype(params)::template Arg<1>;
         using Dimension = typename decltype(params)::template Arg<2>;
@@ -375,6 +374,8 @@ void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_modul
 
         std::string name = RegUtils::build_view_type_name();
         jl_value_t* view_type = RegUtils::build_abstract_array_type(views_module);
+
+        std::cout << " === Registering '" << name << "'\n";
 
         // We apply the type and dimension separately: some type problems arise when specifying both through `add_type`,
         // irregularities like `View{Float64, 2} <: AbstractArray{Float64, 2} == true` but an instance of a
@@ -388,21 +389,28 @@ void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_modul
                     jlcxx::ParameterList<Layout>,
                     jlcxx::ParameterList<MemSpace>
         >([&](auto wrapped) {
+            // `Wrapped_t` is mapped to the `View_<dim>D_<layout>_<mem space>` type: aka the 'impl' type.
             using Wrapped_t = typename decltype(wrapped)::type;
-            using ctor_type = TList<Wrapped_t>;
 
-            RegUtils::template register_constructor<Wrapped_t, ctor_type>(mod, views_module);
+            // `complete_type` is mapped to the `View{T, D, L, M}` type: aka the 'main' type. It is an abstract type on
+            // the Julia side.
+            // On the C++ side, it is mapped to `TList<Wrapped_t>`, to make it easy to build and work with.
+            using complete_type = TList<Wrapped_t>;
+
+            std::cout << "=> With " << get_type_name<typename Wrapped_t::type>() << ": " << get_type_name<Wrapped_t>() << "\n";
+
+            RegUtils::template register_constructor<Wrapped_t, complete_type>(mod, views_module);
             RegUtils::register_access_operator(wrapped);
 
-            wrapped.method("impl_view_type", [](jlcxx::SingletonType<ctor_type>) {
+            wrapped.method("impl_view_type", [](jlcxx::SingletonType<complete_type>) {
                 return jlcxx::julia_type<Wrapped_t>();
             });
 
-            wrapped.method("host_mirror_space", [](jlcxx::SingletonType<ctor_type>) {
+            wrapped.method("host_mirror_space", [](jlcxx::SingletonType<complete_type>) {
                 return jlcxx::julia_type<typename Wrapped_t::host_mirror_space>()->super->super;
             });
 
-            wrapped.method("cxx_type_name", [](jlcxx::SingletonType<ctor_type>, bool mangled) {
+            wrapped.method("cxx_type_name", [](jlcxx::SingletonType<complete_type>, bool mangled) {
                 if (mangled) {
                     return std::string(typeid(typename Wrapped_t::kokkos_view_t).name());
                 } else {
