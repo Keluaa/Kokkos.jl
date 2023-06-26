@@ -374,6 +374,7 @@ void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_modul
 
         std::string name = RegUtils::build_view_type_name();
         jl_value_t* view_type = RegUtils::build_abstract_array_type(views_module);
+        JL_GC_PUSH1(view_type);
 
         std::cerr << " === Registering '" << name << "'\n";
 
@@ -432,6 +433,8 @@ void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_modul
                 }
             });
         });
+
+        JL_GC_POP();
     });
 }
 
