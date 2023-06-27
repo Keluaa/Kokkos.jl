@@ -1,4 +1,4 @@
-module MPIExt
+module KokkosMPI
 
 import Kokkos
 isdefined(Base, :get_extension) ? (import MPI) : (import ..MPI)

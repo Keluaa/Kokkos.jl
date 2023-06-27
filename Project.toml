@@ -34,9 +34,9 @@ julia = "1.7"
 libcxxwrap_julia_jll = "0.9.7"
 
 [extensions]
-CUDAExt = "CUDA"
+KokkosCUDA = "CUDA"
 KokkosAMDGPU = "AMDGPU"
-MPIExt = "MPI"
+KokkosMPI = "MPI"
 
 [extras]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
