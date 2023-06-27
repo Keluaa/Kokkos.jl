@@ -1,4 +1,6 @@
 [deps]
+AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 Kokkos = "3296cea9-b0de-4b57-aba0-ce554b517c3b"
 

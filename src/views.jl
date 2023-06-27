@@ -10,7 +10,7 @@ import ..Kokkos: memory_space, execution_space, accessible, array_layout, main_s
 
 export View
 export impl_view_type, main_view_type, label, view_wrap, view_data, memory_span, span_is_contiguous
-export cxx_type_name, subview, deep_copy, create_mirror, create_mirror_view
+export cxx_type_name, subview, deep_copy, host_mirror, host_mirror_space, create_mirror, create_mirror_view
 
 
 """

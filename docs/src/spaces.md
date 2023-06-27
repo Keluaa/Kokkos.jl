@@ -63,7 +63,7 @@ BackendFunctions.omp_capture_affinity
 ### Cuda / HIP
 
 ```@docs
-device_id
-wrap_stream
-stream_ptr
+BackendFunctions.device_id
+BackendFunctions.wrap_stream
+BackendFunctions.stream_ptr
 ```

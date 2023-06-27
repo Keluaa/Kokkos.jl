@@ -11,7 +11,7 @@ using Kokkos
 const TEST_KOKKOS_VERSION = get(ENV, "TEST_KOKKOS_VERSION", "4.0.01")
 
 const TEST_CUDA = parse(Bool, get(ENV, "TEST_KOKKOS_CUDA", "false"))
-const TEST_HIP  = parse(Bool, get(ENV, "TEST_KOKKOS_HIP", "false"))
+const TEST_HIP  = parse(Bool, get(ENV, "TEST_KOKKOS_HIP", "false")) && !(v"1.8-" <= VERSION < v"1.9-")
 TEST_CUDA && TEST_HIP && error("Only a single GPU backend can be enabled at once")
 
 const TEST_OPENMP = !(TEST_CUDA || TEST_HIP)

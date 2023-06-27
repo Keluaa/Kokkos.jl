@@ -3,9 +3,24 @@ module KokkosAMDGPU
 using Kokkos
 import Kokkos: View, view_wrap
 isdefined(Base, :get_extension) ? (import AMDGPU) : (import ..AMDGPU)
-import AMDGPU
+import AMDGPU: ROCArray
 
 
+"""
+    unsafe_wrap(ROCArray, v::Kokkos.View)
+
+Wrap a `Kokkos.View` into a `ROCArray`. The view must be stored in one of the HIP device memory
+spaces.
+
+Views with row-major layout (`LayoutRight`) will be transposed with `Base.adjoint`.
+
+Non-contiguous views (`Kokkos.span_is_contiguous(v) == false`) cannot be represented as `ROCArray`s.
+
+!!! warning
+
+    The returned `ROCArray` does not own the data of the view, which then must stay rooted for the
+    entire lifetime of the `ROCArray`.
+"""
 function Base.unsafe_wrap(
     roc_array_t::Union{Type{ROCArray}, Type{ROCArray{T}}, Type{<:ROCArray{T, D}}},
     v::View{T, D, L, S}

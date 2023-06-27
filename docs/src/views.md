@@ -18,6 +18,8 @@ span_is_contiguous
 subview
 view_wrap
 deep_copy
+host_mirror
+host_mirror_space
 create_mirror
 create_mirror_view
 impl_view_type

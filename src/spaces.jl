@@ -446,76 +446,43 @@ and returns the result.
 function omp_capture_affinity end
 
 
-### Cuda
+### Cuda/HIP
 
 """
     wrap_stream(cuda_stream::Ptr{Cvoid})::Kokkos.Cuda
+    wrap_stream(hip_stream::Ptr{Cvoid})::Kokkos.HIP
 
-Return a [`Kokkos.Cuda`](@ref) execution space operating on the given stream (a pointer to a
-`cudaStream_t`).
+Return a `Kokkos.Cuda` or `Kokkos.HIP` execution space operating on the given stream
+(a pointer to a `cudaStream_t` or `hipStream_t` respectively).
 Kokkos does not take ownership of the stream.
 
-Equivalent to `Kokkos::Cuda(cuda_stream)`.
+Equivalent to `Kokkos::Cuda(cuda_stream)` or `Kokkos::HIP(hip_stream)`.
 """
 function wrap_stream end
 
 """
     device_id([space::Kokkos.Cuda])
-
-Return the ID of the device associated with the given `space`.
-If `space` is not given, the ID of the default device used by Kokkos is returned.
-
-The ID is a 0-index in the list of available devices (as used by `cudaGetDeviceProperties` for
-example).
-
-Equivalent to `Kokkos::Cuda().cuda_device()`.
-"""
-function device_id end
-
-"""
-    stream_ptr(space::Kokkos.Cuda)
-
-Return the `cudaStream_t` of the `space` as a `Ptr{Cvoid}`.
-
-Equivalent to `Kokkos::Cuda().cuda_stream()`.
-"""
-function stream_ptr end
-
-
-### HIP
-
-"""
-    wrap_stream(hip_stream::Ptr{Cvoid})::Kokkos.HIP
-
-Return a [`Kokkos.HIP`](@ref) execution space operating on the given stream (a pointer to a
-`hipStream_t`).
-Kokkos does not take ownership of the stream.
-
-Equivalent to `Kokkos::HIP(hip_stream)`.
-"""
-wrap_stream
-
-"""
     device_id([space::Kokkos.HIP])
 
 Return the ID of the device associated with the given `space`.
 If `space` is not given, the ID of the default device used by Kokkos is returned.
 
-The ID is a 0-index in the list of available devices (as used by `hipGetDeviceProperties` for
-example).
+The ID is a 0-index in the list of available devices (as used by `cudaGetDeviceProperties` or
+`hipGetDeviceProperties` for example).
 
-Equivalent to `Kokkos::HIP().hip_device()`.
+Equivalent to `Kokkos::Cuda().cuda_device()` or `Kokkos::HIP().hip_device()`.
 """
-device_id
+function device_id end
 
 """
+    stream_ptr(space::Kokkos.Cuda)
     stream_ptr(space::Kokkos.HIP)
 
-Return the `hipStream_t` of the `space` as a `Ptr{Cvoid}`.
+Return the `cudaStream_t` or `hipStream_t` of the `space` as a `Ptr{Cvoid}`.
 
-Equivalent to `Kokkos::HIP().hip_stream()`.
+Equivalent to `Kokkos::Cuda().cuda_stream()` or `Kokkos::HIP().hip_stream()`.
 """
-stream_ptr
+function stream_ptr end
 
 end
 
