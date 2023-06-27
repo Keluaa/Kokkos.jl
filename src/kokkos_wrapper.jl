@@ -132,7 +132,7 @@ function create_kokkos_lib_project(; no_git=false)
     end
 
     # Disable all other Kokkos backends, to make sure no cached variable keeps one of them enabled
-    all_backends = parentmodule(@__MODULE__).Spaces.ALL_BACKENDS .|> nameof .|> string .|> uppercase
+    all_backends = parentmodule(@__MODULE__).ALL_BACKENDS .|> nameof .|> string .|> uppercase
     for backend in setdiff(all_backends, enabled_backends)
         kokkos_options["Kokkos_ENABLE_" * backend] = "OFF"
     end
@@ -259,7 +259,7 @@ function load_wrapper_lib(; no_compilation=false, no_git=false, loading_bar=true
 
     Kokkos = parentmodule(Wrapper)
     Kokkos.__init_vars()
-    Kokkos.Spaces.__init_vars()
+    Kokkos.__init_spaces_vars()
 
     return
 end

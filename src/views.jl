@@ -146,7 +146,7 @@ The opposite of [`main_view_type`](@ref).
 
 ```julia-repl
 julia> view_t = Kokkos.View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}
-Kokkos.Views.View{Float64, 2, Kokkos.Views.LayoutRight, Kokkos.Spaces.HostSpace}
+Kokkos.Views.View{Float64, 2, Kokkos.Views.LayoutRight, Kokkos.HostSpace}
 
 julia> view_impl_t = Kokkos.impl_view_type(view_t)
 Kokkos.Wrapper.Impl.View2D_R_HostAllocated{Float64}
@@ -215,7 +215,7 @@ julia> v = View{Float64}(undef, 10; mem_space=my_cuda_space)
  ...
 
 julia> memory_space(v)
-Kokkos.Spaces.CudaSpace
+Kokkos.CudaSpace
 ```
 """
 memory_space(v::View) = memory_space(typeof(v))
@@ -294,7 +294,7 @@ If `mangled` is `true`, then the mangled type name is returned. This name is com
 
 ```julia-repl
 julia> view_t = Kokkos.View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}
-Kokkos.Views.View{Float64, 2, Kokkos.Views.LayoutRight, Kokkos.Spaces.HostSpace}
+Kokkos.Views.View{Float64, 2, Kokkos.Views.LayoutRight, Kokkos.HostSpace}
 
 julia> Kokkos.Views.cxx_type_name(view_t)
 "Kokkos::View<double**, Kokkos::LayoutRight, Kokkos::Device<Kokkos::OpenMP, Kokkos::HostSpace>, Kokkos::MemoryTraits<0> >"

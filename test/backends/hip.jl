@@ -61,7 +61,7 @@ end
 
 
 @testset "Backend Functions" begin
-    BF = Kokkos.Spaces.BackendFunctions
+    BF = Kokkos.BackendFunctions
     exec = Kokkos.HIP()
 
     did = AMDGPU.default_device_id()

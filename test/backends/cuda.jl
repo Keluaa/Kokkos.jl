@@ -69,7 +69,7 @@ end
 
 
 @testset "Backend Functions" begin
-    BF = Kokkos.Spaces.BackendFunctions
+    BF = Kokkos.BackendFunctions
     exec = Kokkos.Cuda()
 
     did = CUDA.deviceid(CUDA.device())

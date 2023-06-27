@@ -15,7 +15,7 @@ void register_space(jlcxx::Module& mod, jl_module_t* spaces_module)
     // Manual 'mod.map_type' for 'SpaceInfo<Space>' since the type is in another module
     jl_value_t* main_type_dt = jlcxx::julia_type(main_type_name, spaces_module);
     if (main_type_dt == nullptr) {
-        throw std::runtime_error("Type '" + main_type_name + "' not found in the Kokkos.Spaces module");
+        throw std::runtime_error("Type '" + main_type_name + "' not found in the Kokkos module");
     }
     jlcxx::set_julia_type<SpaceInfo<Space>>( (jl_datatype_t *) main_type_dt);
 
@@ -144,7 +144,7 @@ void define_memory_spaces_functions(jlcxx::Module& mod)
 
 void import_all_spaces_methods(jl_module_t* impl_module, jl_module_t* spaces_module)
 {
-    // In order to override the methods in the Kokkos.Spaces module, we must have them imported
+    // In order to override the methods in the Kokkos module, we must have them imported
     const std::array declared_methods = {
         "allocate",
         "deallocate",
@@ -168,14 +168,14 @@ void import_all_spaces_methods(jl_module_t* impl_module, jl_module_t* spaces_mod
 void define_all_spaces(jlcxx::Module& mod)
 {
     jl_module_t* wrapper_module = mod.julia_module()->parent;
-    auto* spaces_module = (jl_module_t*) jl_get_global(wrapper_module->parent, jl_symbol("Spaces"));
+    auto* kokkos_module = wrapper_module->parent;
 
-    import_all_spaces_methods(mod.julia_module(), spaces_module);
+    import_all_spaces_methods(mod.julia_module(), kokkos_module);
 
-    mod.set_override_module(spaces_module);
+    mod.set_override_module(kokkos_module);
 
-    register_all(mod, spaces_module, MemorySpacesList{}, "mem_spaces");
-    register_all(mod, spaces_module, ExecutionSpaceList{}, "exec_spaces");
+    register_all(mod, kokkos_module, MemorySpacesList{}, "mem_spaces");
+    register_all(mod, kokkos_module, ExecutionSpaceList{}, "exec_spaces");
 
     // Those functions need all execution and memory spaces to be registered
     post_register_all(mod, MemorySpacesList{});

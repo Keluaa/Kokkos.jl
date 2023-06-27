@@ -14,11 +14,11 @@ skip_shared_mem = Kokkos.KOKKOS_VERSION < v"4.0.0"
 
 
 @testset "enabled" begin
-    for exec_space in Kokkos.Spaces.ALL_BACKENDS
+    for exec_space in Kokkos.ALL_BACKENDS
         @test Kokkos.enabled(exec_space) == (exec_space in Kokkos.ENABLED_EXEC_SPACES)
     end
 
-    for mem_space in Kokkos.Spaces.ALL_MEM_SPACES
+    for mem_space in Kokkos.ALL_MEM_SPACES
         @test Kokkos.enabled(mem_space) == (mem_space in Kokkos.ENABLED_MEM_SPACES)
     end
 end

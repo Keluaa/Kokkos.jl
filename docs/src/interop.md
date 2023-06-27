@@ -44,7 +44,7 @@ julia> size(sub_A), strides(sub_A)
 julia> sub_A_v = Kokkos.view_wrap(sub_A);
 
 julia> Kokkos.main_view_type(sub_A_v)
-Kokkos.Views.View{Int64, 2, Kokkos.Views.LayoutStride, Kokkos.Spaces.CudaSpace}
+Kokkos.Views.View{Int64, 2, Kokkos.Views.LayoutStride, Kokkos.CudaSpace}
 
 julia> size(sub_A_v), strides(sub_A_v)
 ((2, 2), (1, 4))

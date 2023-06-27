@@ -1,5 +1,5 @@
 ```@meta
-CurrentModule = Kokkos.Spaces
+CurrentModule = Kokkos
 ```
 
 # Execution & Memory Spaces
@@ -42,7 +42,7 @@ SHARED_HOST_PINNED_MEMORY_SPACE
 
 ## Backend-specific methods
 
-Those unexported methods are defined in the `Kokkos.Spaces.BackendFunctions` module.
+Those unexported methods are defined in the `Kokkos.BackendFunctions` module.
 They have methods only if their respective backend is enabled and Kokkos is initialized.
 
 ### OpenMP

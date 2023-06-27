@@ -6,7 +6,7 @@
 
 void import_backend_methods(jl_module_t* impl_module, jl_module_t* backend_funcs_module, const std::vector<const char*>& methods)
 {
-    // In order to override the methods in the Kokkos.Spaces.BackendFunctions module, we must have them imported
+    // In order to override the methods in the Kokkos.BackendFunctions module, we must have them imported
     for (auto& method : methods) {
         jl_module_import(impl_module, backend_funcs_module, jl_symbol(method));
     }
@@ -125,8 +125,8 @@ void register_all(jlcxx::Module& mod, jl_module_t* spaces_module, TList<T...>)
 void define_space_specific_methods(jlcxx::Module& mod)
 {
     jl_module_t* wrapper_module = mod.julia_module()->parent;
-    auto* spaces_module = (jl_module_t*) jl_get_global(wrapper_module->parent, jl_symbol("Spaces"));
-    auto* backend_funcs_module = (jl_module_t*) jl_get_global(spaces_module, jl_symbol("BackendFunctions"));
+    auto* kokkos_module = wrapper_module->parent;
+    auto* backend_funcs_module = (jl_module_t*) jl_get_global(kokkos_module, jl_symbol("BackendFunctions"));
 
     mod.set_override_module(backend_funcs_module);
     register_all(mod, backend_funcs_module, ExecutionSpaceList{});

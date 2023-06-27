@@ -31,7 +31,7 @@ function Base.unsafe_wrap(
     end
 
     # We assume all Kokkos views are stored in the same device
-    kokkos_device_id = Kokkos.Spaces.BackendFunctions.device_id()
+    kokkos_device_id = Kokkos.BackendFunctions.device_id()
     device = AMDGPU.devices(:gpu)[kokkos_device_id + 1]
     # TODO: in tests, if we use ROCm 5.2, there should be a hipDeviceGetUUID (https://github.com/RadeonOpenCompute/ROCm/issues/1642)
     #  => check if AMDGPU & Kokkos share the same ids
@@ -55,7 +55,7 @@ end
 function view_wrap(::Type{View{T, D, L, S}}, a::ROCArray{T, D}; kwargs...) where {T, D, L, S}
     hsa_device = AMDGPU.device(a)
     id = AMDGPU.device_id(hsa_device) - 1
-    kokkos_device_id = Kokkos.Spaces.BackendFunctions.device_id()
+    kokkos_device_id = Kokkos.BackendFunctions.device_id()
     if id != kokkos_device_id
         error("cannot wrap view stored in device n°$(id+1) ($hsa_device), since Kokkos is \
                configured to work with the device n°$(kokkos_device_id+1)")

@@ -138,7 +138,7 @@ flat_v4 = @view v4[:]
         @test strides(v6) == strides(v6_s)
     end
 
-    @test_throws @error_match(r"`mem_space` to be a Kokkos.Spaces.CudaSpace") begin
+    @test_throws @error_match(r"`mem_space` to be a Kokkos.CudaSpace") begin
         View{Float64, 1, Kokkos.LayoutLeft, Kokkos.CudaSpace}(undef, n1; mem_space=Kokkos.HostSpace)
     end
     @test_throws @error_match(r"`mem_space` kwarg") begin

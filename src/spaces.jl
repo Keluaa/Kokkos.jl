@@ -1,18 +1,3 @@
-module Spaces
-
-using CxxWrap
-import ..Kokkos: ensure_kokkos_wrapper_loaded, fence, get_impl_module
-
-export Space, ExecutionSpace, MemorySpace
-export Serial, OpenMP, OpenACC, OpenMPTarget, Threads, Cuda, HIP, HPX, SYCL
-export HostSpace, CudaSpace, CudaHostPinnedSpace, CudaUVMSpace, HIPSpace, HIPHostPinnedSpace, HIPManagedSpace
-export ENABLED_EXEC_SPACES, ENABLED_MEM_SPACES
-export DEFAULT_DEVICE_SPACE, DEFAULT_HOST_SPACE, DEFAULT_DEVICE_MEM_SPACE, DEFAULT_HOST_MEM_SPACE
-export SHARED_MEMORY_SPACE, SHARED_HOST_PINNED_MEMORY_SPACE, Idx
-export memory_space, execution_space, enabled, kokkos_name
-export accessible, array_layout, main_space_type, impl_space_type
-export fence, concurrency, allocate, deallocate
-
 
 """
     Space
@@ -460,6 +445,7 @@ Equivalent to `Kokkos::Cuda(cuda_stream)` or `Kokkos::HIP(hip_stream)`.
 """
 function wrap_stream end
 
+import ..Kokkos: device_id
 """
     device_id([space::Kokkos.Cuda])
     device_id([space::Kokkos.HIP])
@@ -472,7 +458,7 @@ The ID is a 0-index in the list of available devices (as used by `cudaGetDeviceP
 
 Equivalent to `Kokkos::Cuda().cuda_device()` or `Kokkos::HIP().hip_device()`.
 """
-function device_id end
+device_id
 
 """
     stream_ptr(space::Kokkos.Cuda)
@@ -487,7 +473,7 @@ function stream_ptr end
 end
 
 
-function __init_vars()
+function __init_spaces_vars()
     impl = get_impl_module()
     global ENABLED_EXEC_SPACES = Base.invokelatest(impl.__compiled_exec_spaces)
     global DEFAULT_DEVICE_SPACE = Base.invokelatest(impl.__default_device_space)
@@ -498,6 +484,4 @@ function __init_vars()
     global SHARED_MEMORY_SPACE = Base.invokelatest(impl.__shared_memory_space)
     global SHARED_HOST_PINNED_MEMORY_SPACE = Base.invokelatest(impl.__shared_host_pinned_space)
     global Idx = Base.invokelatest(impl.__idx_type)
-end
-
 end

@@ -205,7 +205,7 @@ reload.
     Use [`Views.main_view_type`](@ref) to get a more pleasant and stable type:
     ```julia
     julia> Kokkos.main_view_type(Kokkos.Views.Impl1.View1D_HostAllocated{Float64})
-    Kokkos.Views.View{Float64, 1, Kokkos.LayoutRight, Kokkos.Spaces.HostSpace}
+    Kokkos.Views.View{Float64, 1, Kokkos.LayoutRight, Kokkos.HostSpace}
     ```
 
 !!! warning
