@@ -11,7 +11,7 @@
 #endif
 
 
-#ifndef VIEW_DIMENSIONS
+#if !defined(VIEW_DIMENSIONS) && defined(WRAPPER_BUILD)
 /**
  * Controls which `Kokkos::View` dimensions are instantiated.
  * Dimensions are specified as comma separated list of integers.
@@ -26,7 +26,7 @@
 #endif
 
 
-#ifndef VIEW_TYPES
+#if !defined(VIEW_TYPES) && defined(WRAPPER_BUILD)
 /**
  * Controls which `Kokkos::View` types are instantiated.
  * Types are specified as comma separated list of type names.

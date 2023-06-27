@@ -6,6 +6,18 @@ isdefined(Base, :get_extension) ? (import AMDGPU) : (import ..AMDGPU)
 import AMDGPU: ROCArray
 
 
+const AMDGPU_VERSION = @static if VERSION ≥ v"1.9-"
+    pkgversion(AMDGPU)
+elseif VERSION ≥ v"1.8-"
+    # This is just a reimplementation of `pkgversion`, which returns v"0.0.1" by default
+    pkg = Base.PkgId(AMDGPU)
+    origin = get(Base.pkgorigins, pkg, nothing)
+    isnothing(origin) ? v"0.0.1" : origin.version
+else
+    v"0.0.1"  # No `version` field before 1.8
+end
+
+
 """
     unsafe_wrap(ROCArray, v::Kokkos.View)
 
@@ -38,7 +50,17 @@ function Base.unsafe_wrap(
 
     view_ptr = pointer(v)
     lock = false  # We are passing a device pointer directly
-    roc_array = Base.unsafe_wrap(roc_array_t, view_ptr, size(v); device, lock)
+
+    roc_array = @static if AMDGPU_VERSION ≥ v"0.4.16"  # TODO: check if the bug is corrected in that version
+        Base.unsafe_wrap(roc_array_t, view_ptr, size(v); device, lock)
+    else
+        # Workaround for https://github.com/JuliaGPU/AMDGPU.jl/issues/436
+        # Reimplementation of AMDGPU.unsafe_wrap with correct pointer type conversion
+        sz = prod(size(v)) * sizeof(T)
+        device_ptr = Ptr{Cvoid}(view_ptr)
+        buf = AMDGPU.Mem.Buffer(device_ptr, Ptr{Cvoid}(view_ptr), device_ptr, sz, device, false, false)
+        ROCArray{T, N}(buf, size(v))
+    end
 
     if !Kokkos.span_is_contiguous(v)
         error("non-contiguous (or strided) views cannot be converted into a `ROCArray` \

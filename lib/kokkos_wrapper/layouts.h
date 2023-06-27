@@ -10,7 +10,7 @@
 #endif
 
 
-#ifndef VIEW_LAYOUTS
+#if !defined(VIEW_LAYOUTS) && defined(WRAPPER_BUILD)
 /**
  * Controls which `Kokkos::View` layout types are to be instantiated.
  *

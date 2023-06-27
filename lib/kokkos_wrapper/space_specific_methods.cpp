@@ -92,7 +92,11 @@ void space_methods<SpaceInfo<Kokkos::Cuda>>(jlcxx::Module& mod, jl_module_t* bac
     });
 
     mod.method("wrap_stream", [](void* cuda_stream){ return Kokkos::Cuda((cudaStream_t) cuda_stream); });
+#if KOKKOS_VERSION_CMP(>=, 4, 0, 0)
     mod.method("device_id", [](){ return Kokkos::Impl::CudaInternal::m_cudaDev; });
+#else
+    mod.method("device_id", [](){ return Kokkos::Impl::CudaInternal::singleton().m_cudaDev; });
+#endif
     mod.method("device_id", [](const Kokkos::Cuda& s){ return s.cuda_device(); });
     mod.method("stream_ptr", [](const Kokkos::Cuda& s){ return (void*) s.cuda_stream(); });
 }
@@ -108,7 +112,11 @@ void space_methods<SpaceInfo<Kokkos_HIP::HIP>>(jlcxx::Module& mod, jl_module_t* 
     });
 
     mod.method("wrap_stream", [](void* hip_stream){ return Kokkos_HIP::HIP((hipStream_t) hip_stream); });
+#if KOKKOS_VERSION_CMP(>=, 4, 0, 0)
     mod.method("device_id", [](){ return Kokkos_HIP::Impl::HIPInternal::m_hipDev; });
+#else
+    mod.method("device_id", [](){ return Kokkos_HIP::Impl::HIPInternal::singleton().m_hipDev; });
+#endif
     mod.method("device_id", [](const Kokkos_HIP::HIP& s){ return s.hip_device(); });
     mod.method("stream_ptr", [](const Kokkos_HIP::HIP& s){ return (void*) s.hip_stream(); });
 }
