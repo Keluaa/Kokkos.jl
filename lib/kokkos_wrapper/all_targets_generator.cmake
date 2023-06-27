@@ -8,7 +8,7 @@ set(COMMON_HEADERS
         copy.h
         mirrors.h
         subviews.h
-        utils.h printing_utils.h Kokkos_utils.h)
+        utils.h printing_utils.h kokkos_utils.h)
 
 
 add_custom_target(create_parameters

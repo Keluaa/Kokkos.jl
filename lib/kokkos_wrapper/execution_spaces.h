@@ -6,7 +6,7 @@
 
 #include "spaces.h"
 #include "utils.h"
-#include "Kokkos_utils.h"
+#include "kokkos_utils.h"
 
 #ifndef WRAPPER_BUILD
 #include "parameters.h"

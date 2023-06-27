@@ -390,7 +390,7 @@ Idx = nothing
 
 module BackendFunctions
 
-# OpenMP
+### OpenMP
 
 """
     omp_set_num_threads(threads::Cint)::Cvoid
@@ -444,6 +444,78 @@ but applies the given `format` (or OpenMP's default one) to each OpenMP thread u
 and returns the result.
 """
 function omp_capture_affinity end
+
+
+### Cuda
+
+"""
+    wrap_stream(cuda_stream::Ptr{Cvoid})::Kokkos.Cuda
+
+Return a [`Kokkos.Cuda`](@ref) execution space operating on the given stream (a pointer to a
+`cudaStream_t`).
+Kokkos does not take ownership of the stream.
+
+Equivalent to `Kokkos::Cuda(cuda_stream)`.
+"""
+function wrap_stream end
+
+"""
+    device_id([space::Kokkos.Cuda])
+
+Return the ID of the device associated with the given `space`.
+If `space` is not given, the ID of the default device used by Kokkos is returned.
+
+The ID is a 0-index in the list of available devices (as used by `cudaGetDeviceProperties` for
+example).
+
+Equivalent to `Kokkos::Cuda().cuda_device()`.
+"""
+function device_id end
+
+"""
+    stream_ptr(space::Kokkos.Cuda)
+
+Return the `cudaStream_t` of the `space` as a `Ptr{Cvoid}`.
+
+Equivalent to `Kokkos::Cuda().cuda_stream()`.
+"""
+function stream_ptr end
+
+
+### HIP
+
+"""
+    wrap_stream(hip_stream::Ptr{Cvoid})::Kokkos.HIP
+
+Return a [`Kokkos.HIP`](@ref) execution space operating on the given stream (a pointer to a
+`hipStream_t`).
+Kokkos does not take ownership of the stream.
+
+Equivalent to `Kokkos::HIP(hip_stream)`.
+"""
+wrap_stream
+
+"""
+    device_id([space::Kokkos.HIP])
+
+Return the ID of the device associated with the given `space`.
+If `space` is not given, the ID of the default device used by Kokkos is returned.
+
+The ID is a 0-index in the list of available devices (as used by `hipGetDeviceProperties` for
+example).
+
+Equivalent to `Kokkos::HIP().hip_device()`.
+"""
+device_id
+
+"""
+    stream_ptr(space::Kokkos.HIP)
+
+Return the `hipStream_t` of the `space` as a `Ptr{Cvoid}`.
+
+Equivalent to `Kokkos::HIP().hip_stream()`.
+"""
+stream_ptr
 
 end
 

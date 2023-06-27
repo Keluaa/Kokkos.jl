@@ -2,7 +2,7 @@
 #include "views.h"
 #include "memory_spaces.h"
 #include "utils.h"
-#include "Kokkos_utils.h"
+#include "kokkos_utils.h"
 #include "printing_utils.h"
 
 #include <type_traits>

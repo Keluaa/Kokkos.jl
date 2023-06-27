@@ -1,6 +1,6 @@
 @testset "Cuda" begin
 
-import Kokkos: Idx, View
+import Kokkos: View
 
 @testset "CuArray to View" begin
     A = CuArray{Int64}(undef, 5, 5)
@@ -65,6 +65,31 @@ end
     @test size(cu_sub_V2) == size(sub_V2)
     @test strides(cu_sub_V2) == strides(sub_V2)
     CUDA.@allowscalar @test (@view Vh[:, 1:3]) == cu_sub_V2
+end
+
+
+@testset "Backend Functions" begin
+    BF = Kokkos.Spaces.BackendFunctions
+    exec = Kokkos.Cuda()
+
+    did = CUDA.deviceid(CUDA.device())
+
+    @test BF.device_id() == did
+    @test BF.device_id(exec) == did
+
+    @test BF.stream_ptr(exec) != C_NULL
+
+    stream = BF.stream_ptr(exec)
+    wrapped_exec = BF.wrap_stream(stream)
+    @test typeof(wrapped_exec) === typeof(exec)
+    @test BF.device_id(wrapped_exec) == did
+
+    # Getting a CUDA.CuContext from a stream pointer
+    cu_stream = CUDA.CUstream(stream)
+    pctx = Ref{CUDA.CUcontext}()
+    CUDA.cuStreamGetCtx(cu_stream, pctx)
+    ctx = CUDA._CuContext(pctx[])
+    @test CUDA.deviceid(CUDA.device(ctx)) == did
 end
 
 end

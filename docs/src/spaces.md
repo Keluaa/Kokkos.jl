@@ -59,3 +59,11 @@ BackendFunctions.omp_get_place_num_procs
 BackendFunctions.omp_get_place_proc_ids
 BackendFunctions.omp_capture_affinity
 ```
+
+### Cuda / HIP
+
+```@docs
+device_id
+wrap_stream
+stream_ptr
+```
