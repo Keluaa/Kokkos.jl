@@ -1,9 +1,10 @@
 name = "Kokkos"
 uuid = "3296cea9-b0de-4b57-aba0-ce554b517c3b"
 authors = ["Keluaa <34173752+Keluaa@users.noreply.github.com> and contributors"]
-version = "0.5.0"
+version = "0.5.1"
 
 [deps]
+AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 CxxWrap = "1f15a43c-97ca-5a2a-ae31-89f07a497df4"
 FileWatching = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
@@ -20,6 +21,7 @@ UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 libcxxwrap_julia_jll = "3eaa8342-bff7-56a5-9981-c04077f7cee7"
 
 [compat]
+AMDGPU = "0.4"
 CUDA = "4"
 CxxWrap = "0.13"
 MPI = "0.20"
@@ -33,9 +35,11 @@ libcxxwrap_julia_jll = "0.9.7"
 
 [extensions]
 CUDAExt = "CUDA"
+KokkosAMDGPU = "AMDGPU"
 MPIExt = "MPI"
 
 [extras]
+AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
@@ -43,8 +47,9 @@ Preferences = "21216c6a-2e73-6563-6e65-726566657250"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "Preferences", "Logging", "MPI", "CUDA"]
+test = ["Test", "Preferences", "Logging", "MPI", "CUDA", "AMDGPU"]
 
 [weakdeps]
+AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"

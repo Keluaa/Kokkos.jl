@@ -65,7 +65,7 @@ const TEST_VIEW_LAYOUTS = (Kokkos.LayoutLeft, Kokkos.LayoutRight, Kokkos.LayoutS
 
 
 TEST_CUDA && using CUDA
-# TEST_HIP && using AMDGPU # TODO: add when we have AMDGPU interop
+TEST_HIP && using AMDGPU
 
 
 function print_test_config()

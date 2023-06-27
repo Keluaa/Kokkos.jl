@@ -27,7 +27,7 @@ However, most Kokkos functions (and views) are compiled separately on demand, wh
 Julia method is called for the first time.
 The resulting shared library is then cached for the next session.
 
-`Kokkos.jl` currently supports Kokkos v3.7.0, v3.7.1, v4.0.0 and above.
+`Kokkos.jl` currently supports Kokkos v3.7, v4.0 and above.
 All Kokkos backends should be supported by this package, but not all of them were tested (yet).
 
 ## Supported functionalities
@@ -55,6 +55,6 @@ All Kokkos backends should be supported by this package, but not all of them wer
 * :x: `Kokkos::HPX`
 * :x: `Kokkos::OpenMPTarget`
 * :heavy_check_mark: `Kokkos::Cuda` + interop with [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl)
-* :x: `Kokkos::HIP`
+* :heavy_check_mark: `Kokkos::HIP` + interop with [AMDGPU.jl](https://github.com/JuliaGPU/AMDGPU.jl)
 * :x: `Kokkos::SYCL`
 * :x: `Kokkos::OpenACC`

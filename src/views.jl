@@ -804,12 +804,9 @@ View{T}(; kwargs...) where {T} =
 # Instances of `view_wrap` for each compiled type, dimension and memory space are defined in
 # 'views.cpp', in 'register_constructor'.
 """
-    view_wrap(array::DenseArray{T, D})
-    view_wrap(::Type{View{T, D}}, array::DenseArray{T, D})
-
     view_wrap(array::AbstractArray{T, D})
-    view_wrap(::Type{View{T, D}}, array::AbstractArray{T, D})
-
+    view_wrap(array::DenseArray{T, D})
+    view_wrap(array::SubArray{T, D})
     view_wrap(::Type{View{T, D, L, S}}, d::NTuple{D, Int}, p::Ptr{T}; layout = nothing)
 
 Construct a new [`View`](@ref) from the data of a Julia-allocated array (or from any valid array or
@@ -834,6 +831,12 @@ specifies the stride of each dimension.
     The returned view does not hold a reference to the original array.
     It is the responsibility of the user to make sure the original array is kept alive as long as
     the view should be accessed.
+
+!!! note
+
+    Overloads for `CuArray`s of [`CUDA.jl`](https://github.com/JuliaGPU/CUDA.jl) as well as for
+    `CUDA.StridedSubCuArray` (using a [`LayoutStride`](@ref)), and `ROCArray`s of
+    [`AMDGPU.jl`](https://github.com/JuliaGPU/AMDGPU.jl) are also available.
 
 This function relies on [Dynamic Compilation](@ref).
 """
@@ -862,6 +865,12 @@ view_wrap(::Type{View{T, D}}, a::AbstractArray{T, D}) where {T, D} =
     view_wrap(View{T, D, LayoutStride, HostSpace}, a; layout=LayoutStride(strides(a)))
 view_wrap(a::AbstractArray{T, D}) where {T, D} =
     view_wrap(View{T, D}, a)
+
+# From any SubArray (mostly here to prevent wrapping as a host array a view to a GPU array)
+function view_wrap(::Type{View{T, D}}, a::SubArray{T, D}) where {T, D}
+    wrapped_parent = view_wrap(parent(a))
+    return view(wrapped_parent, parentindices(a)...)
+end
 
 
 # === Array interface ===

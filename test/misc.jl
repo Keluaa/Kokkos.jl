@@ -4,7 +4,10 @@ io = IOBuffer()
 Kokkos.versioninfo(io; verbose=true)
 str = String(take!(io))
 @test occursin(string(Kokkos.KOKKOS_VERSION), str)
-@test occursin("$(Kokkos.kokkos_name(TEST_BACKEND_DEVICE)) Runtime Configuration", str)
+if !(TEST_BACKEND_DEVICE in (Kokkos.HIP, Kokkos.SYCL))
+    # There is only 2 Kokkos backends which are not formatted this way...
+    @test occursin("$(Kokkos.kokkos_name(TEST_BACKEND_DEVICE)) Runtime Configuration", str)
+end
 @test occursin("Serial Runtime Configuration", str)
 
 io = IOBuffer()
