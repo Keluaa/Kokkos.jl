@@ -19,10 +19,13 @@ import Kokkos: View
     @test (@view A_vh[:]) == 1:25
 
     sub_A = @view A[5:end]  # Returns a contiguous ROCArray with a non-zero offset to its parent
+    @test sub_A isa ROCArray
+    @test pointer(sub_A) == pointer(A) + sub_A.offset
+
     sub_A_v = Kokkos.view_wrap(sub_A)
 
     @test Kokkos.main_view_type(typeof(sub_A_v)) === View{Int64, 1, Kokkos.LayoutLeft, Kokkos.HIPSpace}
-    @test UInt(pointer(sub_A_v)) == UInt(pointer(sub_A) + sub_A.offset)
+    @test UInt(pointer(sub_A_v)) == UInt(pointer(sub_A))
     @test size(sub_A_v) == size(sub_A)
     @test strides(sub_A_v) == strides(sub_A)
 
@@ -64,12 +67,17 @@ end
     BF = Kokkos.BackendFunctions
     exec = Kokkos.HIP()
 
-    did = AMDGPU.default_device_id()
+    did = AMDGPU.default_device_id() - 1
 
     @test BF.device_id() == did
     @test BF.device_id(exec) == did
 
-    @test BF.stream_ptr(exec) != C_NULL
+    if Kokkos.KOKKOS_VERSION > v"4.0-"
+        @test BF.stream_ptr(exec) != C_NULL
+    else
+        # In v3, the global HIPInstance has a null stream
+        @test BF.stream_ptr(exec) == C_NULL
+    end
 
     stream = BF.stream_ptr(exec)
     wrapped_exec = BF.wrap_stream(stream)

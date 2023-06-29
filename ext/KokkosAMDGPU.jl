@@ -59,7 +59,7 @@ function Base.unsafe_wrap(
         sz = prod(size(v)) * sizeof(T)
         device_ptr = Ptr{Cvoid}(view_ptr)
         buf = AMDGPU.Mem.Buffer(device_ptr, Ptr{Cvoid}(view_ptr), device_ptr, sz, device, false, false)
-        ROCArray{T, N}(buf, size(v))
+        ROCArray{T, D}(buf, size(v))
     end
 
     if !Kokkos.span_is_contiguous(v)
@@ -82,10 +82,10 @@ function view_wrap(::Type{View{T, D, L, S}}, a::ROCArray{T, D}; kwargs...) where
         error("cannot wrap view stored in device n°$(id+1) ($hsa_device), since Kokkos is \
                configured to work with the device n°$(kokkos_device_id+1)")
     end
-    return view_wrap(View{T, D, L, S}, size(a), pointer(a) + a.offset; kwargs...)
+    return view_wrap(View{T, D, L, S}, size(a), pointer(a); kwargs...)
 end
 
 view_wrap(::Type{View{T, D}}, a::ROCArray{T, D}; kwargs...) where {T, D} =
-    view_wrap(View{T, D, Kokkos.LayoutLeft, Kokkos.HIP}, size(a), pointer(a) + a.offset; kwargs...)
+    view_wrap(View{T, D, Kokkos.LayoutLeft, Kokkos.HIPSpace}, a; kwargs...)
 
 end
