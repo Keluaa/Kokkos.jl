@@ -9,7 +9,7 @@ using Kokkos
 # All environment variables affecting tests are mentioned here.
 
 const TEST_KOKKOS_VERSION = get(ENV, "TEST_KOKKOS_VERSION", "4.0.01")
-const TEST_CMAKE_OPTIONS = split(get(ENV, "TEST_CMAKE_OPTIONS", ""), '|')
+const TEST_CMAKE_OPTIONS = filter!(!isempty, (split(get(ENV, "TEST_CMAKE_OPTIONS", ""), '|')))
 
 const TEST_CUDA = parse(Bool, get(ENV, "TEST_KOKKOS_CUDA", "false"))
 const TEST_HIP  = parse(Bool, get(ENV, "TEST_KOKKOS_HIP", "false")) && !(v"1.8-" <= VERSION < v"1.9-")
