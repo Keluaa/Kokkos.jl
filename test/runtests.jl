@@ -9,6 +9,7 @@ using Kokkos
 # All environment variables affecting tests are mentioned here.
 
 const TEST_KOKKOS_VERSION = get(ENV, "TEST_KOKKOS_VERSION", "4.0.01")
+const TEST_CMAKE_OPTIONS = split(get(ENV, "TEST_CMAKE_OPTIONS", ""), '|')
 
 const TEST_CUDA = parse(Bool, get(ENV, "TEST_KOKKOS_CUDA", "false"))
 const TEST_HIP  = parse(Bool, get(ENV, "TEST_KOKKOS_HIP", "false")) && !(v"1.8-" <= VERSION < v"1.9-")
@@ -116,19 +117,20 @@ end
         # GPU backends add some warnings which I can't get rid of
         @test_logs min_level=Logging.Warn Kokkos.load_wrapper_lib(; loading_bar=false)
     end
-    @test_nowarn Kokkos.initialize()
-
-    Kokkos.DynamicCompilation.clean_libs()  # Make sure no leftover lib influences the test results
-
-    if Kokkos.KOKKOS_VERSION != VersionNumber(TEST_KOKKOS_VERSION)
-        error("Expected Kokkos v$TEST_KOKKOS_VERSION, got: $(Kokkos.KOKKOS_VERSION)")
-    end
-
-    if [TEST_BACKEND_HOST, TEST_BACKEND_DEVICE] ⊈ Kokkos.ENABLED_EXEC_SPACES
-        error("Invalid execution spaces: $([TEST_BACKEND_HOST, TEST_BACKEND_DEVICE]) ⊈ $(Kokkos.ENABLED_EXEC_SPACES)")
-    end
 
     if !TEST_MPI_ONLY
+        @test_nowarn Kokkos.initialize()
+
+        Kokkos.DynamicCompilation.clean_libs()  # Make sure no leftover lib influences the test results
+
+        if Kokkos.KOKKOS_VERSION != VersionNumber(TEST_KOKKOS_VERSION)
+            error("Expected Kokkos v$TEST_KOKKOS_VERSION, got: $(Kokkos.KOKKOS_VERSION)")
+        end
+
+        if [TEST_BACKEND_HOST, TEST_BACKEND_DEVICE] ⊈ Kokkos.ENABLED_EXEC_SPACES
+            error("Invalid execution spaces: $([TEST_BACKEND_HOST, TEST_BACKEND_DEVICE]) ⊈ $(Kokkos.ENABLED_EXEC_SPACES)")
+        end
+
         include("spaces.jl")
 
         if TEST_DEVICE_ACCESSIBLE
@@ -151,8 +153,10 @@ end
 
     @info "Tests needed $(length(Kokkos.DynamicCompilation.LOADED_FUNCTION_LIBS)) function libraries"
 
-    !TEST_MPI_ONLY && include("misc.jl")
+    if !TEST_MPI_ONLY
+        include("misc.jl")
 
-    GC.gc(true)  # Call the finalizers of all created views
-    @test_nowarn Kokkos.finalize()
+        GC.gc(true)  # Call the finalizers of all created views
+        @test_nowarn Kokkos.finalize()
+    end
 end
