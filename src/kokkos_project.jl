@@ -75,7 +75,7 @@ function read_file(file)
 end
 
 
-function run_cmd_print_on_error(cmd::Cmd; loading_bar=false)
+function run_cmd_and_redirect(cmd::Cmd; loading_bar=false)
     mktemp() do _, file_stdout
         mktemp() do _, file_stderr
             @debug "Running `$cmd`"
@@ -85,17 +85,31 @@ function run_cmd_print_on_error(cmd::Cmd; loading_bar=false)
                 else
                     run(pipeline(cmd, stdout=file_stdout, stderr=file_stderr))
                 end
-            catch
-                println("Command failed:\n", cmd, "\n")
-                println(" ====== stdout ======\n", read_file(file_stdout))
-                println(" ====== stderr ======\n", read_file(file_stderr))
-                rethrow()
+            catch e
+                return e, read_file(file_stdout), read_file(file_stderr)
             end
             @debug "Command stdout:\n$(read_file(file_stdout))"
-            print(stderr, read_file(file_stderr))
-            flush(stderr)
+            return nothing, "", read_file(file_stderr)
         end
     end
+end
+
+
+function handle_command_output(cmd, exception, cmd_stdout, cmd_stderr)
+    if !isnothing(exception)
+        println("Command failed:\n", cmd, "\n")
+        println(" ====== stdout ======\n", cmd_stdout)
+        println(" ====== stderr ======\n", cmd_stderr)
+        throw(exception)
+    else
+        print(stderr, cmd_stderr)
+        flush(stderr)
+    end
+end
+
+
+function run_cmd_print_on_error(cmd::Cmd; kwargs...)
+    handle_command_output(cmd, run_cmd_and_redirect(cmd; kwargs...)...)
 end
 
 
@@ -147,7 +161,22 @@ Configure the project with its current options.
 function configure(project::KokkosProject; cmd_transform=identity)
     @debug "Configuring project at '$(source_dir(project))'"
     mkpath(build_dir(project))
-    run_cmd_print_on_error(configure_command(project) |> cmd_transform)
+
+    config_command = configure_command(project) |> cmd_transform
+    e, cmd_stdout, cmd_stderr = run_cmd_and_redirect(config_command)
+
+    cmake_rerun = !isnothing(e) && !isnothing(findfirst("You have changed variables that require your cache to be deleted.", cmd_stderr))
+
+    if cmake_rerun
+        # Here CMake had to rebuild its cache, and to do so it ran again, but without the original
+        # command line arguments, losing the `JlCxx_ROOT` and `Kokkos_ROOT` values in the process,
+        # making the configuration fail. Therefore we must relaunch CMake ourselves.
+        @info "CMake had to clear its cache. The configuration needs to be done once more."
+        run_cmd_print_on_error(config_command)
+    elseif !isempty(cmd_stderr)
+        handle_command_output(config_command, e, cmd_stdout, cmd_stderr)
+    end
+
     configuration_changed!(project, false)
     return nothing
 end
