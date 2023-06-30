@@ -195,7 +195,7 @@ function compile_lib(cmake_target, out_lib_path, parameters)
     ensure_kokkos_wrapper_loaded()
     compilation_lock() do
         # The lock may have been acquired after another process compiled the library, therefore we
-        # must check if the library is update again.
+        # must check if the library is up to date again.
         is_lib_up_to_date(out_lib_path) && return
 
         target_output = CMAKE_TARGETS[cmake_target]

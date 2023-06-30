@@ -374,9 +374,7 @@ void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_modul
 
         std::string name = RegUtils::build_view_type_name();
         jl_value_t* view_type = RegUtils::build_abstract_array_type(views_module);
-        JL_GC_PUSH1(view_type);
-
-        std::cerr << " === Registering '" << name << "'\n";
+        JL_GC_PUSH1(view_type)
 
         // We apply the type and dimension separately: some type problems arise when specifying both through `add_type`,
         // irregularities like `View{Float64, 2} <: AbstractArray{Float64, 2} == true` but an instance of a
@@ -397,8 +395,6 @@ void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_modul
             // the Julia side.
             // On the C++ side, it is mapped to `TList<Wrapped_t>`, to make it easy to build and work with.
             using complete_type = TList<Wrapped_t>;
-
-            std::cerr << "=> With " << get_type_name<typename Wrapped_t::type>() << ": " << get_type_name<Wrapped_t>() << "\n";
 
             RegUtils::template register_constructor<Wrapped_t, complete_type>(mod, views_module);
             RegUtils::register_access_operator(wrapped);

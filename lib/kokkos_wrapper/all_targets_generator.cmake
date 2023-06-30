@@ -13,7 +13,7 @@ set(COMMON_HEADERS
 
 add_custom_target(create_parameters
         COMMAND ${PROJECT_SOURCE_DIR}/build_parameters.sh
-        BYPRODUCTS parameters.h
+        BYPRODUCTS ${PROJECT_BINARY_DIR}/parameters.h
         DEPENDS ${PROJECT_SOURCE_DIR}/build_parameters.sh)
 
 
@@ -34,11 +34,18 @@ endfunction()
 
 
 function(add_compilation_target name lib_name lib_output)
+    # Clean all files of the target before compiling (but not the Kokkos files, which should be compiled once alongside
+    # with the main wrapper library). Not doing so systematically can create errors tricky to debug, such as
+    # methods failing to be specified, double registration of some types, etc...
+    add_custom_target(clean_${lib_name}
+            COMMAND ${CMAKE_COMMAND} -P ${PROJECT_BINARY_DIR}/CMakeFiles/${lib_name}.dir/cmake_clean.cmake
+            COMMENT "Cleaning files of ${lib_name}")
+
     add_custom_target(${name}
             COMMAND cmake -E rename $<TARGET_FILE:${lib_name}> ${PROJECT_BINARY_DIR}/${lib_output}${CMAKE_SHARED_LIBRARY_SUFFIX}
             BYPRODUCTS ${PROJECT_BINARY_DIR}/${lib_output}${CMAKE_SHARED_LIBRARY_SUFFIX}
             COMMAND_EXPAND_LISTS
-            DEPENDS create_parameters ${lib_name})
+            DEPENDS create_parameters clean_${lib_name} ${lib_name})
 endfunction()
 
 
