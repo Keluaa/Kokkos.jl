@@ -6,18 +6,6 @@ isdefined(Base, :get_extension) ? (import AMDGPU) : (import ..AMDGPU)
 import AMDGPU: ROCArray
 
 
-const AMDGPU_VERSION = @static if VERSION ≥ v"1.9-"
-    pkgversion(AMDGPU)
-elseif VERSION ≥ v"1.8-"
-    # This is just a reimplementation of `pkgversion`, which returns v"0.0.1" by default
-    pkg = Base.PkgId(AMDGPU)
-    origin = get(Base.pkgorigins, pkg, nothing)
-    isnothing(origin) ? v"0.0.1" : origin.version
-else
-    v"0.0.1"  # No `version` field before 1.8
-end
-
-
 """
     unsafe_wrap(ROCArray, v::Kokkos.View)
 
@@ -34,7 +22,7 @@ Non-contiguous views (`Kokkos.span_is_contiguous(v) == false`) cannot be represe
     entire lifetime of the `ROCArray`.
 """
 function Base.unsafe_wrap(
-    roc_array_t::Union{Type{ROCArray}, Type{ROCArray{T}}, Type{<:ROCArray{T, D}}},
+    ::Union{Type{ROCArray}, Type{ROCArray{T}}, Type{ROCArray{T, D}}},
     v::View{T, D, L, S}
 ) where {T, D, L, S}
     if !(S <: Kokkos.HIPSpace || S <: Kokkos.HIPManagedSpace)
@@ -42,25 +30,22 @@ function Base.unsafe_wrap(
             `Kokkos.HIPSpace` or `Kokkos.HIPManagedSpace` memory spaces")
     end
 
-    # We assume all Kokkos views are stored in the same device
-    kokkos_device_id = Kokkos.BackendFunctions.device_id()
-    device = AMDGPU.devices(:gpu)[kokkos_device_id + 1]
-    # TODO: in tests, if we use ROCm 5.2, there should be a hipDeviceGetUUID (https://github.com/RadeonOpenCompute/ROCm/issues/1642)
-    #  => check if AMDGPU & Kokkos share the same ids
+    device_ptr = Ptr{Cvoid}(pointer(v))
 
-    view_ptr = pointer(v)
-    lock = false  # We are passing a device pointer directly
-
-    roc_array = @static if AMDGPU_VERSION ≥ v"0.4.16"  # TODO: check if the bug is corrected in that version
-        Base.unsafe_wrap(roc_array_t, view_ptr, size(v); device, lock)
-    else
-        # Workaround for https://github.com/JuliaGPU/AMDGPU.jl/issues/436
-        # Reimplementation of AMDGPU.unsafe_wrap with correct pointer type conversion
-        sz = prod(size(v)) * sizeof(T)
-        device_ptr = Ptr{Cvoid}(view_ptr)
-        buf = AMDGPU.Mem.Buffer(device_ptr, Ptr{Cvoid}(view_ptr), device_ptr, sz, device, false, false)
-        ROCArray{T, D}(buf, size(v))
+    ptr_info = AMDGPU.Mem.pointerinfo(device_ptr)
+    device = get(AMDGPU.Mem.DEVICES, ptr_info.agentOwner.handle, nothing)
+    if isnothing(device)
+        error("could not retrieve the device of the given pointer: $device_ptr")
     end
+
+    # More-or-less equivalent to `AMDGPU.unsafe_wrap` but with a pointer to a HIP-allocated array
+    dims = size(v)
+    byte_size = prod(dims) * sizeof(T)
+    buf = AMDGPU.Mem.Buffer(device_ptr, C_NULL, device_ptr, byte_size, device, false, false)
+    roc_array = ROCArray{T, D}(buf, dims)
+
+    # Unalive the buffer to make sure it is not deallocated by AMDGPU when the ROCArray is finalized
+    AMDGPU.Mem.liveness[buf._id] = false
 
     if !Kokkos.span_is_contiguous(v)
         error("non-contiguous (or strided) views cannot be converted into a `ROCArray` \

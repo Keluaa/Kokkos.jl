@@ -15,8 +15,6 @@ export @compile_and_call, compile_and_load
 
 
 const COMPILATION_LOCK_FILE = "__compilation.lock"
-# TODO: remove UUIDs
-#const PROCESS_ID = string(UUIDs.uuid1())  # getpid() is not guaranteed to be unique in an MPI app
 const PROCESS_ID = rand(Cint)  # getpid() is not guaranteed to be unique in an MPI app
 const INTRA_PROCESS_LOCK = ReentrantLock()  # Multi-threading lock
 
