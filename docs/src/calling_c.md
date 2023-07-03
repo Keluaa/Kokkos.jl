@@ -4,7 +4,6 @@ CurrentModule = Kokkos
 
 # Calling a Kokkos library
 
-
 Suppose we want to wrap the following function:
 
 ```c++
@@ -32,15 +31,15 @@ The [`View`](@ref) type represents such a complete view type.
 Its default parameters should match with those of our library, at the condition that Kokkos is
 configured in the same way.
 To achieve this you have two options:
- - let `Kokkos.jl` configure the library and itself, guaranteeing that the options match
- - the library containing the function is already compiled, or you cannot/don't want to change its
-   Kokkos configuration: you must configure `Kokkos.jl` with the exact same options
+
+- let `Kokkos.jl` configure the library and itself, guaranteeing that the options match
+- the library containing the function is already compiled, or you cannot/don't want to change its
+  Kokkos configuration: you must configure `Kokkos.jl` with the exact same options
 
 When calling a Kokkos method for the first time in a Julia session, `Kokkos.jl` will compile the
 C++ method into a shared library, which is then loaded with `CxxWrap.jl` to be used as a Julia
 method.
 See this chapter for more info about [Dynamic Compilation](@ref).
-
 
 ## Your CMake project
 
@@ -65,10 +64,10 @@ The advantage of this approach is that your project and `Kokkos.jl` will share t
 installation, reducing the compilation time.
 
 If your project uses Kokkos in-tree, you have several options: 
- - keep the call to `add_subdirectory` the same, and configure [kokkos_path](@ref) to use the same
-   path
- - change it to `add_subdirectory(${Kokkos_ROOT} lib/kokkos)` (the second argument is arbitrary)
 
+- keep the call to `add_subdirectory` the same, and configure [kokkos_path](@ref) to use the same
+  path
+- change it to `add_subdirectory(${Kokkos_ROOT} lib/kokkos)` (the second argument is arbitrary)
 
 !!! warning
 
@@ -79,7 +78,6 @@ If your project uses Kokkos in-tree, you have several options:
     This error is invisible in most backends but will create errors in others (like Cuda).
     When creating a project with a [`CMakeKokkosProject`](@ref), `"BUILD_SHARED_LIBS"` will be
     properly set to `"ON"`.
-
 
 ## Loading the wrapper library of `Kokkos.jl`
 
@@ -112,7 +110,6 @@ julia> Kokkos.initialize()  # Will also call `Kokkos.load_wrapper_lib()` if need
 !!! note
     Setting the environment variable `JULIA_DEBUG` to `Kokkos` will print all steps and commands
     called to compile and load the wrapper library, as well as for user libraries.
-
 
 ## Compiling and loading the library
 
@@ -155,7 +152,7 @@ the address of our `fill_view` function:
 
 ```julia-repl
 julia> v = Kokkos.View{Float64}(undef, 10)
-10-element Kokkos.Views.Impl1.View1D_HostAllocated{Float64}:
+10-element Kokkos.Views.View{Float64, 1, Kokkos.LayoutRight, Kokkos.HostSpace}:
  6.365987373e-314
  1.14495326e-316
 ...
@@ -165,7 +162,7 @@ julia> ccall(get_symbol(my_lib, :fill_view),
              v, 0.1)
 
 julia> v
-10-element Kokkos.Views.Impl1.View1D_HostAllocated{Float64}:
+10-element Kokkos.Views.View{Float64, 1, Kokkos.LayoutRight, Kokkos.HostSpace}:
  0.1
  0.1
 ...
@@ -199,12 +196,12 @@ reload.
 
 !!! warning
 
-    The full types of views (such as `Kokkos.Views.Impl1.View1D_HostAllocated{Float64}`) is ugly
+    The full types of views (such as `Kokkos.Views.Impl1.View1D_R_HostAllocated{Float64}`) is ugly
     and can change from one session to another. Do not rely on such types.
-    
+
     Use [`Views.main_view_type`](@ref) to get a more pleasant and stable type:
     ```julia
-    julia> Kokkos.main_view_type(Kokkos.Views.Impl1.View1D_HostAllocated{Float64})
+    julia> Kokkos.main_view_type(v)  # or `Kokkos.main_view_type(typeof(v))`
     Kokkos.Views.View{Float64, 1, Kokkos.LayoutRight, Kokkos.HostSpace}
     ```
 

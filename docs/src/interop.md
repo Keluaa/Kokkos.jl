@@ -25,8 +25,8 @@ julia> A
  3  7  11  15
  4  8  12  16
 
-julia> A_v = Kokkos.view_wrap(A);
-
+julia> A_v = Kokkos.view_wrap(A)
+4×4 Kokkos.Views.View{Int64, 2, Kokkos.LayoutLeft, Kokkos.CudaSpace}: <inaccessible view>
 ```
 
 `SubArray`s of `CuArray`s (or, more precisely, any `CUDA.StridedSubCuArray`), can also be converted
@@ -41,10 +41,8 @@ true
 julia> size(sub_A), strides(sub_A)
 ((2, 2), (1, 4))
 
-julia> sub_A_v = Kokkos.view_wrap(sub_A);
-
-julia> Kokkos.main_view_type(sub_A_v)
-Kokkos.Views.View{Int64, 2, Kokkos.Views.LayoutStride, Kokkos.CudaSpace}
+julia> sub_A_v = Kokkos.view_wrap(sub_A)
+2×2 Kokkos.Views.View{Int64, 2, Kokkos.LayoutStride, Kokkos.CudaSpace}: <inaccessible view>
 
 julia> size(sub_A_v), strides(sub_A_v)
 ((2, 2), (1, 4))

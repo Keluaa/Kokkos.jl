@@ -9,14 +9,13 @@ Your `LocalPreferences.jl` file will store the options needed by your current pr
 `[Kokkos]` section.
 
 !!! danger "Important"
-    
+
     Unlike some packages using `Preferences.jl`, it is possible to change all options during the
     same Julia session, using their setters.
     However, if you need to dynamically configure `Kokkos.jl`, it must be done before loading the
     wrapper library.
     After calling [`load_wrapper_lib`](@ref) (or [`initialize`](@ref)), all options will be
     locked, and any changes made afterward will **not** affect the current Julia session.
-
 
 ### kokkos_version
 
@@ -31,7 +30,6 @@ Each version is stored in the package's scratch space, which is checked-out upon
 Can be set using `Kokkos.set_kokkos_version()`.
 The value for the current Julia session is stored in `Kokkos.LOCAL_KOKKOS_VERSION_STR`.
 
-
 ### kokkos_path
 
 The path to the Kokkos sources (not an installation!) to use.
@@ -40,14 +38,12 @@ If not set, it defaults to the Kokkos version packaged with `Kokkos.jl`.
 Can be set using `Kokkos.set_kokkos_path()`.
 The value for the current Julia session is stored in `Kokkos.KOKKOS_PATH`.
 
-
 ### cmake_options
 
 The list of CMake options to pass to all [`CMakeKokkosProjects`](@ref CMakeKokkosProject).
 
 Can be set using `Kokkos.set_cmake_options()`.
 The value for the current Julia session is stored in `Kokkos.KOKKOS_CMAKE_OPTIONS`.
-
 
 ### kokkos_options
 
@@ -58,7 +54,6 @@ values will be converted to `"ON"` and `"OFF"`, others to strings).
 
 Can be set using `Kokkos.set_kokkos_options()`.
 The value for the current Julia session is stored in `Kokkos.KOKKOS_LIB_OPTIONS`.
-
 
 ### backends
 
@@ -72,14 +67,12 @@ subtypes.
 
 The value for the current Julia session is stored in `Kokkos.KOKKOS_BACKENDS`.
 
-
 ### build_type
 
 CMake build type.
 
 Can be set using `Kokkos.set_build_type()`.
 The value for the current Julia session is stored in `Kokkos.KOKKOS_BUILD_TYPE`.
-
 
 ### build_dir
 

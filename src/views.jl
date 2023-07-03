@@ -519,26 +519,26 @@ julia> v = Kokkos.View{Float64}(undef, 4, 4);
 julia> v[:] .= collect(1:length(v));
 
 julia> v
-4×4 Kokkos.Wrapper.Impl.View2D_R_HostAllocated{Float64}:
+4×4 Kokkos.Views.View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}:
  1.0  5.0   9.0  13.0
  2.0  6.0  10.0  14.0
  3.0  7.0  11.0  15.0
  4.0  8.0  12.0  16.0
 
 julia> Kokkos.subview(v, (2:3, 2:3))
-2×2 Kokkos.Wrapper.Impl.View2D_R_HostAllocated{Float64}:
+2×2 Kokkos.Views.View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}:
  6.0  10.0
  7.0  11.0
 
 julia> Kokkos.subview(v, (:, 1))  # The subview may change its layout to `LayoutStride` 
-4-element Kokkos.Wrapper.Impl.View1D_S_HostAllocated{Float64}:
+4-element Kokkos.Views.View{Float64, 1, Kokkos.LayoutStride, Kokkos.HostSpace}:
  1.0
  2.0
  3.0
  4.0
 
 julia> Kokkos.subview(v, (1,))  # Equivalent to `(1, :)`
-4-element Kokkos.Wrapper.Impl.View1D_R_HostAllocated{Float64}:
+4-element Kokkos.Views.View{Float64, 1, Kokkos.LayoutRight, Kokkos.HostSpace}:
   1.0
   5.0
   9.0
