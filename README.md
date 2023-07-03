@@ -58,3 +58,14 @@ All Kokkos backends should be supported by this package, but not all of them wer
 * :heavy_check_mark: `Kokkos::HIP` + interop with [AMDGPU.jl](https://github.com/JuliaGPU/AMDGPU.jl)
 * :x: `Kokkos::SYCL`
 * :x: `Kokkos::OpenACC`
+
+### Known issues
+
+* The NVCC compiler is unable to compile the wrapper library. Use Clang instead (Clang-11 is the
+version used to test this backend).
+* `Kokkos::Cuda ERROR: Failed to call Kokkos::Cuda::finalize()` message when exiting Julia:
+`Kokkos.finalize()` is not yet called automatically upon quitting Julia, as it would require to call
+the finalizers of all views before doing so.
+* Memory leaks on GPU: this is a side effect of Julia's GC which cannot manage device memory. From
+Julia's POV, a `Kokkos.View` is only a pointer in the host memory. Calling `GC.gc(true)` will fix the
+issue.
