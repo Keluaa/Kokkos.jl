@@ -268,6 +268,18 @@ view_t = Kokkos.View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}
 @test occursin("MemoryTraits", String(Kokkos.cxx_type_name(view_t, true)))  # This should be broad enough to pass on all compilers
 
 
+@testset "Printing" begin
+    buf = IOBuffer()
+    show(buf, MIME"text/plain"(), v3)  # print as `display` would
+    text = String(take!(buf))
+    @test occursin(string(Kokkos.main_view_type(v3)), text)
+    @test !occursin("inaccessible view", text)
+
+    @test display(v3) === nothing
+    @test print(v3) === nothing
+end
+
+
 @testset "Deep copy" begin
     @testset "$exec_space_type in $(dim)D with $type" for
             exec_space_type in (:no_exec_space, Kokkos.ENABLED_EXEC_SPACES...),

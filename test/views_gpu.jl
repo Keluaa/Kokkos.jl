@@ -174,6 +174,18 @@ v10 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_
 @test Kokkos.memory_span(v10) == prod(size(v10)) * sizeof(Float64) * 2 
 
 
+@testset "Printing" begin
+    buf = IOBuffer()
+    show(buf, MIME"text/plain"(), v3)  # print as `display` would
+    text = String(take!(buf))
+    @test occursin(string(Kokkos.main_view_type(v3)), text)
+    @test occursin("inaccessible view", text)
+
+    @test display(v3) === nothing
+    @test print(v3) === nothing
+end
+
+
 @testset "Deep copy" begin
     tests_count = *(
         length(TEST_COPY_EXEC_SPACES) + 1,

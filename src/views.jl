@@ -940,4 +940,34 @@ Base.unsafe_convert(::Type{Ptr{T}}, v::V) where {T, V <: View{T}} = pointer(v)
 
 Base.elsize(::Type{<:View{T}}) where {T} = sizeof(T)
 
+
+# === Printing ===
+
+function Base.summary(io::IO, v::View)
+    # Behaves as Base.summary(::IO, ::AbstractArray), but use the main view type instead
+    print(io, Base.dims2string(length.(axes(v))), " ", main_view_type(v))
+end
+
+
+function Base.show(io::IO, mime::MIME"text/plain", v::View)
+    if accessible(v)
+        # Print as a normal array
+        Base.invoke(Base.show, Tuple{IO, typeof(mime), AbstractArray}, io, mime, v)
+    else
+        summary(io, v)
+        isempty(v) && return
+        print(io, ": <inaccessible view>")
+    end
+end
+
+
+function Base.show(io::IO, v::View)
+    if accessible(v)
+        Base.invoke(Base.show, Tuple{IO, AbstractArray}, io, v)
+    else
+        print(io, "[<inaccessible view>]")
+    end
+end
+
+
 end
