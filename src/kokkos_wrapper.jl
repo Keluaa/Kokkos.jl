@@ -5,7 +5,7 @@ using LibGit2
 using CxxWrap
 
 import ..Kokkos: CMakeKokkosProject
-import ..Kokkos: run_cmd_print_on_error, load_lib, lib_path, build_dir, pretty_compile
+import ..Kokkos: run_cmd_print_on_error, load_lib, lib_path, build_dir, pretty_compile, clean
 import ..Kokkos: ensure_kokkos_wrapper_loaded, configuration_changed!
 import ..Kokkos: LOCAL_KOKKOS_DIR, LOCAL_KOKKOS_VERSION_STR
 import ..Kokkos: KOKKOS_PATH, KOKKOS_CMAKE_OPTIONS, KOKKOS_LIB_OPTIONS, KOKKOS_BACKENDS
@@ -210,6 +210,18 @@ end
 function get_kokkos_func_libs_dir()
     ensure_kokkos_wrapper_loaded()
     return joinpath(build_dir(KOKKOS_LIB_PROJECT), "func_libs")
+end
+
+
+"""
+    clean_cmake_files()
+
+Clears the CMake cache of the wrapper library, and removes all build files, as well as compiled
+function libraries.
+"""
+function clean_cmake_files()
+    isnothing(KOKKOS_LIB_PROJECT) && error("the CMake project of the wrapper library is not set up")
+    clean(KOKKOS_LIB_PROJECT; reset=true)
 end
 
 
