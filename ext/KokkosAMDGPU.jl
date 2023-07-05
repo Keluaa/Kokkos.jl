@@ -44,8 +44,7 @@ function Base.unsafe_wrap(
     buf = AMDGPU.Mem.Buffer(device_ptr, C_NULL, device_ptr, byte_size, device, false, false)
     roc_array = ROCArray{T, D}(buf, dims)
 
-    # Unalive the buffer to make sure it is not deallocated by AMDGPU when the ROCArray is finalized
-    AMDGPU.Mem.liveness[buf._id] = false
+    # TODO: fix memory management, see https://github.com/JuliaGPU/AMDGPU.jl/pull/438
 
     if !Kokkos.span_is_contiguous(v)
         error("non-contiguous (or strided) views cannot be converted into a `ROCArray` \

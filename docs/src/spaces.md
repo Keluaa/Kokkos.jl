@@ -66,4 +66,5 @@ BackendFunctions.omp_capture_affinity
 BackendFunctions.device_id
 BackendFunctions.wrap_stream
 BackendFunctions.stream_ptr
+BackendFunctions.memory_info
 ```

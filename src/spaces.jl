@@ -470,6 +470,16 @@ Equivalent to `Kokkos::Cuda().cuda_stream()` or `Kokkos::HIP().hip_stream()`.
 """
 function stream_ptr end
 
+
+"""
+    memory_info()
+
+Return `(free_memory, total_memory)`, in bytes, for the current active device.
+
+Equivalent to `cuMemGetInfo_v2` or `hipMemGetInfo`.
+"""
+function memory_info end
+
 end
 
 

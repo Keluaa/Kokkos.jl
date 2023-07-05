@@ -17,7 +17,7 @@ void register_space(jlcxx::Module& mod, jl_module_t* spaces_module)
     if (main_type_dt == nullptr) {
         throw std::runtime_error("Type '" + main_type_name + "' not found in the Kokkos module");
     }
-    jlcxx::set_julia_type<SpaceInfo<Space>>( (jl_datatype_t *) main_type_dt);
+    jlcxx::set_julia_type<SpaceInfo<Space>>((jl_datatype_t *) main_type_dt);
 
     auto space_type = mod.add_type<Space>(impl_type_name, jlcxx::julia_type<SpaceInfo<Space>>());
     space_type.constructor();

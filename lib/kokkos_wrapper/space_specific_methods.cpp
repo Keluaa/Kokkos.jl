@@ -88,7 +88,7 @@ template<>
 void space_methods<SpaceInfo<Kokkos::Cuda>>(jlcxx::Module& mod, jl_module_t* backend_funcs_module)
 {
     import_backend_methods(mod.julia_module(), backend_funcs_module, {
-        "wrap_stream", "device_id", "stream_ptr"
+        "wrap_stream", "device_id", "stream_ptr", "memory_info"
     });
 
     mod.method("wrap_stream", [](void* cuda_stream){ return Kokkos::Cuda((cudaStream_t) cuda_stream); });
@@ -99,6 +99,20 @@ void space_methods<SpaceInfo<Kokkos::Cuda>>(jlcxx::Module& mod, jl_module_t* bac
 #endif
     mod.method("device_id", [](const Kokkos::Cuda& s){ return s.cuda_device(); });
     mod.method("stream_ptr", [](const Kokkos::Cuda& s){ return (void*) s.cuda_stream(); });
+
+    mod.method("memory_info", [](){
+        size_t free, total;
+        CUresult res = cuMemGetInfo_v2(&free, &total);
+        if (res != CUresult::CUDA_SUCCESS) {
+            const char* error_msg;
+            cuGetErrorString(res, &error_msg);
+            if (error_msg == nullptr) {
+                error_msg = "<could not get error message>";
+            }
+            jl_errorf("CUDA error when calling `cuMemGetInfo_v2`: %s", error_msg);
+        }
+        return std::make_tuple(free, total);
+    });
 }
 #endif
 
@@ -108,7 +122,7 @@ template<>
 void space_methods<SpaceInfo<Kokkos_HIP::HIP>>(jlcxx::Module& mod, jl_module_t* backend_funcs_module)
 {
     import_backend_methods(mod.julia_module(), backend_funcs_module, {
-        "wrap_stream", "device_id", "stream_ptr"
+        "wrap_stream", "device_id", "stream_ptr", "memory_info"
     });
 
     mod.method("wrap_stream", [](void* hip_stream){ return Kokkos_HIP::HIP((hipStream_t) hip_stream); });
@@ -119,6 +133,19 @@ void space_methods<SpaceInfo<Kokkos_HIP::HIP>>(jlcxx::Module& mod, jl_module_t* 
 #endif
     mod.method("device_id", [](const Kokkos_HIP::HIP& s){ return s.hip_device(); });
     mod.method("stream_ptr", [](const Kokkos_HIP::HIP& s){ return (void*) s.hip_stream(); });
+
+    mod.method("memory_info", [](){
+        size_t free, total;
+        hipError_t res = hipMemGetInfo(&free, &total);
+        if (res != hipSuccess) {
+            const char* error_msg = hipGetErrorString(res);
+            if (error_msg == nullptr) {
+                error_msg = "<could not get error message>";
+            }
+            jl_errorf("HIP error when calling `hipMemGetInfo`: %s", error_msg);
+        }
+        return std::make_tuple(free, total);
+    });
 }
 #endif
 
