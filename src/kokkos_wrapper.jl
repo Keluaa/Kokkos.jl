@@ -2,6 +2,7 @@ module Wrapper
 
 using libcxxwrap_julia_jll
 using LibGit2
+using Libdl
 using CxxWrap
 
 import ..Kokkos: CMakeKokkosProject
@@ -256,7 +257,8 @@ function load_wrapper_lib(; no_compilation=false, no_git=false, loading_bar=true
 
     @debug "Loading the Kokkos Wrapper library..."
 
-    global KOKKOS_LIB = load_lib(KOKKOS_LIB_PROJECT)
+    # RTLD_GLOBAL is needed to make Kokkos symbols available to all libraries
+    global KOKKOS_LIB = load_lib(KOKKOS_LIB_PROJECT; flags=Libdl.RTLD_LAZY | Libdl.RTLD_GLOBAL)
 
     # This seemingly innocent macro call will add methods in all modules.
     # All of those methods will be imported into the `Impl` module then overloaded here.
