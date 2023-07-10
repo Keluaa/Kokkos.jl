@@ -29,7 +29,7 @@ import Kokkos: View
     sub_A_vh = Kokkos.create_mirror_view(sub_A_v)
     # sub_A_v and sub_A_vh are not contiguous and therefore cannot be copied directly across devices
     @test !Kokkos.span_is_contiguous(sub_A_v) && !Kokkos.span_is_contiguous(sub_A_vh)
-    @test_throws @error_match(r"Kokkos::deep_copy with no available copy mechanism") copyto!(sub_A_vh, sub_A_v)
+    @test_throws r"Kokkos::deep_copy with no available copy mechanism" copyto!(sub_A_vh, sub_A_v)
 
     sub_A_v_contiguous = Kokkos.View{Int64}(undef, size(sub_A_v); mem_space=Kokkos.CudaSpace, layout=Kokkos.LayoutLeft)
     copyto!(sub_A_v_contiguous, sub_A_v)
@@ -48,7 +48,7 @@ end
     Vh[:] .= collect(1:25)
     copyto!(V, Vh)
 
-    @test_throws @error_match(r"only possible from the `Kokkos.CudaSpace`") unsafe_wrap(CuArray, Vh)
+    @test_throws r"only possible from the `Kokkos.CudaSpace`" unsafe_wrap(CuArray, Vh)
 
     cu_V = unsafe_wrap(CuArray, V)
     @test size(cu_V) == size(V)
@@ -57,7 +57,7 @@ end
 
     sub_V = Kokkos.subview(V, (1:3, 1:3))
     @test !Kokkos.span_is_contiguous(sub_V)
-    @test_throws @error_match(r"non-contiguous \(or strided\) views cannot") unsafe_wrap(CuArray, sub_V)
+    @test_throws r"non-contiguous \(or strided\) views cannot" unsafe_wrap(CuArray, sub_V)
 
     sub_V2 = Kokkos.subview(V, (:, 1:3))
     @test Kokkos.span_is_contiguous(sub_V2)

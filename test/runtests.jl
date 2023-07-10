@@ -91,18 +91,6 @@ function print_test_config()
 end
 
 
-macro error_match(exception)
-    # To make @test_throws work in most cases in version 1.7 and above
-    if exception isa Symbol
-        return esc(exception)
-    elseif VERSION ≥ v"1.8"
-        return esc(exception)
-    else
-        return ErrorException
-    end
-end
-
-
 @testset "Kokkos.jl" begin
     print_test_config()
 

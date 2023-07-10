@@ -86,7 +86,7 @@ function get_latest_kokkos_release(major, minor)
         pattern = isnothing(minor) ? "$major.*.*" : "$major.$minor.*"
         all_tags = readchomp(Cmd(`git tag -l $pattern`; dir=LOCAL_KOKKOS_DIR))
 
-        versions = tryparse(VersionNumber, split(all_tags))
+        versions = tryparse.(VersionNumber, split(all_tags))
         filter!(!isnothing, versions)
         isempty(versions) && error("No Kokkos release tag matching '$pattern'")
 

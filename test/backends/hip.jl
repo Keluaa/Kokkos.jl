@@ -43,7 +43,7 @@ end
     Vh[:] .= collect(1:25)
     copyto!(V, Vh)
 
-    @test_throws @error_match(r"only possible from the `Kokkos.HIPSpace`") unsafe_wrap(ROCArray, Vh)
+    @test_throws r"only possible from the `Kokkos.HIPSpace`" unsafe_wrap(ROCArray, Vh)
 
     roc_V = unsafe_wrap(ROCArray, V)
     @test size(roc_V) == size(V)
@@ -52,7 +52,7 @@ end
 
     sub_V = Kokkos.subview(V, (1:3, 1:3))
     @test !Kokkos.span_is_contiguous(sub_V)
-    @test_throws @error_match(r"non-contiguous \(or strided\) views cannot") unsafe_wrap(ROCArray, sub_V)
+    @test_throws r"non-contiguous \(or strided\) views cannot" unsafe_wrap(ROCArray, sub_V)
 
     sub_V2 = Kokkos.subview(V, (:, 1:3))
     @test Kokkos.span_is_contiguous(sub_V2)

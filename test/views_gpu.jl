@@ -138,13 +138,13 @@ flat_v4 = @view v4[:]
         @test strides(v6) == strides(v6_s)
     end
 
-    @test_throws @error_match(r"`mem_space` to be a Kokkos.CudaSpace") begin
+    @test_throws r"`mem_space` to be a Kokkos.CudaSpace" begin
         View{Float64, 1, Kokkos.LayoutLeft, Kokkos.CudaSpace}(undef, n1; mem_space=Kokkos.HostSpace)
     end
-    @test_throws @error_match(r"`mem_space` kwarg") begin
+    @test_throws r"`mem_space` kwarg" begin
         View{Float64, 1, Kokkos.LayoutLeft, Kokkos.CudaSpace}(undef, n1; mem_space=Kokkos.HostSpace())
     end
-    @test_throws @error_match(r"Kokkos.LayoutLeft type") begin
+    @test_throws r"Kokkos.LayoutLeft type" begin
         View{Float64, 1, Kokkos.LayoutLeft}(undef, n1; layout=Kokkos.LayoutRight)
     end
 
@@ -153,8 +153,8 @@ flat_v4 = @view v4[:]
     @test size(View{Float64, 2, TEST_DEFAULT_DEVICE_LAYOUT}()) == (0, 0)
     @test size(View{Float64, 2, TEST_DEFAULT_DEVICE_LAYOUT, TEST_MAIN_MEM_SPACE_DEVICE}()) == (0, 0)
 
-    @test_throws @error_match("requires a instance") View{Float64}(undef, n1; layout=Kokkos.LayoutStride)
-    @test_throws @error_match("$(nameof(TEST_UNAVAILABLE_MEM_SPACE)) is not enabled") begin
+    @test_throws r"requires a instance" View{Float64}(undef, n1; layout=Kokkos.LayoutStride)
+    @test_throws "$(nameof(TEST_UNAVAILABLE_MEM_SPACE)) is not enabled" begin
         View{Int64}(undef, n1; mem_space=TEST_UNAVAILABLE_MEM_SPACE)
     end
 end
@@ -246,13 +246,13 @@ end
                 if can_deep_copy
                     @test Kokkos.deep_copy(v_dst, v_src) === nothing
                 else
-                    @test_throws @error_match(DEEP_COPY_ERRORS_REGEX) Kokkos.deep_copy(v_dst, v_src)
+                    @test_throws DEEP_COPY_ERRORS_REGEX Kokkos.deep_copy(v_dst, v_src)
                 end
             else
                 if can_deep_copy
                     @test Kokkos.deep_copy(exec_space, v_dst, v_src) === nothing
                 else
-                    @test_throws @error_match(DEEP_COPY_ERRORS_REGEX) Kokkos.deep_copy(exec_space, v_dst, v_src)
+                    @test_throws DEEP_COPY_ERRORS_REGEX Kokkos.deep_copy(exec_space, v_dst, v_src)
                 end
                 Kokkos.fence(exec_space)
             end

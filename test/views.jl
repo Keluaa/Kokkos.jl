@@ -179,13 +179,13 @@ flat_v5 = v5[:]
         @test strides(v6) == strides(v6_s)
     end
 
-    @test_throws @error_match(r"`mem_space` to be a Kokkos.CudaSpace") begin
+    @test_throws r"`mem_space` to be a Kokkos.CudaSpace" begin
         View{Float64, 1, Kokkos.LayoutLeft, Kokkos.CudaSpace}(undef, n1; mem_space=Kokkos.HostSpace)
     end
-    @test_throws @error_match(r"`mem_space` kwarg") begin
+    @test_throws r"`mem_space` kwarg" begin
         View{Float64, 1, Kokkos.LayoutLeft, Kokkos.CudaSpace}(undef, n1; mem_space=Kokkos.HostSpace())
     end
-    @test_throws @error_match(r"Kokkos.LayoutLeft type") begin
+    @test_throws r"Kokkos.LayoutLeft type" begin
         View{Float64, 1, Kokkos.LayoutLeft}(undef, n1; layout=Kokkos.LayoutRight)
     end
 
@@ -194,8 +194,8 @@ flat_v5 = v5[:]
     @test size(View{Float64, 2, Kokkos.LayoutRight}()) == (0, 0)
     @test size(View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}()) == (0, 0)
 
-    @test_throws @error_match(r"requires a instance") View{Float64}(undef, n1; layout=Kokkos.LayoutStride)
-    @test_throws @error_match(r"CudaSpace is not enabled") begin
+    @test_throws r"requires a instance" View{Float64}(undef, n1; layout=Kokkos.LayoutStride)
+    @test_throws r"CudaSpace is not enabled" begin
         View{Int64}(undef, n1; mem_space=Kokkos.CudaSpace)
     end
 end
@@ -322,8 +322,8 @@ end
     dc_v1 = Kokkos.View{Int64}(undef, 1)
     dc_v2 = Kokkos.View{Float64}(undef, 1)
     dc_v3 = Kokkos.View{Int64}(undef, 1, 1)
-    @test_throws @error_match(r"Views with the same type") Kokkos.deep_copy(dc_v1, dc_v2)
-    @test_throws @error_match(r"Views with the same number of dimensions") Kokkos.deep_copy(dc_v1, dc_v3)
+    @test_throws r"Views with the same type" Kokkos.deep_copy(dc_v1, dc_v2)
+    @test_throws r"Views with the same number of dimensions" Kokkos.deep_copy(dc_v1, dc_v3)
 end
 
 

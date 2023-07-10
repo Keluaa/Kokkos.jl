@@ -4,11 +4,7 @@ import ..Kokkos: Wrapper
 import ..Kokkos: CMakeKokkosProject, CLibrary
 import ..Kokkos: ensure_kokkos_wrapper_loaded, compile, lib_path, load_lib, __validate_parameters
 
-@static if VERSION >= v"1.9"
-    import FileWatching.Pidfile: mkpidlock
-else
-    import Pidfile: mkpidlock
-end
+import FileWatching.Pidfile: mkpidlock
 
 
 export @compile_and_call, compile_and_load

@@ -5,10 +5,10 @@ Kokkos.is_initialized() && error("Kokkos should not be loaded for those tests")
 @test !Kokkos.is_initialized()
 @test !Kokkos.is_finalized()
 
-@test_throws @error_match("is not loaded") Kokkos.ensure_kokkos_wrapper_loaded()
-@test_throws @error_match("is not loaded") Kokkos.new_initialization_settings()
-@test_throws @error_match("is not loaded") Kokkos.versioninfo()
-@test_throws @error_match("is not loaded") Kokkos.View{Float64}()
+@test_throws r"is not loaded" Kokkos.ensure_kokkos_wrapper_loaded()
+@test_throws r"is not loaded" Kokkos.new_initialization_settings()
+@test_throws r"is not loaded" Kokkos.versioninfo()
+@test_throws r"is not loaded" Kokkos.View{Float64}()
 
 default_path = Kokkos.LOCAL_KOKKOS_DIR
 @test Kokkos.set_kokkos_version("3.7.01")                       == Kokkos.LOCAL_KOKKOS_VERSION_STR == "3.7.01"

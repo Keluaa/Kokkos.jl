@@ -40,10 +40,10 @@ end
     latest_37 = Kokkos.Wrapper.get_latest_kokkos_release("3.7-latest")
     @test v"3.7.0" < VersionNumber(latest_37) ≤ VersionNumber(latest_3)
 
-    @test_throws @error_match(r"No Kokkos release") Kokkos.Wrapper.get_latest_kokkos_release("99-latest")
+    @test_throws r"No Kokkos release" Kokkos.Wrapper.get_latest_kokkos_release("99-latest")
 
-    @test_throws @error_match(r"Expected version") Kokkos.Wrapper.get_latest_kokkos_release("oops")
-    @test_throws @error_match(r"Expected version") Kokkos.Wrapper.get_latest_kokkos_release(".-latest")
+    @test_throws r"Expected version" Kokkos.Wrapper.get_latest_kokkos_release("oops")
+    @test_throws r"Expected version" Kokkos.Wrapper.get_latest_kokkos_release(".-latest")
 end
 
 
