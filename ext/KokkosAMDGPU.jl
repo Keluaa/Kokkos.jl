@@ -38,13 +38,9 @@ function Base.unsafe_wrap(
         error("could not retrieve the device of the given pointer: $device_ptr")
     end
 
-    # More-or-less equivalent to `AMDGPU.unsafe_wrap` but with a pointer to a HIP-allocated array
-    dims = size(v)
-    byte_size = prod(dims) * sizeof(T)
-    buf = AMDGPU.Mem.Buffer(device_ptr, C_NULL, device_ptr, byte_size, device, false, false)
-    roc_array = ROCArray{T, D}(buf, dims)
-
-    # TODO: fix memory management, see https://github.com/JuliaGPU/AMDGPU.jl/pull/438
+    # TODO: fix memory management: here the returned array OWNS the buffer, which means that it may
+    # be deallocated before the view, and/or deallocated twice.
+    roc_array = unsafe_wrap(ROCArray, pointer(v), size(v); lock=false)
 
     if !Kokkos.span_is_contiguous(v)
         error("non-contiguous (or strided) views cannot be converted into a `ROCArray` \
