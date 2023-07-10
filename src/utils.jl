@@ -1,4 +1,9 @@
 
+function to_kokkos_version_string(version::VersionNumber)
+    return @sprintf("%d.%d.%02d", version.major, version.minor, version.patch)
+end
+
+
 """
     set_omp_vars(;
         places = "cores",
@@ -248,6 +253,14 @@ See [kokkos_version](@ref) for the version of the packaged installation of Kokko
 is defined before loading Kokkos.
 """
 KOKKOS_VERSION = nothing
+
+
+function __change_local_version(new_local_version)
+    if is_kokkos_wrapper_loaded()
+        error("Cannot update local Kokkos version variables after the wrapped was loaded")
+    end
+    global LOCAL_KOKKOS_VERSION_STR = String(new_local_version)
+end
 
 
 function __validate_parameters(;

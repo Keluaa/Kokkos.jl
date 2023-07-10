@@ -123,7 +123,7 @@ end
 
         Kokkos.DynamicCompilation.clean_libs()  # Make sure no leftover lib influences the test results
 
-        if Kokkos.KOKKOS_VERSION != VersionNumber(TEST_KOKKOS_VERSION)
+        if !endswith(TEST_KOKKOS_VERSION, "latest") && Kokkos.KOKKOS_VERSION != VersionNumber(TEST_KOKKOS_VERSION)
             error("Expected Kokkos v$TEST_KOKKOS_VERSION, got: $(Kokkos.KOKKOS_VERSION)")
         end
 

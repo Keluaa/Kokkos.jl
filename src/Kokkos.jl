@@ -65,7 +65,6 @@ include("utils.jl")
 include("kokkos_wrapper.jl")
 using .Wrapper
 
-function __validate_parameters end
 include("dynamic_compilation.jl")
 using .DynamicCompilation
 

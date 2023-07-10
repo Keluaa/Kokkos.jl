@@ -3,7 +3,7 @@ HAS_CONFIGURATION_CHANGED = false
 
 
 function set_kokkos_version(version::Union{Nothing, Missing, AbstractString})
-    if version isa String && findlast('.', version) != length(version) - 2
+    if version isa String && findlast('.', version) != length(version) - 2 && !endswith(version, "latest")
         error("Invalid Kokkos version. The version must be a valid tag in the Kokkos repo: \
                the patch version must have two digits. Use '3.7.02' and not '3.7.2'.")
     end
@@ -23,7 +23,7 @@ end
 
 
 function set_kokkos_version(version::VersionNumber)
-    return set_kokkos_version(@sprintf("%d.%d.%02d", version.major, version.minor, version.patch))
+    return set_kokkos_version(to_kokkos_version_string(version))
 end
 
 

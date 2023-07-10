@@ -30,12 +30,12 @@ jobs:
         arch:
           - x64
         kokkos:
-          - '4.0.01'
+          - '4-latest'
         include:
           - version: '1.9'
             os: ubuntu-latest
             arch: x64
-            kokkos: '3.7.02'
+            kokkos: '3-latest'
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1

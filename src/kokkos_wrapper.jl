@@ -8,6 +8,7 @@ using CxxWrap
 import ..Kokkos: CMakeKokkosProject
 import ..Kokkos: run_cmd_print_on_error, load_lib, lib_path, build_dir, pretty_compile, clean
 import ..Kokkos: ensure_kokkos_wrapper_loaded, configuration_changed!
+import ..Kokkos: to_kokkos_version_string, __change_local_version
 import ..Kokkos: LOCAL_KOKKOS_DIR, LOCAL_KOKKOS_VERSION_STR
 import ..Kokkos: KOKKOS_PATH, KOKKOS_CMAKE_OPTIONS, KOKKOS_LIB_OPTIONS, KOKKOS_BACKENDS
 import ..Kokkos: KOKKOS_BUILD_TYPE, KOKKOS_BUILD_DIR
@@ -68,18 +69,68 @@ function julia_str_type_to_c_type(t::String)
 end
 
 
+function get_latest_kokkos_release(major, minor)
+    # Fetch origin to get any new tags
+    run_cmd_print_on_error(Cmd(`git fetch`; dir=LOCAL_KOKKOS_DIR))
+
+    if isnothing(major)
+        # Get the latest version across all majors
+        release_hash = readchomp(Cmd(`git rev-list --tags --max-count=1`; dir=LOCAL_KOKKOS_DIR))
+        latest_tag = readchomp(Cmd(`git describe --tags $release_hash`; dir=LOCAL_KOKKOS_DIR))
+
+        if isnothing(tryparse(VersionNumber, latest_tag))
+            error("Invalid latest version tag: $latest_tag")
+        end
+    else
+        # Get the latest version matching '<major>.<minor>.*'
+        pattern = isnothing(minor) ? "$major.*.*" : "$major.$minor.*"
+        all_tags = readchomp(Cmd(`git tag -l $pattern`; dir=LOCAL_KOKKOS_DIR))
+
+        versions = tryparse(VersionNumber, split(all_tags))
+        filter!(!isnothing, versions)
+        isempty(versions) && error("No Kokkos release tag matching '$pattern'")
+
+        latest_version = maximum(versions)
+        latest_tag = to_kokkos_version_string(latest_version)
+    end
+
+    return latest_tag
+end
+
+
+function get_latest_kokkos_release(version_pattern::AbstractString)
+    if version_pattern == "latest"
+        return get_latest_kokkos_release(nothing, nothing)
+    end
+
+    m = match(r"(\d)(?>.(\d))?-latest", version_pattern)
+    isnothing(m) && error("Expected version pattern '[<major>[.<minor>]-]latest'")
+    return get_latest_kokkos_release(m[1], m[2])
+end
+
+
 function setup_local_kokkos_source()
     KOKKOS_PATH != LOCAL_KOKKOS_DIR && return
-    # Download our local Kokkos source files into a scratch directory
+
+    # Clone the Kokkos repo into a scratch directory
     if isempty(readdir(LOCAL_KOKKOS_DIR))
         @info "Cloning Kokkos $LOCAL_KOKKOS_VERSION_STR to $LOCAL_KOKKOS_DIR..."
         @static if USE_CLI_GIT
             run_cmd_print_on_error(Cmd(`git clone https://github.com/kokkos/kokkos.git .`; dir=LOCAL_KOKKOS_DIR))
+            repo = nothing
         else
             repo = LibGit2.clone("https://github.com/kokkos/kokkos.git", LOCAL_KOKKOS_DIR)
         end
     else
         repo = LibGit2.GitRepo(LOCAL_KOKKOS_DIR)
+    end
+
+    if endswith(LOCAL_KOKKOS_VERSION_STR, "latest")
+        new_local_version = get_latest_kokkos_release(LOCAL_KOKKOS_VERSION_STR)
+        @debug "Kokkos version '$LOCAL_KOKKOS_VERSION_STR' was resolved to '$new_local_version'"
+        __change_local_version(new_local_version)  # Updates LOCAL_KOKKOS_VERSION_STR, etc...
+    elseif isnothing(tryparse(VersionNumber, LOCAL_KOKKOS_VERSION_STR))
+        error("Invalid Kokkos version tag: $LOCAL_KOKKOS_VERSION_STR")
     end
 
     # Get the commit hash for the version tag

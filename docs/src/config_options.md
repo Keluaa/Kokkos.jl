@@ -25,7 +25,14 @@ The version of Kokkos to use. Must be a valid version tag in the official Kokkos
 Only used when [kokkos_path](@ref) is not set, and defaults to the one of the packaged sources of
 kokkos.
 
-Each version is stored in the package's scratch space, which is checked-out upon loading the Kokkos.
+Each version is stored in the package's scratch space, which is checked-out upon loading the Kokkos
+wrapper.
+
+Special versions like `latest` or `3.7-latest` are supported:
+
+- `latest`: use the latest release
+- `3-latest`: use the latest release of major version `3`
+- `4.1-latest`: use the latest release of major and minor versions `4` and `1`
 
 Can be set using `Kokkos.set_kokkos_version()`.
 The value for the current Julia session is stored in `Kokkos.LOCAL_KOKKOS_VERSION_STR`.
