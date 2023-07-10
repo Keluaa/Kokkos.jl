@@ -4,6 +4,10 @@
 #include <tuple>
 
 
+template <class...>
+constexpr bool always_false = false;
+
+
 /**
  * Template list where the N-th argument can be accessed with 'TList<...>::Arg<N>', and which can be combined with other
  * template lists.
@@ -40,7 +44,11 @@ constexpr bool is_tlist_v = is_tlist<T>::value;
 template<typename I, I... Dims>
 constexpr auto tlist_from_sequence(std::integer_sequence<I, Dims...>)
 {
-    return (TList<std::integral_constant<std::size_t, Dims>>{} + ...);
+    if constexpr (sizeof...(Dims) == 0) {
+        return TList<>{};
+    } else {
+        return (TList<std::integral_constant<std::size_t, Dims>>{} + ...);
+    }
 }
 
 
@@ -71,7 +79,11 @@ constexpr auto remove_duplicates(TList<Unique...>, TList<Element, Args...>)
 template<typename... Args>
 constexpr auto remove_duplicates(TList<Args...>)
 {
-    return remove_duplicates(TList<>{}, TList<Args...>{});
+    if constexpr (sizeof...(Args) == 0) {
+        return TList<>{};
+    } else {
+        return remove_duplicates(TList<>{}, TList<Args...>{});
+    }
 }
 
 
@@ -115,7 +127,11 @@ auto sub_tlist(TList<T...> l)
 template<typename... Stack, typename... List>
 constexpr auto build_all_combinations(TList<Stack...>, TList<List...>)
 {
-    return (TList<TList<Stack..., List>>{} + ...);
+    if constexpr (sizeof...(List) == 0) {
+        static_assert(always_false<List...>, "Empty list passed to 'build_all_combinations'");
+    } else {
+        return (TList<TList<Stack..., List>>{} + ...);
+    }
 }
 
 
@@ -124,9 +140,17 @@ constexpr auto build_all_combinations(TList<Stack...>, TList<List...>)
 {
     // Add to N copies of the stack one of the N elements of List, then recurse to the next lists (if there is any)
     if constexpr (sizeof...(NextLists) == 0) {
-        return (build_all_combinations<>(TList<Stack..., List>{}, NextList{}) + ...);
+        if constexpr (sizeof...(List) == 0) {
+            return build_all_combinations<>(TList<Stack...>{}, NextList{});
+        } else {
+            return (build_all_combinations<>(TList<Stack..., List>{}, NextList{}) + ...);
+        }
     } else {
-        return (build_all_combinations<NextLists...>(TList<Stack..., List>{}, NextList{}) + ...);
+        if constexpr (sizeof...(List) == 0) {
+            return build_all_combinations<NextLists...>(TList<Stack...>{}, NextList{});
+        } else {
+            return (build_all_combinations<NextLists...>(TList<Stack..., List>{}, NextList{}) + ...);
+        }
     }
 }
 
@@ -224,6 +248,19 @@ template<typename Functor, typename... T>
 constexpr auto filter_types(Functor&& f, TList<T...>)
 {
     return (std::conditional_t<decltype(f(std::declval<T>()))::value, TList<T>, TList<>>{} + ...);
+}
+
+
+/**
+ * Creates a `std::array<T, N>` from the arguments. Supports arrays of size 0.
+ */
+template<typename T, typename... A>
+constexpr auto as_array(A... args)
+{
+    std::array<T, sizeof...(A)> array{};
+    [[maybe_unused]] int i = 0;
+    ([&](){ array[i++] = args; }(), ...);
+    return array;
 }
 
 

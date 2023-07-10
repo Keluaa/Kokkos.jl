@@ -18,10 +18,13 @@ span_is_contiguous
 subview
 view_wrap
 deep_copy
+host_mirror
+host_mirror_space
 create_mirror
 create_mirror_view
 impl_view_type
 main_view_type
+cxx_type_name
 ```
 
 ## Layouts
@@ -37,7 +40,4 @@ LayoutStride
 
 ```@docs
 Idx
-COMPILED_DIMS
-COMPILED_TYPES
-COMPILED_LAYOUTS
 ```

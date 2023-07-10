@@ -1,18 +1,3 @@
-module Spaces
-
-using CxxWrap
-import ..Kokkos: ensure_kokkos_wrapper_loaded, fence, get_impl_module
-
-export Space, ExecutionSpace, MemorySpace
-export Serial, OpenMP, OpenACC, OpenMPTarget, Threads, Cuda, HIP, HPX, SYCL
-export HostSpace, CudaSpace, CudaHostPinnedSpace, CudaUVMSpace, HIPSpace, HIPHostPinnedSpace, HIPManagedSpace
-export COMPILED_EXEC_SPACES, COMPILED_MEM_SPACES
-export DEFAULT_DEVICE_SPACE, DEFAULT_HOST_SPACE, DEFAULT_DEVICE_MEM_SPACE, DEFAULT_HOST_MEM_SPACE
-export SHARED_MEMORY_SPACE, SHARED_HOST_PINNED_MEMORY_SPACE
-export memory_space, execution_space, enabled, kokkos_name
-export accessible, array_layout, main_space_type, impl_space_type
-export fence, concurrency, allocate, deallocate
-
 
 """
     Space
@@ -26,13 +11,13 @@ Main subtypes:
 All Kokkos spaces have a main abstract type (`Serial`, `Cuda`, `HostSpace`, `HIPSpace`...) which are
 defined even if it has not been compiled on the C++ side. Those main abstract types should be the
 ones used when specifying a space. This allows methods like `enabled` to work independently from the
-compiled internal library.
+wrapper library.
 
-When a space is compiled, a sub-type of its main type is defined by `CxxWrap`, leading to the
+When a space is enabled, a sub-type of its main type is defined by `CxxWrap`, leading to the
 following type structure:
 `SerialImplAllocated <: SerialImpl <: Serial <: ExecutionSpace <: Space`.
-Below the main space type (here, `Serial`), the sub-types are only defined if they are compiled, and
-therefore they should not be relied upon. 
+Below the main space type (here, `Serial`), the sub-types are only defined if they are enabled, and
+therefore they should not be relied upon.
 
 Navigating the type tree can be made easier through [`main_space_type`](@ref).
 """
@@ -115,7 +100,7 @@ Return the execution space associated by default to the given memory space.
 """
 execution_space(::S) where {S <: Space} = execution_space(main_space_type(S))
 execution_space(::Type{S}) where {S <: ExecutionSpace} = error("space $S must be a memory space")
-execution_space(::Type{S}) where {S <: MemorySpace} = error("space $S is not compiled")
+execution_space(::Type{S}) where {S <: MemorySpace} = error("space $S is not enabled")
 
 
 # Defined in 'spaces.cpp', in 'post_register_space'
@@ -126,14 +111,14 @@ Return the memory space associated by default to the given execution space.
 """
 memory_space(::S) where {S <: Space} = memory_space(main_space_type(S))
 memory_space(::Type{S}) where {S <: MemorySpace} = error("space $S must be an execution space")
-memory_space(::Type{S}) where {S <: ExecutionSpace} = error("space $S is not compiled")
+memory_space(::Type{S}) where {S <: ExecutionSpace} = error("space $S is not enabled")
 
 
 # Defined in 'spaces.cpp', in 'register_space'
 """
     enabled(space::Union{Space, Type{<:Space}})
 
-Return true if the given execution or memory space is compiled.
+Return true if the given execution or memory space is enabled.
 """
 enabled(::S) where {S <: Space} = enabled(main_space_type(S))
 enabled(::Type{<:Space}) = false
@@ -147,7 +132,7 @@ Return the name of the execution or memory space as defined by Kokkos.
 
 Equivalent to `Kokkos::space::name()`
 """
-kokkos_name(::Type{<:Space}) = error("space $S is not compiled")
+kokkos_name(::Type{<:Space}) = error("space $S is not enabled")
 
 
 # Defined in 'spaces.cpp', in 'post_register_all'
@@ -189,7 +174,7 @@ array_layout(::S) where {S <: Space} = array_layout(S)
 function array_layout(S::Type{<:ExecutionSpace})
     main_S_type = main_space_type(S)
     main_S_type !== S && return array_layout(main_S_type)
-    error("execution space $S is not compiled")
+    error("execution space $S is not enabled")
 end
 
 
@@ -218,9 +203,9 @@ main_space_type(::S) where {S <: Space} = main_space_type(S)
 
 Opposite of [`main_space_type`](@ref): from the main space type (`Serial`, `OpenMP`, `HostSpace`...)
 return the implementation type (`SerialImpl`, `OpenMPImpl`, `HostSpaceImpl`...).
-The given space must be compiled.
+The given space must be enabled.
 """
-impl_space_type(::Type{S}) where {S <: Space} = error("space $S is not compiled")
+impl_space_type(::Type{S}) where {S <: Space} = error("space $S is not enabled")
 
 
 # Space constructors
@@ -277,13 +262,13 @@ function deallocate end
 
 # Defined in 'spaces.cpp', in 'register_all'
 """
-    COMPILED_EXEC_SPACES::Tuple{Vararg{Type{<:ExecutionSpace}}}
+    ENABLED_EXEC_SPACES::Tuple{Vararg{Type{<:ExecutionSpace}}}
 
-List of all compiled Kokkos execution spaces.
+List of all enabled Kokkos execution spaces.
 
 `nothing` if Kokkos is not yet loaded.
 """
-COMPILED_EXEC_SPACES = nothing
+ENABLED_EXEC_SPACES = nothing
 
 
 # Defined in 'spaces.cpp', in 'define_execution_spaces_functions'
@@ -314,13 +299,13 @@ DEFAULT_HOST_SPACE = nothing
 
 # Defined in 'spaces.cpp', in 'register_all'
 """
-    COMPILED_MEM_SPACES::Tuple{Vararg{Type{<:MemorySpace}}}
+    ENABLED_MEM_SPACES::Tuple{Vararg{Type{<:MemorySpace}}}
 
-List of all compiled Kokkos execution spaces.
+List of all enabled Kokkos memory spaces.
 
 `nothing` if Kokkos is not yet loaded.
 """
-COMPILED_MEM_SPACES = nothing
+ENABLED_MEM_SPACES = nothing
 
 
 # Defined in 'spaces.cpp', in 'define_memory_spaces_functions'
@@ -375,9 +360,22 @@ Equivalent to `Kokkos::SharedHostPinnedSpace` if `Kokkos::has_shared_host_pinned
 SHARED_HOST_PINNED_MEMORY_SPACE = nothing
 
 
+"""
+    Idx::Type{<:Integer}
+
+Integer type used by views for indexing on the default execution space. Usually either `Cint` or
+`Clonglong`: a 32bit or 64bit signed integer.
+
+Equivalent to `Kokkos::RangePolicy<>::index_type`.
+
+`nothing` if Kokkos is not yet loaded.
+"""
+Idx = nothing
+
+
 module BackendFunctions
 
-# OpenMP
+### OpenMP
 
 """
     omp_set_num_threads(threads::Cint)::Cvoid
@@ -432,19 +430,68 @@ and returns the result.
 """
 function omp_capture_affinity end
 
+
+### Cuda/HIP
+
+"""
+    wrap_stream(cuda_stream::Ptr{Cvoid})::Kokkos.Cuda
+    wrap_stream(hip_stream::Ptr{Cvoid})::Kokkos.HIP
+
+Return a `Kokkos.Cuda` or `Kokkos.HIP` execution space operating on the given stream
+(a pointer to a `cudaStream_t` or `hipStream_t` respectively).
+Kokkos does not take ownership of the stream.
+
+Equivalent to `Kokkos::Cuda(cuda_stream)` or `Kokkos::HIP(hip_stream)`.
+"""
+function wrap_stream end
+
+import ..Kokkos: device_id
+"""
+    device_id([space::Kokkos.Cuda])
+    device_id([space::Kokkos.HIP])
+
+Return the ID of the device associated with the given `space`.
+If `space` is not given, the ID of the default device used by Kokkos is returned.
+
+The ID is a 0-index in the list of available devices (as used by `cudaGetDeviceProperties` or
+`hipGetDeviceProperties` for example).
+
+Equivalent to `Kokkos::Cuda().cuda_device()` or `Kokkos::HIP().hip_device()`.
+"""
+device_id
+
+"""
+    stream_ptr(space::Kokkos.Cuda)
+    stream_ptr(space::Kokkos.HIP)
+
+Return the `cudaStream_t` or `hipStream_t` of the `space` as a `Ptr{Cvoid}`.
+
+Equivalent to `Kokkos::Cuda().cuda_stream()` or `Kokkos::HIP().hip_stream()`.
+"""
+function stream_ptr end
+
+
+"""
+    memory_info()
+
+Return `(free_memory, total_memory)`, in bytes, for the current active device.
+
+Equivalent to `cuMemGetInfo_v2` or `hipMemGetInfo`.
+"""
+function memory_info end
+
 end
 
 
-function __init_vars()
+function __init_spaces_vars()
     impl = get_impl_module()
-    global COMPILED_EXEC_SPACES = Base.invokelatest(impl.__compiled_exec_spaces)
+    global ENABLED_EXEC_SPACES = Base.invokelatest(impl.__compiled_exec_spaces)
     global DEFAULT_DEVICE_SPACE = Base.invokelatest(impl.__default_device_space)
     global DEFAULT_HOST_SPACE = Base.invokelatest(impl.__default_host_space)
-    global COMPILED_MEM_SPACES = Base.invokelatest(impl.__compiled_mem_spaces)
+    global ENABLED_MEM_SPACES = Base.invokelatest(impl.__compiled_mem_spaces)
     global DEFAULT_DEVICE_MEM_SPACE = Base.invokelatest(impl.__default_memory_space)
     global DEFAULT_HOST_MEM_SPACE = Base.invokelatest(impl.__default_host_memory_space)
     global SHARED_MEMORY_SPACE = Base.invokelatest(impl.__shared_memory_space)
     global SHARED_HOST_PINNED_MEMORY_SPACE = Base.invokelatest(impl.__shared_host_pinned_space)
-end
-
+    global Idx = Base.invokelatest(impl.__idx_type)
 end

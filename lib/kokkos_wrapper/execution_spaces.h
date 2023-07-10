@@ -2,17 +2,22 @@
 #ifndef KOKKOS_WRAPPER_EXECUTION_SPACES_H
 #define KOKKOS_WRAPPER_EXECUTION_SPACES_H
 
+#include "Kokkos_Core.hpp"
+
 #include "spaces.h"
 #include "utils.h"
+#include "kokkos_utils.h"
 
-#include "Kokkos_Core.hpp"
+#ifndef WRAPPER_BUILD
+#include "parameters.h"
+#endif
 
 
 #ifdef KOKKOS_ENABLE_SERIAL
 template<>
 struct SpaceInfo<Kokkos::Serial> {
     using space = Kokkos::Serial;
-    static constexpr const char* julia_name = "Serial";
+    static constexpr std::string_view julia_name = "Serial";
 };
 #endif
 
@@ -21,7 +26,7 @@ struct SpaceInfo<Kokkos::Serial> {
 template<>
 struct SpaceInfo<Kokkos::OpenMP> {
     using space = Kokkos::OpenMP;
-    static constexpr const char* julia_name = "OpenMP";
+    static constexpr std::string_view julia_name = "OpenMP";
 };
 #endif
 
@@ -30,7 +35,7 @@ struct SpaceInfo<Kokkos::OpenMP> {
 template<>
 struct SpaceInfo<Kokkos::OpenACC> {
     using space = Kokkos::OpenACC;
-    static constexpr const char* julia_name = "OpenACC";
+    static constexpr std::string_view julia_name = "OpenACC";
 };
 #endif
 
@@ -39,7 +44,7 @@ struct SpaceInfo<Kokkos::OpenACC> {
 template<>
 struct SpaceInfo<Kokkos::OpenMPTarget> {
     using space = Kokkos::OpenMPTarget;
-    static constexpr const char* julia_name = "OpenMPTarget";
+    static constexpr std::string_view julia_name = "OpenMPTarget";
 };
 #endif
 
@@ -48,7 +53,7 @@ struct SpaceInfo<Kokkos::OpenMPTarget> {
 template<>
 struct SpaceInfo<Kokkos::Threads> {
     using space = Kokkos::Threads;
-    static constexpr const char* julia_name = "Threads";
+    static constexpr std::string_view julia_name = "Threads";
 };
 #endif
 
@@ -57,16 +62,16 @@ struct SpaceInfo<Kokkos::Threads> {
 template<>
 struct SpaceInfo<Kokkos::Cuda> {
     using space = Kokkos::Cuda;
-    static constexpr const char* julia_name = "Cuda";
+    static constexpr std::string_view julia_name = "Cuda";
 };
 #endif
 
 
 #ifdef KOKKOS_ENABLE_HIP
 template<>
-struct SpaceInfo<Kokkos::HIP> {
-    using space = Kokkos::HIP;
-    static constexpr const char* julia_name = "HIP";
+struct SpaceInfo<Kokkos_HIP::HIP> {
+    using space = Kokkos_HIP::HIP;
+    static constexpr std::string_view julia_name = "HIP";
 };
 #endif
 
@@ -75,7 +80,7 @@ struct SpaceInfo<Kokkos::HIP> {
 template<>
 struct SpaceInfo<Kokkos::HPX> {
     using space = Kokkos::HPX;
-    static constexpr const char* julia_name = "HPX";
+    static constexpr std::string_view julia_name = "HPX";
 };
 #endif
 
@@ -84,7 +89,7 @@ struct SpaceInfo<Kokkos::HPX> {
 template<>
 struct SpaceInfo<Kokkos::Experimental::SYCL> {
     using space = Kokkos::Experimental::SYCL;
-    static constexpr const char* julia_name = "SYCL";
+    static constexpr std::string_view julia_name = "SYCL";
 };
 #endif
 
@@ -123,11 +128,7 @@ using ExecutionSpaceList = BuildExecutionSpacesList<
 #endif // KOKKOS_ENABLE_CUDA
 
 #ifdef KOKKOS_ENABLE_HIP
-#if KOKKOS_VERSION_GREATER_EQUAL(4, 0, 0)
-        , Kokkos::HIP
-#else
-        , Kokkos::Experimental::HIP
-#endif
+        , Kokkos_HIP::HIP
 #endif // KOKKOS_ENABLE_HIP
 
 #ifdef KOKKOS_ENABLE_HPX
@@ -138,5 +139,18 @@ using ExecutionSpaceList = BuildExecutionSpacesList<
         , Kokkos::Experimental::SYCL
 #endif // KOKKOS_ENABLE_SYCL
 >;
+
+
+#ifndef EXEC_SPACE_FILTER
+#define EXEC_SPACE_FILTER
+#endif
+
+
+constexpr const std::array exec_space_filters = as_array<const char*>(EXEC_SPACE_FILTER);
+using FilteredExecutionSpaceList = decltype(filter_spaces<exec_space_filters.size(), exec_space_filters>(ExecutionSpaceList{}));
+
+
+using Idx = typename Kokkos::RangePolicy<>::index_type;
+
 
 #endif //KOKKOS_WRAPPER_EXECUTION_SPACES_H

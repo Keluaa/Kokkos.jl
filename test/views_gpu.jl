@@ -7,23 +7,22 @@ else
     (Kokkos.HIPSpace, Kokkos.HIPManagedSpace)
 end
 
-TEST_DEFAULT_VIEW_TYPE = if TEST_CUDA
-    Kokkos.KokkosWrapper.Impl.View1D_L_CudaAllocated
-else
-    Kokkos.KokkosWrapper.Impl.View1D_L_HIPAllocated
-end
-
-
+TEST_DEFAULT_VIEW_TYPE = Symbol("View1D_L_", nameof(TEST_BACKEND_DEVICE), "Allocated")
 TEST_DEFAULT_DEVICE_LAYOUT = array_layout(TEST_BACKEND_DEVICE)
+
+
+# Number of tests for deep_copy can reach 1728 in total with Cuda or HIP, therefore we must greatly
+# reduce the amount of combinations to keep it under 100.
+TEST_COPY_EXEC_SPACES = (TEST_BACKEND_DEVICE, TEST_BACKEND_HOST)
+TEST_COPY_MEM_SPACES = (first(TEST_VIEW_MEM_SPACES), TEST_MEM_SPACE_HOST)
+TEST_COPY_DIMS = (first(filter(≥(2), TEST_VIEW_DIMS)),)
+TEST_COPY_TYPES = (first(TEST_VIEW_TYPES),)
+TEST_COPY_LAYOUTS = (TEST_DEFAULT_DEVICE_LAYOUT, Kokkos.LayoutStride)
 
 
 import Kokkos: Idx, View
 
 @test Idx <: Union{UInt64, Int64, UInt32, Int32}
-
-@test Kokkos.COMPILED_DIMS == (1, 2)
-@test Kokkos.COMPILED_TYPES == (Float64, Int64)
-@test Kokkos.COMPILED_LAYOUTS == (Kokkos.LayoutLeft, Kokkos.LayoutRight, Kokkos.LayoutStride)
 
 @test View <: AbstractArray
 @test View{Float64} <: AbstractArray{Float64}
@@ -40,7 +39,7 @@ v1 = View{Float64}(n1)
 @test v1 isa View{Float64, 1, <:Kokkos.Layout}
 @test v1 isa View{Float64, 1, TEST_DEFAULT_DEVICE_LAYOUT}
 @test v1 isa View{Float64, 1, TEST_DEFAULT_DEVICE_LAYOUT, <:TEST_MAIN_MEM_SPACE_DEVICE}
-@test v1 isa TEST_DEFAULT_VIEW_TYPE{Float64}
+@test nameof(typeof(v1)) === TEST_DEFAULT_VIEW_TYPE
 @test v1 isa AbstractArray
 @test v1 isa AbstractArray{Float64}
 @test v1 isa AbstractArray{Float64, 1}
@@ -139,13 +138,13 @@ flat_v4 = @view v4[:]
         @test strides(v6) == strides(v6_s)
     end
 
-    @test_throws @error_match(r"`mem_space` to be a Kokkos.Spaces.CudaSpace") begin
+    @test_throws r"`mem_space` to be a Kokkos.CudaSpace" begin
         View{Float64, 1, Kokkos.LayoutLeft, Kokkos.CudaSpace}(undef, n1; mem_space=Kokkos.HostSpace)
     end
-    @test_throws @error_match(r"`mem_space` kwarg") begin
+    @test_throws r"`mem_space` kwarg" begin
         View{Float64, 1, Kokkos.LayoutLeft, Kokkos.CudaSpace}(undef, n1; mem_space=Kokkos.HostSpace())
     end
-    @test_throws @error_match(r"Kokkos.Views.LayoutLeft type") begin
+    @test_throws r"Kokkos.LayoutLeft type" begin
         View{Float64, 1, Kokkos.LayoutLeft}(undef, n1; layout=Kokkos.LayoutRight)
     end
 
@@ -154,10 +153,8 @@ flat_v4 = @view v4[:]
     @test size(View{Float64, 2, TEST_DEFAULT_DEVICE_LAYOUT}()) == (0, 0)
     @test size(View{Float64, 2, TEST_DEFAULT_DEVICE_LAYOUT, TEST_MAIN_MEM_SPACE_DEVICE}()) == (0, 0)
 
-    @test_throws @error_match("`Int32` is not compiled") View{Int32}(undef, n1)
-    @test_throws @error_match("`Kokkos.View3D` cannot") View{Int64}(undef, (2, 2, 2))
-    @test_throws @error_match("requires a instance") View{Float64}(undef, n1; layout=Kokkos.LayoutStride)
-    @test_throws @error_match("$(nameof(TEST_UNAVAILABLE_MEM_SPACE)) is not compiled") begin
+    @test_throws r"requires a instance" View{Float64}(undef, n1; layout=Kokkos.LayoutStride)
+    @test_throws "$(nameof(TEST_UNAVAILABLE_MEM_SPACE)) is not enabled" begin
         View{Int64}(undef, n1; mem_space=TEST_UNAVAILABLE_MEM_SPACE)
     end
 end
@@ -177,37 +174,61 @@ v10 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_
 @test Kokkos.memory_span(v10) == prod(size(v10)) * sizeof(Float64) * 2 
 
 
+@testset "Printing" begin
+    buf = IOBuffer()
+    show(buf, MIME"text/plain"(), v3)  # print as `display` would
+    text = String(take!(buf))
+    @test occursin(string(Kokkos.main_view_type(v3)), text)
+    @test occursin("inaccessible view", text)
+
+    @test display(v3) === nothing
+    @test print(v3) === nothing
+end
+
+
 @testset "Deep copy" begin
-    @testset "$exec_space_type in $(dim)D with $type" for 
-            exec_space_type in (:no_exec_space, Kokkos.COMPILED_EXEC_SPACES...),
-            dim in Kokkos.COMPILED_DIMS,
-            type in Kokkos.COMPILED_TYPES
+    tests_count = *(
+        length(TEST_COPY_EXEC_SPACES) + 1,
+        length(TEST_COPY_DIMS),
+        length(TEST_COPY_TYPES),
+        length(TEST_COPY_MEM_SPACES),
+        length(TEST_COPY_MEM_SPACES),
+        length(TEST_COPY_LAYOUTS),
+        length(TEST_COPY_LAYOUTS)
+    )
+    tests_count > 100 && error("Too many `Kokkos.deep_copy` tests to do: $tests_count")
+
+    # Possible deep_copy errors:
+    #  - 'Error: Kokkos::deep_copy with no available copy mechanism'
+    #      Happens if src_space cannot access dst_space and vice-versa
+    #
+    #  - 'deep_copy given views that would require a temporary allocation'
+    #      Happens for non-contiguous views or with an incompatible shape, when 'exec_space' is
+    #      specified, cannot access src_space and dst_space, and if src_space cannot access
+    #      dst_space and vice-versa
+    DEEP_COPY_ERRORS_REGEX = r"(require a temporary allocation)|(no available copy mechanism)"
+
+    @testset "$exec_space_type in $(dim)D with $type" for
+            exec_space_type in (:no_exec_space, TEST_COPY_EXEC_SPACES...),
+            dim in TEST_COPY_DIMS,
+            type in TEST_COPY_TYPES
 
         exec_space = exec_space_type === :no_exec_space ? nothing : exec_space_type()
         n = ntuple(Returns(7), dim)
 
         @testset "View{$type, $dim, $src_layout, $src_space} => View{$type, $dim, $dst_layout, $dst_space}" for
-                src_space in Kokkos.COMPILED_MEM_SPACES, dst_space in Kokkos.COMPILED_MEM_SPACES,
-                src_layout in Kokkos.COMPILED_LAYOUTS, dst_layout in Kokkos.COMPILED_LAYOUTS
+                src_space in TEST_COPY_MEM_SPACES, dst_space in TEST_COPY_MEM_SPACES,
+                src_layout in TEST_COPY_LAYOUTS,
+                dst_layout in TEST_COPY_LAYOUTS
 
-            src_view_t = Kokkos.Views.impl_view_type(View{type, dim, src_layout, src_space})
-            dst_view_t = Kokkos.Views.impl_view_type(View{type, dim, dst_layout, dst_space})
-            if !((src_layout == dst_layout) || exec_space === :no_exec_space ||
-                    (accessible(exec_space_type, src_space) && accessible(exec_space, dst_space)))
-                # As per the Kokkos::deep_copy docs, there should not be a valid deep_copy method
-                # See https://kokkos.github.io/kokkos-core-wiki/API/core/view/deep_copy.html#requirements
-                if exec_space === :no_exec_space
-                    @test isempty(methods(Kokkos.deep_copy, (src_view_t, dst_view_t)))
-                else
-                    @test isempty(methods(Kokkos.deep_copy, (exec_space_type, src_view_t, dst_view_t)))
-                end
-                continue
-            else
-                if exec_space === :no_exec_space
-                    @test !isempty(methods(Kokkos.deep_copy, (src_view_t, dst_view_t)))
-                else
-                    @test !isempty(methods(Kokkos.deep_copy, (exec_space_type, src_view_t, dst_view_t)))
-                end
+            # As per the Kokkos::deep_copy docs, not all view combinations can use deep_copy
+            # See https://kokkos.github.io/kokkos-core-wiki/API/core/view/deep_copy.html#requirements
+            can_deep_copy = src_layout == dst_layout || src_space == dst_space
+            can_deep_copy |= exec_space === :no_exec_space
+            if exec_space_type !== :no_exec_space
+                can_deep_copy |= accessible(exec_space, src_space) && accessible(exec_space, dst_space)
+                can_deep_copy |= accessible(src_space, dst_space)
+                can_deep_copy |= accessible(dst_space, src_space)
             end
 
             if src_layout == Kokkos.LayoutStride
@@ -222,9 +243,17 @@ v10 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_
             v_dst = View{type}(n; mem_space=dst_space, layout=dst_layout)
 
             if isnothing(exec_space)
-                Kokkos.deep_copy(v_dst, v_src)
+                if can_deep_copy
+                    @test Kokkos.deep_copy(v_dst, v_src) === nothing
+                else
+                    @test_throws DEEP_COPY_ERRORS_REGEX Kokkos.deep_copy(v_dst, v_src)
+                end
             else
-                Kokkos.deep_copy(exec_space, v_dst, v_src)
+                if can_deep_copy
+                    @test Kokkos.deep_copy(exec_space, v_dst, v_src) === nothing
+                else
+                    @test_throws DEEP_COPY_ERRORS_REGEX Kokkos.deep_copy(exec_space, v_dst, v_src)
+                end
                 Kokkos.fence(exec_space)
             end
         end
@@ -233,17 +262,26 @@ end
 
 
 @testset "create_mirror" begin
-    @testset "$dst_space_type in $(dim)D" for 
-            dst_space_type in (:default_mem_space, Kokkos.COMPILED_MEM_SPACES...),
-            dim in Kokkos.COMPILED_DIMS
+    tests_count = *(
+        length(TEST_COPY_MEM_SPACES) + 1,
+        length(TEST_COPY_DIMS),
+        length(TEST_COPY_TYPES),
+        length(TEST_COPY_MEM_SPACES),
+        length(TEST_COPY_LAYOUTS)
+    )
+    tests_count > 100 && error("Too many `Kokkos.create_mirror[_view]` tests to do: $tests_count")
+
+    @testset "$dst_space_type in $(dim)D" for
+            dst_space_type in (:default_mem_space, TEST_COPY_MEM_SPACES...),
+            dim in TEST_COPY_DIMS
 
         dst_mem_space = dst_space_type === :default_mem_space ? nothing : dst_space_type()
         n = ntuple(Returns(7), dim)
 
         @testset "View{$src_type, $dim, $src_layout, $src_space}" for
-                src_type in Kokkos.COMPILED_TYPES,
-                src_space in Kokkos.COMPILED_MEM_SPACES,
-                src_layout in Kokkos.COMPILED_LAYOUTS
+                src_type in TEST_COPY_TYPES,
+                src_space in TEST_COPY_MEM_SPACES,
+                src_layout in TEST_COPY_LAYOUTS
 
             if src_layout == Kokkos.LayoutStride
                 src_layout = Kokkos.LayoutStride(Base.size_to_strides(1, n...))
@@ -269,8 +307,8 @@ end
     @test typeof(sv1) === typeof(v)
 
     sv2 = Kokkos.subview(v, (:, 1))
-    @test typeof(sv2) === Kokkos.impl_view_type(View{Float64, 1, array_layout(v), Kokkos.CudaSpace})
-    @test Kokkos.main_view_type(sv2) === View{Float64, 1, array_layout(v), Kokkos.CudaSpace}
+    @test typeof(sv2) === Kokkos.impl_view_type(View{Float64, 1, array_layout(v), TEST_MAIN_MEM_SPACE_DEVICE})
+    @test Kokkos.main_view_type(sv2) === View{Float64, 1, array_layout(v), TEST_MAIN_MEM_SPACE_DEVICE}
 
     sv3 = Kokkos.subview(v, (1,))
     @test typeof(sv3) === Kokkos.impl_view_type(View{Float64, 1, Kokkos.LayoutStride, memory_space(v)})

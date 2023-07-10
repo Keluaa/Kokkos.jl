@@ -10,10 +10,7 @@ Therefore views on a GPU device (stored in a `CudaSpace`, `HIPSpace`, etc...) ca
 
 ```julia-repl
 julia> v = Kokkos.View{Float64}(10; mem_space=Kokkos.CudaSpace)
-10-element Kokkos.KokkosWrapper.Impl.View1D_L_CudaAllocated{Float64}:
-Error showing value of type Kokkos.KokkosWrapper.Impl.View1D_L_CudaAllocated{Float64}:
-ERROR: the view is inaccessible from the default host execution space
-...
+10-element Kokkos.Views.View{Float64, 1, Kokkos.LayoutLeft, Kokkos.CudaSpace}: <inaccessible view>
 ```
 
 This can be viewed as a stricter version of `allowscalar(false)` in CUDA.jl or AMDGPU.jl.
@@ -25,7 +22,7 @@ julia> host_v = Kokkos.create_mirror_view(v; mem_space=Kokkos.HostSpace());
 julia> copyto!(host_v, v)  # Calls `Kokkos.deep_copy`
 
 julia> host_v
-10-element Kokkos.KokkosWrapper.Impl.View1D_L_HostAllocated{Float64}:
+10-element Kokkos.Views.View{Float64, 1, Kokkos.LayoutLeft, Kokkos.HostSpace}:
  0.0
  0.0
  0.0

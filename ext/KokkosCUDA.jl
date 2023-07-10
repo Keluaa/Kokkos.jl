@@ -1,4 +1,4 @@
-module CUDAExt
+module KokkosCUDA
 
 using Kokkos
 import Kokkos: View, view_wrap

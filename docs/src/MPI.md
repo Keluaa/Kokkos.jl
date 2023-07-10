@@ -65,6 +65,10 @@ MPI.Barrier(MPI.COMM_WORLD)
 rank != 0 && Kokkos.load_wrapper_lib(; no_compilation=true, no_git=true)
 ```
 
+### Dynamic Compilation and MPI
+
+See [`DynamicCompilation.compilation_lock`](@ref)
+
 
 ## Passing views to MPI
 

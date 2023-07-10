@@ -31,7 +31,7 @@ constexpr std::string_view get_type_name()
     constexpr auto suffix = ">(void)";
     constexpr auto function = std::string_view{__FUNCSIG__};
 #else
-#error "Unsupported compiler"
+#error "Unsupported compiler. Please report it to https://github.com/Keluaa/Kokkos.jl alongside your compiler info."
 #endif
 
     const auto start = function.find(prefix) + prefix.size();
@@ -58,7 +58,9 @@ std::ostream& type_to_string(std::ostream& os, const std::string& indent, const 
         i++;
         if (i < sizeof...(T)) os << ", ";
     }(), ...);
-    os << "\n" << indent << ">";
+    if (sizeof...(T) > 0)
+        os << "\n" << indent;
+    os << ">";
     return os;
 }
 

@@ -1,6 +1,6 @@
 @testset "Cuda" begin
 
-import Kokkos: Idx, View
+import Kokkos: View
 
 @testset "CuArray to View" begin
     A = CuArray{Int64}(undef, 5, 5)
@@ -29,7 +29,7 @@ import Kokkos: Idx, View
     sub_A_vh = Kokkos.create_mirror_view(sub_A_v)
     # sub_A_v and sub_A_vh are not contiguous and therefore cannot be copied directly across devices
     @test !Kokkos.span_is_contiguous(sub_A_v) && !Kokkos.span_is_contiguous(sub_A_vh)
-    @test_throws @error_match(r"Kokkos::deep_copy with no available copy mechanism") copyto!(sub_A_vh, sub_A_v)
+    @test_throws r"Kokkos::deep_copy with no available copy mechanism" copyto!(sub_A_vh, sub_A_v)
 
     sub_A_v_contiguous = Kokkos.View{Int64}(undef, size(sub_A_v); mem_space=Kokkos.CudaSpace, layout=Kokkos.LayoutLeft)
     copyto!(sub_A_v_contiguous, sub_A_v)
@@ -48,7 +48,7 @@ end
     Vh[:] .= collect(1:25)
     copyto!(V, Vh)
 
-    @test_throws @error_match(r"only possible from the `Kokkos.CudaSpace`") unsafe_wrap(CuArray, Vh)
+    @test_throws r"only possible from the `Kokkos.CudaSpace`" unsafe_wrap(CuArray, Vh)
 
     cu_V = unsafe_wrap(CuArray, V)
     @test size(cu_V) == size(V)
@@ -57,7 +57,7 @@ end
 
     sub_V = Kokkos.subview(V, (1:3, 1:3))
     @test !Kokkos.span_is_contiguous(sub_V)
-    @test_throws @error_match(r"non-contiguous views cannot") unsafe_wrap(CuArray, sub_V)
+    @test_throws r"non-contiguous \(or strided\) views cannot" unsafe_wrap(CuArray, sub_V)
 
     sub_V2 = Kokkos.subview(V, (:, 1:3))
     @test Kokkos.span_is_contiguous(sub_V2)
@@ -65,6 +65,31 @@ end
     @test size(cu_sub_V2) == size(sub_V2)
     @test strides(cu_sub_V2) == strides(sub_V2)
     CUDA.@allowscalar @test (@view Vh[:, 1:3]) == cu_sub_V2
+end
+
+
+@testset "Backend Functions" begin
+    BF = Kokkos.BackendFunctions
+    exec = Kokkos.Cuda()
+
+    did = CUDA.deviceid(CUDA.device())
+
+    @test BF.device_id() == did
+    @test BF.device_id(exec) == did
+
+    @test BF.stream_ptr(exec) != C_NULL
+
+    stream = BF.stream_ptr(exec)
+    wrapped_exec = BF.wrap_stream(stream)
+    @test typeof(wrapped_exec) === typeof(exec)
+    @test BF.device_id(wrapped_exec) == did
+
+    # Getting a CUDA.CuContext from a stream pointer
+    cu_stream = CUDA.CUstream(stream)
+    pctx = Ref{CUDA.CUcontext}()
+    CUDA.cuStreamGetCtx(cu_stream, pctx)
+    ctx = CUDA._CuContext(pctx[])
+    @test CUDA.deviceid(CUDA.device(ctx)) == did
 end
 
 end
