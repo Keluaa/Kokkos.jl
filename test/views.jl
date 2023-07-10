@@ -275,8 +275,9 @@ view_t = Kokkos.View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}
     @test occursin(string(Kokkos.main_view_type(v3)), text)
     @test !occursin("inaccessible view", text)
 
-    @test display(v3) === nothing
-    @test print(v3) === nothing
+    buf = IOBuffer()
+    @test show(buf, MIME"text/plain"(), v3) === nothing
+    @test print(buf, v3) === nothing
 end
 
 
