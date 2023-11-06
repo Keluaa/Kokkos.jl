@@ -63,11 +63,23 @@ project. `Kokkos.jl` can do that for you.
 The advantage of this approach is that your project and `Kokkos.jl` will share the same Kokkos
 installation, reducing the compilation time.
 
-If your project uses Kokkos in-tree, you have several options: 
+If your project uses Kokkos in-tree, you have several options:
 
 - keep the call to `add_subdirectory` the same, and configure [kokkos_path](@ref) to use the same
   path
-- change it to `add_subdirectory(${Kokkos_ROOT} lib/kokkos)` (the second argument is arbitrary)
+- use `find_package` if `Kokkos_ROOT` is defined:
+```cmake
+if (NOT DEFINED Kokkos_ROOT)
+    add_subdirectory(your/kokkos/path lib/kokkos)  # Use Kokkos in-tree
+else()
+    find_package(Kokkos REQUIRED)  # Use the provided Kokkos installation
+endif()
+```
+
+Be aware that using another Kokkos installation from the one used by `Kokkos.jl` might lead to
+obscure runtime/link time errors.
+A good first indicator of this issue would be the CMake warning that `Kokkos_ROOT` was not used by
+the project.
 
 !!! warning
 

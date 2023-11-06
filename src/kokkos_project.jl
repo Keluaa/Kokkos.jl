@@ -130,7 +130,7 @@ end
 
 
 function Base.print(io::IO, project::KokkosProject)
-    print(io, "KokkosProject{src: '$(source_dir(project))', build: '$(build_dir(project))'}")
+    print(io, "KokkosProject(src: '$(source_dir(project))', build: '$(build_dir(project))')")
 end
 
 

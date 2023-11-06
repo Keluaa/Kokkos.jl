@@ -7,13 +7,18 @@ using Documenter
 # For the extensions documentation
 using CUDA
 using AMDGPU
+using MPI
+
+KokkosAMDGPU = Base.get_extension(Kokkos, :KokkosAMDGPU)
+KokkosCUDA = Base.get_extension(Kokkos, :KokkosCUDA)
+KokkosMPI = Base.get_extension(Kokkos, :KokkosMPI)
 
 ci = get(ENV, "CI", "") == "true"
 
 DocMeta.setdocmeta!(Kokkos, :DocTestSetup, :(using Kokkos); recursive=true)
 
 makedocs(;
-    modules=[Kokkos],
+    modules=[Kokkos, KokkosAMDGPU, KokkosCUDA, KokkosMPI],
     authors="Keluaa <34173752+Keluaa@users.noreply.github.com> and contributors",
     repo="https://github.com/Keluaa/Kokkos.jl/blob/{commit}{path}#{line}",
     sitename="Kokkos.jl",

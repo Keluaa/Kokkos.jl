@@ -1,6 +1,4 @@
 
-push!(LOAD_PATH, joinpath(@__DIR__, ".."))  # For LocalPreferences.toml
-
 using Test
 using Logging
 using Preferences
