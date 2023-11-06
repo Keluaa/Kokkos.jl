@@ -30,6 +30,11 @@ function Base.unsafe_wrap(
             `Kokkos.HIPSpace` or `Kokkos.HIPManagedSpace` memory spaces")
     end
 
+    if !Kokkos.span_is_contiguous(v)
+        error("non-contiguous (or strided) views cannot be converted into a `ROCArray` \
+               (size: $(size(v)), strides: $(strides(v)))")
+    end
+
     device_ptr = Ptr{Cvoid}(pointer(v))
 
     ptr_info = AMDGPU.Mem.pointerinfo(device_ptr)
@@ -38,14 +43,12 @@ function Base.unsafe_wrap(
         error("could not retrieve the device of the given pointer: $device_ptr")
     end
 
-    # TODO: fix memory management: here the returned array OWNS the buffer, which means that it may
-    # be deallocated before the view, and/or deallocated twice.
-    roc_array = unsafe_wrap(ROCArray, pointer(v), size(v); lock=false)
+    # Manually create a ROCArray using a HIP buffer not managed by AMDGPU
+    byte_size = prod(size(v)) * sizeof(T)
+    buf = AMDGPU.Mem.HIPBuffer(device, device_ptr, byte_size, false)
+    roc_array = ROCArray{T, D}(AMDGPU.DataRef(nothing, buf), dims)  # `nothing` as finalizer: GPUArrays will not attempt to free the array
 
-    if !Kokkos.span_is_contiguous(v)
-        error("non-contiguous (or strided) views cannot be converted into a `ROCArray` \
-               (size: $(size(v)), strides: $(strides(v)))")
-    elseif L === Kokkos.LayoutRight
+    if L === Kokkos.LayoutRight
         return roc_array'
     else
         # Either LayoutLeft or contiguous layout (any dimension) => can be represented as a ROCArray
@@ -55,11 +58,11 @@ end
 
 
 function view_wrap(::Type{View{T, D, L, S}}, a::ROCArray{T, D}; kwargs...) where {T, D, L, S}
-    hsa_device = AMDGPU.device(a)
-    id = AMDGPU.device_id(hsa_device) - 1
+    hip_device = AMDGPU.device(a)
+    id = AMDGPU.device_id(hip_device)
     kokkos_device_id = Kokkos.BackendFunctions.device_id()
     if id != kokkos_device_id
-        error("cannot wrap view stored in device n°$(id+1) ($hsa_device), since Kokkos is \
+        error("cannot wrap a view stored in device n°$(id+1) ($hsa_device), since Kokkos is \
                configured to work with the device n°$(kokkos_device_id+1)")
     end
     return view_wrap(View{T, D, L, S}, size(a), pointer(a); kwargs...)
