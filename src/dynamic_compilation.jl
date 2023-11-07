@@ -84,6 +84,10 @@ Lock files have the advantage that no collective MPI operations are needed, howe
 if all MPI ranks share the same filesystem, and if this is not the case then there is no need for
 lock files.
 This can be overloaded with the `JULIA_KOKKOS_USE_COMPILATION_LOCK_FILE` environment variable.
+
+Note that it is not the current process' ID that is used in the PID lock file, since PID are not
+guaranteed to be unique in a MPI application. Instead a random 32-bit number is used, constant for
+this process.
 """
 function compilation_lock(func)
     lock(INTRA_PROCESS_LOCK) do
