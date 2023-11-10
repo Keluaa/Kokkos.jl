@@ -165,6 +165,37 @@ void import_all_env_methods(jl_module_t* impl_module, jl_module_t* kokkos_module
 }
 
 
+void register_view_finalizer(jl_module_t* kokkos_module)
+{
+    auto views_module = (jl_module_t*) jl_get_global(kokkos_module, jl_symbol("Views"));
+    jl_value_t* finalize_all_views = jl_get_global(views_module, jl_symbol("_finalize_all_views"));
+    if (finalize_all_views == nullptr) {
+        jl_error("could not get `Kokkos.Views._finalize_all_views`");
+    }
+
+    Kokkos::push_finalize_hook([=](){
+        bool was_adopted = false;
+        if (jl_get_pgcstack() == nullptr) {
+            // Some Kokkos app called `Kokkos::finalize` from another thread.
+            jl_adopt_thread();
+            was_adopted = true;
+        }
+
+        jl_call0(finalize_all_views);
+        if (jl_exception_occurred()) {
+            fprintf(stderr, "Error in Kokkos::finalize hook for `Kokkos.jl`, in `Kokkos.Views._finalize_all_views`: %s.\n"
+                            "All views might not be freed correctly.",
+                    jl_typeof_str(jl_current_exception()));
+        }
+
+        if (was_adopted) {
+            // Mark the thread as GC safe until the end of time
+            jl_gc_safe_enter(jl_current_task->ptls);
+        }
+    });
+}
+
+
 JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
 {
     jl_module_t* wrapper_module = mod.julia_module()->parent;
@@ -193,6 +224,8 @@ JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
     mod.unset_override_module();
 
     mod.method("__kokkos_version", &kokkos_version);
+
+    register_view_finalizer(kokkos_module);
 
     define_all_layouts(mod);
     define_all_spaces(mod);

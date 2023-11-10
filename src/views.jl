@@ -137,6 +137,21 @@ function get_tracker(@nospecialize(v::View))
 end
 
 
+const TRACKED_VIEWS = WeakKeyDict{View, Bool}()
+
+
+function _finalize_all_views()
+    # Called by `Kokkos::finalize` through a finalize hook. All views allocated by Kokkos.jl will be
+    # invalid afterwards. Manual calls shouldn't cause any problem.
+    lock(TRACKED_VIEWS) do
+        for (view, _) in TRACKED_VIEWS
+            # Only views which are still alive are iterated over
+            finalize(view)
+        end
+    end
+end
+
+
 """
     impl_view_type(::Type{View{T, D, L, S}})
 
@@ -657,7 +672,8 @@ end
         layout = nothing,
         label = "",
         zero_fill = true,
-        dim_pad = false
+        dim_pad = false,
+        track = true
     )
 
 Construct an N-dimensional `View{T}`. `Layout` and `MemSpace` are optional type arguments.
@@ -682,6 +698,10 @@ If `zero_fill=true`, all elements will be set to `0`. Uses `Kokkos::WithoutIniti
 `dim_pad` controls the padding of dimensions. Uses `Kokkos::AllowPadding` internally. If `true`,
 then a view might not have a layout identical to a classic `Array`, for better memory alignment.
 
+If `track == true`, the view will be added to the global dict of views (as a `WeakRef`), which is
+used when [`finalize`](@ref) is called in order to properly free all views. This can have a little
+overhead, hence the possibility to disable it.
+
 See [the Kokkos documentation about `Kokkos::view_alloc()`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/view_alloc.html)
 for more info.
 
@@ -692,7 +712,8 @@ function View{T, D, L, S}(dims::Dims{D};
     layout = nothing,
     label = "",
     zero_fill = true,
-    dim_pad = false
+    dim_pad = false,
+    track = true
 ) where {T, D, L, S}
     if isnothing(mem_space)
         # ok
@@ -719,7 +740,13 @@ function View{T, D, L, S}(dims::Dims{D};
         error("the `View` constructor with a `LayoutStride` requires a instance of the layout")
     end
 
-    return alloc_view(View{T, D, L, S}, dims, mem_space, layout, label, zero_fill, dim_pad)
+    view = alloc_view(View{T, D, L, S}, dims, mem_space, layout, label, zero_fill, dim_pad)
+
+    if track
+        TRACKED_VIEWS[view] = true
+    end
+
+    return view
 end
 
 View{T, D, L, S}(::UndefInitializer, dims::Dims{D}; kwargs...) where {T, D, L, S} =
