@@ -123,6 +123,9 @@ julia> Kokkos.initialize()  # Will also call `Kokkos.load_wrapper_lib()` if need
     Setting the environment variable `JULIA_DEBUG` to `Kokkos` will print all steps and commands
     called to compile and load the wrapper library, as well as for user libraries.
 
+!!! note
+    Upon closing the Julia session, [`Kokkos.finalize`](@ref) will be called if needed.
+
 ## Compiling and loading the library
 
 By default, when loading `Kokkos.jl` the build files will be stored in a scratch directory, this can
