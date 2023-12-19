@@ -6,9 +6,6 @@ set(COMMON_HEADERS
         spaces.h
         layouts.h
         views.h
-        copy.h
-        mirrors.h
-        subviews.h
         utils.h printing_utils.h kokkos_utils.h)
 
 
@@ -27,9 +24,6 @@ function(add_dynamic_compilation_library name source_file)
     endif()
     target_compile_options(${name} PRIVATE
             $<$<CONFIG:Debug>:-Wall -Wextra -Wpedantic>
-    )
-    target_compile_definitions(${name} PRIVATE
-            COMPLETE_BUILD=0
     )
 endfunction()
 

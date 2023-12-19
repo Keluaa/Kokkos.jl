@@ -53,15 +53,10 @@ add_subdirectory(${Kokkos_ROOT} lib/kokkos)
 
 set(WRAPPER_SOURCES
         kokkos_wrapper.cpp kokkos_wrapper.h
-        execution_spaces.h
-        memory_spaces.h
+        execution_spaces.h memory_spaces.h
         spaces.cpp spaces.h
         space_specific_methods.cpp
         layouts.cpp layouts.h
-        views.h
-        copy.h
-        mirrors.h
-        subviews.h
         utils.h printing_utils.h kokkos_utils.h)
 
 

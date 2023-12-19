@@ -1,6 +1,4 @@
 
-#include "copy.h"
-
 #include "views.h"
 #include "memory_spaces.h"
 #include "execution_spaces.h"

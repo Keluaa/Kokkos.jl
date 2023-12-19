@@ -3,7 +3,6 @@
 
 #include "spaces.h"
 #include "layouts.h"
-#include "mirrors.h"
 
 #include <sstream>
 
@@ -226,5 +225,4 @@ JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
 
     define_all_layouts(mod);
     define_all_spaces(mod);
-    define_kokkos_mirrors(mod);
 }
