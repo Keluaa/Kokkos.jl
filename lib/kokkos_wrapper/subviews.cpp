@@ -7,13 +7,6 @@
 #include <variant>
 
 
-#ifndef SUBVIEW_DIMS
-#define SUBVIEW_DIMS VIEW_DIMENSIONS
-#endif
-
-using SubViewDimensions = decltype(tlist_from_sequence(std::integer_sequence<int, SUBVIEW_DIMS>{}));
-
-
 struct Colon_t {};  // Mapped to 'Base.Colon'
 struct AbstractUnitRange_t {};  // Mapped to 'Base.AbstractUnitRange{Int64}'
 struct IndexVarargs {};  // Mapped to 'Tuple{Vararg{Union{Base.Colon, Base.AbstractUnitRange{Int64}, Int64}}}'
@@ -148,22 +141,9 @@ SubView do_subview(const View& view, const std::tuple<Indexes...>& indexes_tuple
 }
 
 
-static bool missing_layout_stride_msg_displayed = false;
-
-
 template<typename View, typename SubView, typename Layout>
 void register_subviews_for_view_and_layout(jlcxx::Module& mod)
 {
-#if COMPLETE_BUILD == 1
-    if constexpr (!is_element_in_list<Kokkos::LayoutStride>(LayoutList{})) {
-        // We need Kokkos::LayoutStride for complete Kokkos::subview support
-        if (!missing_layout_stride_msg_displayed) {
-            std::cerr << "Warning: missing 'LayoutStride' in the list of layouts to compile.\n"
-                    << "  `Kokkos.subview()` will not be able to cover all possible cases.\n";
-            missing_layout_stride_msg_displayed = true;
-        }
-    } else
-#endif  // COMPLETE_BUILD
     if constexpr (!std::is_same_v<typename View::layout, Kokkos::LayoutStride>) {
         // A subview of a View with a LayoutLeft or LayoutRight can have a LayoutStride, which means that the return
         // value is different and therefore requires a separate method.
@@ -210,58 +190,39 @@ void register_subviews_for_view_and_layout(jlcxx::Module& mod)
 
 void register_all_subviews(jlcxx::Module& mod)
 {
-    using DimsList = decltype(tlist_from_sequence(DimensionsToInstantiate{}));
-
     auto view_combinations = build_all_combinations<
-            TList<VIEW_TYPES>,
-            DimsList,
-            LayoutList,
             FilteredMemorySpaceList
     >();
 
     apply_to_all(view_combinations, [&](auto view_t) {
-        using Type = typename decltype(view_t)::template Arg<0>;
-        using Dimension = typename decltype(view_t)::template Arg<1>;
-        using Layout = typename decltype(view_t)::template Arg<2>;
-        using MemSpace = typename decltype(view_t)::template Arg<3>;
+        using MemSpace = typename decltype(view_t)::template Arg<0>;
 
-        using View = ViewWrap<Type, Dimension, Layout, MemSpace>;
+        using View = ViewWrap<VIEW_TYPE, Dimension, Layout, MemSpace>;
+        using SubView = ViewWrap<VIEW_TYPE, SubViewDimension, Layout, MemSpace>;
 
-        // Get the list of dimensions which are less than or equal to 'Dimension'
-        constexpr auto SubDimsList = filter_types([](auto D) {
-            return std::bool_constant<decltype(D)::value <= Dimension::value>{};
-        }, SubViewDimensions{});
-
-        apply_to_each(SubDimsList, [&](auto sub_dim_t) {
-            using SubDimension = typename decltype(sub_dim_t)::template Arg<0>;
-            using SubView = ViewWrap<Type, SubDimension, Layout, MemSpace>;
-
+        if constexpr (SubViewDimension::value > Dimension::value) {
+            jl_errorf("Expected a subview dimension lower than %d, got: %d",
+                      Dimension::value, SubViewDimension::value);
+        }
+        else {
             if (!jlcxx::has_julia_type<SubView>()) {
                 jl_errorf("Missing view type for complete `Kokkos.subview` coverage: %dD of c++ type %s",
-                          SubDimension::value, typeid(SubView).name());
+                          SubViewDimension::value, typeid(SubView).name());
             }
 
             register_subviews_for_view_and_layout<View, SubView, Layout>(mod);
-        });
+        }
     });
 }
 
 
-#ifdef WRAPPER_BUILD
-void define_kokkos_subview(jlcxx::Module& mod)
-{
-    // Called from 'Kokkos.Wrapper.Impl'
-    jl_module_t* wrapper_module = mod.julia_module()->parent;
-    auto* views_module = (jl_module_t*) jl_get_global(wrapper_module->parent, jl_symbol("Views"));
-#else
 JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
 {
     // Called from 'Kokkos.Views.Impl<number>'
     jl_module_t* views_module = mod.julia_module()->parent;
-#endif
-
     jl_module_import(mod.julia_module(), views_module, jl_symbol("subview"));
 
     setup_type_mappings();
     register_all_subviews(mod);
+    mod.method("params_string", get_params_string);
 }

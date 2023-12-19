@@ -1,5 +1,6 @@
 
 set(COMMON_HEADERS
+        parameters.h
         execution_spaces.h
         memory_spaces.h
         spaces.h
@@ -13,18 +14,18 @@ set(COMMON_HEADERS
 
 add_custom_target(create_parameters
         COMMAND ${PROJECT_SOURCE_DIR}/build_parameters.sh
-        BYPRODUCTS ${PROJECT_BINARY_DIR}/parameters.h
+        BYPRODUCTS ${PROJECT_BINARY_DIR}/build_parameters.h
         DEPENDS ${PROJECT_SOURCE_DIR}/build_parameters.sh)
 
 
 function(add_dynamic_compilation_library name source_file)
     add_library(${name} SHARED EXCLUDE_FROM_ALL ${source_file} ${COMMON_HEADERS})
-    target_include_directories(${name} PUBLIC ${PROJECT_BINARY_DIR})  # To include 'parameters.h'
+    target_include_directories(${name} PUBLIC ${PROJECT_BINARY_DIR})  # To include 'build_parameters.h'
     target_link_libraries(${name} PUBLIC JlCxx::cxxwrap_julia Kokkos::kokkos)
     if(Kokkos_ENABLE_OPENMP)
         target_link_libraries(${name} PRIVATE OpenMP::OpenMP_CXX)
     endif()
-    target_compile_options(KokkosWrapper PRIVATE
+    target_compile_options(${name} PRIVATE
             $<$<CONFIG:Debug>:-Wall -Wextra -Wpedantic>
     )
     target_compile_definitions(${name} PRIVATE

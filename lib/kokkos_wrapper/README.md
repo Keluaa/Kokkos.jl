@@ -19,7 +19,7 @@ Template-heavy features are put in separate libraries, with separate independent
 
 Those libraries are meant to be compiled and loaded at any time, when needed by the user.
 The types and functions covered are restrained by macros defined at build-time
-(NOT at configuration time!) through the `parameters.h` file generated from environment
+(NOT at configuration time!) through the `build_parameters.h` file generated from environment
 variables before compilation:
 
  - `VIEW_DIMENSIONS`: comma-separated list of dimensions to instantiate 
@@ -50,14 +50,6 @@ Some variables are specific to some functions:
  - `Kokkos::subview`
    - `SUBVIEW_DIMS`: comma-separated list of target dimensions of subviews.
      Defaults to `VIEW_DIMENSIONS`.
-
-Two macros control the compilation:
- - `COMPLETE_BUILD`: if `1`, then all variables above are ignored and every possible
-   function has all of its variations compiled (restrained to the enabled execution and memory spaces)
-   in the main wrapper library.
-   Compilation time can be very long (>40 min for `Kokkos::deep_copy` alone with Cuda enabled)
- - `WRAPPER_BUILD`: defined when compiling the wrapper library, undefined otherwise
-
 
 While debugging, you can use functions in `printing_utils.h` to print any type or any `TList`
 with no type-mangling.

@@ -157,17 +157,18 @@ end
 
 
 function build_compilation_parameters(
-    view_layouts, view_dims, view_types,
+    view_layout, view_dim, view_type,
     exec_spaces, mem_spaces,
-    dest_layouts, dest_mem_spaces,
+    dest_layout, dest_mem_spaces,
     without_exec_space_arg, with_nothing_arg,
-    subview_dims
+    subview_dim
 )
-    str_view_layouts    = join(view_layouts, ',')
-    str_view_dims       = join(view_dims,    ',')
-    str_view_types      = join(view_types,   ',')
-    str_dest_layouts    = join(dest_layouts, ',')
-    str_subview_dims    = join(subview_dims, ',')
+    # TODO: remove the `only` by propagating the changes to the caller, etc...
+    str_view_layout     = isempty(view_layout) ? ""     : only(view_layout)
+    str_view_dim        = isempty(view_dim)    ? ""     : only(view_dim)
+    str_view_type       = isempty(view_type)   ? ""     : only(view_type)
+    str_dest_layout     = isempty(dest_layout) ? "NONE" : only(dest_layout)
+    str_subview_dim     = isempty(subview_dim) ? "0"    : only(subview_dim)
     str_exec_spaces     = join('"' .* exec_spaces .* '"', ',')
     str_mem_spaces      = join('"' .* mem_spaces  .* '"', ',')
     str_dest_mem_spaces = join('"' .* dest_mem_spaces .* '"', ',')
@@ -175,16 +176,16 @@ function build_compilation_parameters(
     # Those are environment variables which will their respective macros in the C++ lib.
     # See 'lib/kokkos_wrapper/build_parameters.sh'
     return Dict(
-        "VIEW_LAYOUTS" => str_view_layouts,
-        "VIEW_DIMS" => str_view_dims,
-        "VIEW_TYPES" => str_view_types,
+        "VIEW_LAYOUT" => str_view_layout,
+        "VIEW_DIM" => str_view_dim,
+        "VIEW_TYPE" => str_view_type,
         "EXEC_SPACES" => str_exec_spaces,
         "MEM_SPACES" => str_mem_spaces,
-        "DEST_LAYOUTS" => str_dest_layouts,
+        "DEST_LAYOUT" => str_dest_layout,
         "DEST_MEM_SPACES" => str_dest_mem_spaces,
         "WITHOUT_EXEC_SPACE_ARG" => Int(without_exec_space_arg),
         "WITH_NOTHING_ARG" => Int(with_nothing_arg),
-        "SUBVIEW_DIMS" => str_subview_dims
+        "SUBVIEW_DIM" => str_subview_dim
     )
 end
 

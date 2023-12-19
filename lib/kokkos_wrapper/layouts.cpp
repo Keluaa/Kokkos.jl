@@ -3,6 +3,9 @@
 #include "utils.h"
 
 
+using LayoutList = TList<Kokkos::LayoutLeft, Kokkos::LayoutRight, Kokkos::LayoutStride>;
+
+
 template<typename Layout>
 void register_layout(jl_module_t* views_module)
 {

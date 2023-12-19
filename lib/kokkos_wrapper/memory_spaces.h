@@ -7,10 +7,7 @@
 #include "spaces.h"
 #include "utils.h"
 #include "kokkos_utils.h"
-
-#ifndef WRAPPER_BUILD
 #include "parameters.h"
-#endif
 
 
 template<>
@@ -116,15 +113,6 @@ using MemorySpacesList = TList<
 //        , Kokkos::Experimental::SYCLHostUSMSpace
 #endif // KOKKOS_ENABLE_SYCL
 >;
-
-
-#ifndef MEM_SPACE_FILTER
-#define MEM_SPACE_FILTER
-#endif
-
-#ifndef DEST_MEM_SPACES
-#define DEST_MEM_SPACES
-#endif
 
 
 constexpr const std::array mem_space_filters = as_array<const char*>(MEM_SPACE_FILTER);

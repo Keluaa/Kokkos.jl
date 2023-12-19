@@ -7,10 +7,7 @@
 #include "spaces.h"
 #include "utils.h"
 #include "kokkos_utils.h"
-
-#ifndef WRAPPER_BUILD
 #include "parameters.h"
-#endif
 
 
 #ifdef KOKKOS_ENABLE_SERIAL
@@ -166,11 +163,6 @@ using ExecutionSpaceList = BuildExecutionSpacesList<
         , Kokkos::Experimental::SYCL
 #endif // KOKKOS_ENABLE_SYCL
 >;
-
-
-#ifndef EXEC_SPACE_FILTER
-#define EXEC_SPACE_FILTER
-#endif
 
 
 constexpr const std::array exec_space_filters = as_array<const char*>(EXEC_SPACE_FILTER);

@@ -28,7 +28,7 @@ endif()
 
 
 if(Kokkos_ENABLE_CUDA)
-    set(Kokkos_ENABLE_CUDA_CONSTEXPR ON)  # Needed by KokkosWrapper
+    set(Kokkos_ENABLE_CUDA_CONSTEXPR ON)
     if (NOT DEFINED Kokkos_ENABLE_CUDA_LAMBDA)
         set(Kokkos_ENABLE_CUDA_LAMBDA ON)
     endif()
@@ -51,36 +51,6 @@ endif()
 add_subdirectory(${Kokkos_ROOT} lib/kokkos)
 
 
-if(NOT DEFINED COMPLETE_BUILD)
-    set(COMPLETE_BUILD OFF)
-endif()
-
-if(NOT DEFINED VIEW_DIMENSIONS)
-    if (COMPLETE_BUILD)
-        set(VIEW_DIMENSIONS "1,2")
-    else()
-        set(VIEW_DIMENSIONS "1")
-    endif()
-endif()
-
-if(NOT DEFINED VIEW_TYPES)
-    if (COMPLETE_BUILD)
-        set(VIEW_TYPES "double,int64_t")
-    else()
-        set(VIEW_TYPES "")
-    endif()
-endif()
-
-if(NOT DEFINED VIEW_LAYOUTS)
-    if (COMPLETE_BUILD)
-        set(VIEW_LAYOUTS "deviceDefault,hostDefault")
-    else()
-        # Compile all layouts by default
-        set(VIEW_LAYOUTS "left,right,stride")
-    endif()
-endif()
-
-
 set(WRAPPER_SOURCES
         kokkos_wrapper.cpp kokkos_wrapper.h
         execution_spaces.h
@@ -95,24 +65,9 @@ set(WRAPPER_SOURCES
         utils.h printing_utils.h kokkos_utils.h)
 
 
-if (COMPLETE_BUILD)
-    list(APPEND WRAPPER_SOURCES
-            views.cpp
-            copy.cpp
-            mirrors.cpp
-            subviews.cpp)
-endif()
-
-
 add_library(KokkosWrapper SHARED ${WRAPPER_SOURCES})
 target_link_libraries(KokkosWrapper PUBLIC JlCxx::cxxwrap_julia Kokkos::kokkos)
-target_compile_definitions(KokkosWrapper PRIVATE
-        VIEW_DIMENSIONS=${VIEW_DIMENSIONS}
-        VIEW_TYPES=${VIEW_TYPES}
-        VIEW_LAYOUTS=${VIEW_LAYOUTS}
-        COMPLETE_BUILD=${COMPLETE_BUILD}
-        WRAPPER_BUILD
-)
+target_compile_definitions(KokkosWrapper PRIVATE WRAPPER_BUILD)
 target_compile_options(KokkosWrapper PRIVATE
         $<$<CONFIG:Debug>:-Wall -Wextra -Wpedantic>
 )

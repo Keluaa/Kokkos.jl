@@ -357,18 +357,12 @@ struct RegisterUtils
 
 void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_module)
 {
-    using DimsList = decltype(tlist_from_sequence(DimensionsToInstantiate{}));
-
     auto combinations = build_all_combinations<
-            FilteredMemorySpaceList,
-            LayoutList,
-            DimsList
+            FilteredMemorySpaceList
     >();
 
     apply_to_all(combinations, [&](auto params) {
         using MemSpace = typename decltype(params)::template Arg<0>;
-        using Layout = typename decltype(params)::template Arg<1>;
-        using Dimension = typename decltype(params)::template Arg<2>;
 
         using RegUtils = RegisterUtils<Dimension, Layout, MemSpace>;
 
@@ -383,7 +377,7 @@ void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_modul
         mod.add_type<jlcxx::Parametric<jlcxx::TypeVar<1>>>(name, view_type)
             .apply_combination<
                     ViewWrap,
-                    jlcxx::ParameterList<VIEW_TYPES>,
+                    jlcxx::ParameterList<VIEW_TYPE>,
                     jlcxx::ParameterList<Dimension>,
                     jlcxx::ParameterList<Layout>,
                     jlcxx::ParameterList<MemSpace>
@@ -460,20 +454,11 @@ void import_all_views_methods(jl_module_t* impl_module, jl_module_t* views_modul
 }
 
 
-#ifdef WRAPPER_BUILD
-void define_kokkos_views(jlcxx::Module& mod)
-{
-    // Called from 'Kokkos.Wrapper.Impl'
-    jl_module_t* wrapper_module = mod.julia_module()->parent;
-    auto* views_module = (jl_module_t*) jl_get_global(wrapper_module->parent, jl_symbol("Views"));
-#else
 JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
 {
-    // Called from 'Kokkos.Views.Impl<number>'
+    // Called from 'Kokkos.Views.Impl_<number>'
     jl_module_t* views_module = mod.julia_module()->parent;
-#endif
-
     import_all_views_methods(mod.julia_module(), views_module);
-
     register_all_view_combinations(mod, views_module);
+    mod.method("params_string", get_params_string);
 }

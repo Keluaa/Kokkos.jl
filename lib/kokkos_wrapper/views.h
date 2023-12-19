@@ -5,42 +5,11 @@
 #include "kokkos_wrapper.h"
 #include "layouts.h"
 #include "execution_spaces.h"
-
-#ifndef WRAPPER_BUILD
 #include "parameters.h"
-#endif
 
 
-#if !defined(VIEW_DIMENSIONS) && defined(WRAPPER_BUILD)
-/**
- * Controls which `Kokkos::View` dimensions are instantiated.
- * Dimensions are specified as comma separated list of integers.
- *
- * Each dimension adds one pointer for all data types of the views: `Kokkos::View<T*>` in 1D, `Kokkos::View<T**>` in
- * 2D, etc, as well as one more index argument for the `()` operator.
- *
- * The registered method `compiled_dims` returns a tuple of all compiled dimensions.
- */
-#define VIEW_DIMENSIONS 1, 2
-#warning "No explicit value set for VIEW_DIMENSIONS, using the default of '1, 2'"
-#endif
-
-
-#if !defined(VIEW_TYPES) && defined(WRAPPER_BUILD)
-/**
- * Controls which `Kokkos::View` types are instantiated.
- * Types are specified as comma separated list of type names.
- *
- * One `Kokkos::View` will be instantiated for each combination of type, dimensions, layout, and memory spaces.
- *
- * The registered method `compiled_types` returns a tuple of all compiled types.
- */
-#define VIEW_TYPES double, int64_t
-#warning "No explicit value set for VIEW_TYPES, using the default of 'double, int64_t'"
-#endif
-
-
-using DimensionsToInstantiate = std::integer_sequence<int, VIEW_DIMENSIONS>;
+using Dimension = std::integral_constant<int, VIEW_DIMENSION>;
+using SubViewDimension = std::integral_constant<int, SUBVIEW_DIM>;
 
 
 /**
@@ -108,12 +77,5 @@ struct ViewWrap : public KokkosViewT
         return strides;
     }
 };
-
-
-#if defined(WRAPPER_BUILD) && COMPLETE_BUILD == 1
-void define_kokkos_views(jlcxx::Module& mod);
-#else
-void define_kokkos_views(jlcxx::Module&) {}
-#endif
 
 #endif //KOKKOS_WRAPPER_VIEWS_H

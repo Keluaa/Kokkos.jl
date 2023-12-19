@@ -20,8 +20,9 @@ void space_methods(jlcxx::Module&, jl_module_t*) {}
 #ifdef KOKKOS_ENABLE_OPENMP
 #include <omp.h>
 
+// Weak symbol, for compatibility with versions of OpenMP which do not define this function
 #pragma weak omp_capture_affinity
-extern "C" size_t omp_capture_affinity(char *buffer, size_t size, const char *format);
+extern "C" size_t omp_capture_affinity(char *buffer, size_t size, const char *format); // NOLINT(*-redundant-declaration)
 
 
 jl_value_t* capture_affinity(const char* format)

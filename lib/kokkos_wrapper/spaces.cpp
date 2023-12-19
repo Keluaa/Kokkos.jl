@@ -55,10 +55,6 @@ void post_register_space(jlcxx::Module& mod)
             return jlcxx::julia_type<typename Space::memory_space>()->super->super;
         });
         mod.method("array_layout", [](jlcxx::SingletonType<SpaceInfo<Space>>) {
-            if constexpr (!is_element_in_list<typename Space::array_layout>(LayoutList{})) {
-                jl_errorf("Space `%s` has `%s` as default layout, but it is not compiled",
-                          Space::name(), layout_name<typename Space::array_layout>().data());
-            }
             return jlcxx::julia_type<typename Space::array_layout>();
         });
     } else {
