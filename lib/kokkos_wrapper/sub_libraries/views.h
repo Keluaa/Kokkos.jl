@@ -9,7 +9,6 @@
 
 
 using Dimension = std::integral_constant<int, VIEW_DIMENSION>;
-using SubViewDimension = std::integral_constant<int, SUBVIEW_DIM>;
 
 
 /**

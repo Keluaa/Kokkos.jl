@@ -2,8 +2,12 @@
 #include "utils.h"
 #include "memory_spaces.h"
 #include "layouts.h"
+#include "views.h"
 
 #include <variant>
+
+
+using SubViewDimension = std::integral_constant<int, SUBVIEW_DIM>;
 
 
 struct Colon_t {};  // Mapped to 'Base.Colon'

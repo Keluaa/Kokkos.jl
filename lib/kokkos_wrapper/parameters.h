@@ -1,6 +1,6 @@
 
-#ifndef KOKKOSWRAPPER_PARAMETERS_H
-#define KOKKOSWRAPPER_PARAMETERS_H
+#ifndef KOKKOS_WRAPPER_PARAMETERS_H
+#define KOKKOS_WRAPPER_PARAMETERS_H
 
 #ifdef WRAPPER_BUILD
 // When building the wrapper library, we should not rely on dynamic build-time parameters.
@@ -88,4 +88,4 @@ inline const char* get_params_string()
 #undef AS_STR
 }
 
-#endif //KOKKOSWRAPPER_PARAMETERS_H
+#endif //KOKKOS_WRAPPER_PARAMETERS_H

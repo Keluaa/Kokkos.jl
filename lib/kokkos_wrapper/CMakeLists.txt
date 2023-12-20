@@ -71,4 +71,4 @@ if(Kokkos_ENABLE_OPENMP)
     target_link_libraries(KokkosWrapper PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
-include(all_targets_generator.cmake)
+add_subdirectory(sub_libraries)
