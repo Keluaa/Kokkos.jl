@@ -145,7 +145,7 @@ project_1D = CMakeKokkosProject(lib_src, "libSimpleKokkosLib1D";
     target="SimpleKokkosLib1D", build_dir=lib_build)
 project_2D = CMakeKokkosProject(project_1D, "SimpleKokkosLib2D", "libSimpleKokkosLib2D")
 
-if isdir(Kokkos.build_dir(project_1D))
+if isdir(Kokkos.build_dir(project_1D)) && !isempty(readdir(Kokkos.build_dir(project_1D)))
     Kokkos.clean(project_1D)
 end
 

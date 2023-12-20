@@ -30,21 +30,23 @@ function Base.unsafe_wrap(
             `Kokkos.HIPSpace` or `Kokkos.HIPManagedSpace` memory spaces")
     end
 
-    device_ptr = Ptr{Cvoid}(pointer(v))
+    view_ptr = Ptr{Cvoid}(pointer(v))
 
-    ptr_info = AMDGPU.Mem.pointerinfo(device_ptr)
-    device = get(AMDGPU.Mem.DEVICES, ptr_info.agentOwner.handle, nothing)
-    if isnothing(device)
-        error("could not retrieve the device of the given pointer: $device_ptr")
+    # `unsafe_wrap` implicitly uses `AMDGPU.device()` when `lock=false`. We must be sure that we
+    # wrap the view with the correct device.
+    status, attributes = AMDGPU.Mem.attributes(Ptr{Cvoid}(view_ptr))
+    AMDGPU.check(status)
+
+    view_device = AMDGPU.devices()[attributes.device + 1]
+    roc_array = AMDGPU.device!(view_device) do
+        # `lock=false` implies that it is a GPU array, and that AMDGPU should not take ownership of
+        # the array.
+        unsafe_wrap(ROCArray, pointer(v), size(v); lock=false)
     end
-
-    # TODO: fix memory management: here the returned array OWNS the buffer, which means that it may
-    # be deallocated before the view, and/or deallocated twice.
-    roc_array = unsafe_wrap(ROCArray, pointer(v), size(v); lock=false)
 
     if !Kokkos.span_is_contiguous(v)
         error("non-contiguous (or strided) views cannot be converted into a `ROCArray` \
-               (size: $(size(v)), strides: $(strides(v)))")
+            (size: $(size(v)), strides: $(strides(v)))")
     elseif L === Kokkos.LayoutRight
         return roc_array'
     else

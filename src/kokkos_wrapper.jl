@@ -319,7 +319,11 @@ function load_wrapper_lib(; no_compilation=false, no_git=false, loading_bar=true
     # are called through '__init_vars()', circumventing the requirement that variables can only be
     # set by methods of the same module.
     Core.eval(Impl, quote
-        @wrapmodule($KOKKOS_LIB_PATH, :define_kokkos_module)
+        @static if pkgversion(CxxWrap) >= v"0.14-"
+            @wrapmodule(() -> $KOKKOS_LIB_PATH, :define_kokkos_module)
+        else
+            @wrapmodule($KOKKOS_LIB_PATH, :define_kokkos_module)
+        end
     end)
 
     Kokkos = parentmodule(Wrapper)
