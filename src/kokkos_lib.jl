@@ -47,7 +47,7 @@ function load_lib(lib::CLibrary; flags=Libdl.RTLD_LAZY | Libdl.RTLD_LOCAL)
         if (flags & Libdl.RTLD_DEEPBIND) ≠ 0
             # TODO: monitor https://github.com/kokkos/kokkos/issues/6178 and adjust the warning depending on the Kokkos version
             @warn "Opening a Kokkos library with the `RTLD_DEEPBIND` flag might cause issues with \
-                   the CUDA and HIP backends, see https://github.com/kokkos/kokkos/issues/6178"
+                   the CUDA and HIP backends, see https://github.com/kokkos/kokkos/issues/6178" maxlog=1
         end
         lib.handle = Libdl.dlopen(lib.load_path, flags)
         lib.full_path = Libdl.dlpath(lib.handle)
