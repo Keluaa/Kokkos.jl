@@ -30,9 +30,7 @@ std::array<size_t, KOKKOS_MAX_DIMENSIONS> unpack_dims(const std::tuple<Dims...>&
     // Important detail: the dimensions given from Julia should be reversed when passed to Kokkos, in order for the
     // array to be coherent with the parameters of the constructor: `Kokkos.View{Float64}(undef, 3, 4)` should give a
     // `3x4` array as seen from Julia, whatever the layout is.
-    std::apply(
-    [&](const Dims&... dim)
-    {
+    std::apply([&](const Dims&... dim) {
         std::size_t n{sizeof...(Dims) - 1};
         ((N[n--] = dim), ...);
     }, dims);
@@ -357,11 +355,7 @@ struct RegisterUtils
 
 void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_module)
 {
-    auto combinations = build_all_combinations<
-            FilteredMemorySpaceList
-    >();
-
-    apply_to_all(combinations, [&](auto params) {
+    apply_to_each(FilteredMemorySpaceList{}, [&](auto params) {
         using MemSpace = typename decltype(params)::template Arg<0>;
 
         using RegUtils = RegisterUtils<Dimension, Layout, MemSpace>;

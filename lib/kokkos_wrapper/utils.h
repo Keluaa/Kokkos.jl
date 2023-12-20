@@ -264,4 +264,11 @@ constexpr auto as_array(A... args)
 }
 
 
+template<typename T, typename... V>
+constexpr std::size_t count_same()
+{
+    return (std::is_same_v<T, V> + ...);
+}
+
+
 #endif //KOKKOS_WRAPPER_UTILS_H

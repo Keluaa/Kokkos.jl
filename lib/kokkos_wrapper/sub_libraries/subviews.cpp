@@ -105,13 +105,13 @@ size_t jl_indexes_to_cpp(jl_value_t* jl_indexes,
 }
 
 
-template<typename T, typename... V>
-constexpr std::size_t count_same()
-{
-    return (std::is_same_v<T, V> + ...);
-}
-
-
+/**
+ * Instantiates all possible combinations of `Kokkos::subview()` which, when applied to a `View`, returns a `SubView`.
+ * `Indexes` are the list of index types given to `Kokkos::subview`.
+ *
+ * `Indexes` are `std::variant<int64_t, Range>`. `int64_t` reduces the dimension of the resulting view, while `Range`
+ * does not.
+ */
 template<typename View, typename SubView, typename... Indexes>
 SubView do_subview(const View& view, const std::tuple<Indexes...>& indexes_tuple)
 {
@@ -193,11 +193,7 @@ void register_subviews_for_view_and_layout(jlcxx::Module& mod)
 
 void register_all_subviews(jlcxx::Module& mod)
 {
-    auto view_combinations = build_all_combinations<
-            FilteredMemorySpaceList
-    >();
-
-    apply_to_all(view_combinations, [&](auto view_t) {
+    apply_to_each(FilteredMemorySpaceList{}, [&](auto view_t) {
         using MemSpace = typename decltype(view_t)::template Arg<0>;
 
         using View = ViewWrap<VIEW_TYPE, Dimension, Layout, MemSpace>;

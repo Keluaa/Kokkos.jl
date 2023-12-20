@@ -41,10 +41,6 @@ void register_all_deep_copy_combinations(jlcxx::Module& mod)
             DestMemSpaces
     >();
 
-    auto src_combinations = build_all_combinations<
-            FilteredMemorySpaceList
-    >();
-
     apply_to_all(combinations, [&](auto combination)
     {
         using ExecSpace = typename decltype(combination)::template Arg<0>;
@@ -56,7 +52,7 @@ void register_all_deep_copy_combinations(jlcxx::Module& mod)
                 DeepCopyDetectorNoExecSpace<typename DestView::kokkos_view_t>,
                 DeepCopyDetector<ExecSpace, typename DestView::kokkos_view_t>>;
 
-        apply_to_all(src_combinations, [&](auto src_combination)
+        apply_to_each(FilteredMemorySpaceList{}, [&](auto src_combination)
         {
             using SrcMemSpace = typename decltype(src_combination)::template Arg<0>;
             using SrcView = ViewWrap<VIEW_TYPE, Dimension, Layout, SrcMemSpace>;
