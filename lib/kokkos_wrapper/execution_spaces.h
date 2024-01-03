@@ -19,6 +19,9 @@ struct SpaceInfo<Kokkos::Serial> {
     using space = Kokkos::Serial;
     static constexpr std::string_view julia_name = "Serial";
 };
+
+template<>
+struct jlcxx::IsMirroredType<Kokkos::Serial> : std::false_type {};
 #endif
 
 
@@ -28,6 +31,9 @@ struct SpaceInfo<Kokkos::OpenMP> {
     using space = Kokkos::OpenMP;
     static constexpr std::string_view julia_name = "OpenMP";
 };
+
+template<>
+struct jlcxx::IsMirroredType<Kokkos::OpenMP> : std::false_type {};
 #endif
 
 
@@ -37,6 +43,9 @@ struct SpaceInfo<Kokkos::OpenACC> {
     using space = Kokkos::OpenACC;
     static constexpr std::string_view julia_name = "OpenACC";
 };
+
+template<>
+struct jlcxx::IsMirroredType<Kokkos::OpenACC> : std::false_type {};
 #endif
 
 
@@ -46,6 +55,9 @@ struct SpaceInfo<Kokkos::OpenMPTarget> {
     using space = Kokkos::OpenMPTarget;
     static constexpr std::string_view julia_name = "OpenMPTarget";
 };
+
+template<>
+struct jlcxx::IsMirroredType<Kokkos::OpenMPTarget> : std::false_type {};
 #endif
 
 
@@ -55,6 +67,9 @@ struct SpaceInfo<Kokkos::Threads> {
     using space = Kokkos::Threads;
     static constexpr std::string_view julia_name = "Threads";
 };
+
+template<>
+struct jlcxx::IsMirroredType<Kokkos::Threads> : std::false_type {};
 #endif
 
 
@@ -64,6 +79,9 @@ struct SpaceInfo<Kokkos::Cuda> {
     using space = Kokkos::Cuda;
     static constexpr std::string_view julia_name = "Cuda";
 };
+
+template<>
+struct jlcxx::IsMirroredType<Kokkos::Cuda> : std::false_type {};
 #endif
 
 
@@ -73,6 +91,9 @@ struct SpaceInfo<Kokkos_HIP::HIP> {
     using space = Kokkos_HIP::HIP;
     static constexpr std::string_view julia_name = "HIP";
 };
+
+template<>
+struct jlcxx::IsMirroredType<Kokkos_HIP::HIP> : std::false_type {};
 #endif
 
 
@@ -82,6 +103,9 @@ struct SpaceInfo<Kokkos::HPX> {
     using space = Kokkos::HPX;
     static constexpr std::string_view julia_name = "HPX";
 };
+
+template<>
+struct jlcxx::IsMirroredType<Kokkos::HPX> : std::false_type {};
 #endif
 
 
@@ -91,6 +115,9 @@ struct SpaceInfo<Kokkos::Experimental::SYCL> {
     using space = Kokkos::Experimental::SYCL;
     static constexpr std::string_view julia_name = "SYCL";
 };
+
+template<>
+struct jlcxx::IsMirroredType<Kokkos::Experimental::SYCL> : std::false_type {};
 #endif
 
 

@@ -19,6 +19,10 @@ void register_space(jlcxx::Module& mod, jl_module_t* spaces_module)
     }
     jlcxx::set_julia_type<SpaceInfo<Space>>((jl_datatype_t *) main_type_dt);
 
+    // In Kokkos 4.2.00, `Kokkos::HostSpace` became a trivial type, therefore the default `JlCxx::IsMirroredType` became
+    // `true`, meaning that `map_type` should be used instead of `add_type`. For uniformity (GPU spaces will always be
+    // non-trivial types because of streams), all spaces are enforced to be non-mirrored types, they are all declared as
+    // `jlCxx::IsMirroredType : std::false_type`.
     auto space_type = mod.add_type<Space>(impl_type_name, jlcxx::julia_type<SpaceInfo<Space>>());
     space_type.constructor();
 

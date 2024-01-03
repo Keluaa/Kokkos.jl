@@ -20,6 +20,10 @@ struct SpaceInfo<Kokkos::HostSpace>
     static constexpr std::string_view julia_name = "HostSpace";
 };
 
+template<>
+struct jlcxx::IsMirroredType<Kokkos::HostSpace> : std::false_type {};
+
+
 #ifdef KOKKOS_ENABLE_CUDA
 template<>
 struct SpaceInfo<Kokkos::CudaSpace>
@@ -35,6 +39,11 @@ struct SpaceInfo<Kokkos::CudaHostPinnedSpace>
     static constexpr std::string_view julia_name = "CudaHostPinnedSpace";
 };
 
+template<>
+struct jlcxx::IsMirroredType<Kokkos::CudaSpace> : std::false_type {};
+template<>
+struct jlcxx::IsMirroredType<Kokkos::CudaHostPinnedSpace> : std::false_type {};
+
 #if KOKKOS_VERSION_CMP(>=, 4, 0, 0) || defined(KOKKOS_ENABLE_CUDA_UVM)
 // KOKKOS_ENABLE_CUDA_UVM is implicitly ON after version 4
 template<>
@@ -43,6 +52,9 @@ struct SpaceInfo<Kokkos::CudaUVMSpace>
     using space = Kokkos::CudaUVMSpace;
     static constexpr std::string_view julia_name = "CudaUVMSpace";
 };
+
+template<>
+struct jlcxx::IsMirroredType<Kokkos::CudaUVMSpace> : std::false_type {};
 #endif // KOKKOS_VERSION_CMP(>=, 4, 0, 0) || defined(KOKKOS_ENABLE_CUDA_UVM)
 #endif // KOKKOS_ENABLE_CUDA
 
@@ -67,6 +79,13 @@ struct SpaceInfo<Kokkos_HIP::HIPManagedSpace>
     using space = Kokkos_HIP::HIPManagedSpace;
     static constexpr std::string_view julia_name = "HIPManagedSpace";
 };
+
+template<>
+struct jlcxx::IsMirroredType<Kokkos_HIP::HIPSpace> : std::false_type {};
+template<>
+struct jlcxx::IsMirroredType<Kokkos_HIP::HIPHostPinnedSpace> : std::false_type {};
+template<>
+struct jlcxx::IsMirroredType<Kokkos_HIP::HIPManagedSpace> : std::false_type {};
 #endif // KOKKOS_ENABLE_HIP
 
 
