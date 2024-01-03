@@ -28,4 +28,5 @@ get_jlcxx_root
 get_kokkos_build_dir
 get_kokkos_dir
 get_kokkos_install_dir
+Wrapper.clean_cmake_files
 ```

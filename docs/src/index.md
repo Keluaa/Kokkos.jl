@@ -6,7 +6,6 @@ CurrentModule = Kokkos
 
 Documentation for [Kokkos](https://github.com/Keluaa/Kokkos.jl).
 
-
 `Kokkos.jl` allows you to create `Kokkos::View` instances from Julia, to configure and compile a
 Kokkos project or load an existing library, and call its functions and the Kokkos kernels it defines.
 
@@ -16,7 +15,6 @@ Kokkos project or load an existing library, and call its functions and the Kokko
 normal `Array`.
 All view accesses are done through calls to `Kokkos::View::operator()`, and therefore can access CPU
 or GPU memory seamlessly.
-
 
 !!! note
 

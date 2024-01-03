@@ -1,10 +1,10 @@
-@testset "spaces" begin
+@testset "Spaces" begin
 
-@test Kokkos.COMPILED_EXEC_SPACES == tuple(unique((TEST_BACKEND_HOST, TEST_BACKEND_DEVICE))...)
+@test Kokkos.ENABLED_EXEC_SPACES == tuple(unique((TEST_BACKEND_HOST, TEST_BACKEND_DEVICE))...)
 @test Kokkos.DEFAULT_DEVICE_SPACE === TEST_BACKEND_DEVICE
 @test Kokkos.DEFAULT_HOST_SPACE === (TEST_DEVICE_IS_HOST ? TEST_BACKEND_DEVICE : TEST_BACKEND_HOST)
 
-@test issetequal(Kokkos.COMPILED_MEM_SPACES, tuple(unique((TEST_MEM_SPACE_HOST, TEST_MEM_SPACES_DEVICE..., TEST_MEM_SHARED, TEST_MEM_PINNED))...))
+@test issetequal(Kokkos.ENABLED_MEM_SPACES, tuple(unique((TEST_MEM_SPACE_HOST, TEST_MEM_SPACES_DEVICE..., TEST_MEM_SHARED, TEST_MEM_PINNED))...))
 @test Kokkos.DEFAULT_DEVICE_MEM_SPACE === TEST_MAIN_MEM_SPACE_DEVICE
 @test Kokkos.DEFAULT_HOST_MEM_SPACE === TEST_MEM_SPACE_HOST
 
@@ -14,12 +14,12 @@ skip_shared_mem = Kokkos.KOKKOS_VERSION < v"4.0.0"
 
 
 @testset "enabled" begin
-    for exec_space in Kokkos.Spaces.ALL_BACKENDS
-        @test Kokkos.enabled(exec_space) == (exec_space in Kokkos.COMPILED_EXEC_SPACES)
+    for exec_space in Kokkos.ALL_BACKENDS
+        @test Kokkos.enabled(exec_space) == (exec_space in Kokkos.ENABLED_EXEC_SPACES)
     end
 
-    for mem_space in Kokkos.Spaces.ALL_MEM_SPACES
-        @test Kokkos.enabled(mem_space) == (mem_space in Kokkos.COMPILED_MEM_SPACES)
+    for mem_space in Kokkos.ALL_MEM_SPACES
+        @test Kokkos.enabled(mem_space) == (mem_space in Kokkos.ENABLED_MEM_SPACES)
     end
 end
 
@@ -45,18 +45,18 @@ end
 @test Kokkos.kokkos_name(Kokkos.HostSpace) == "Host"
 
 @test Kokkos.main_space_type(Kokkos.Serial) === Kokkos.Serial
-@test Kokkos.main_space_type(Kokkos.KokkosWrapper.Impl.SerialImpl) === Kokkos.Serial
-@test Kokkos.main_space_type(Kokkos.KokkosWrapper.Impl.SerialImplAllocated) === Kokkos.Serial
-@test Kokkos.main_space_type(Kokkos.KokkosWrapper.Impl.SerialImplDereferenced) === Kokkos.Serial
+@test Kokkos.main_space_type(Kokkos.Wrapper.Impl.SerialImpl) === Kokkos.Serial
+@test Kokkos.main_space_type(Kokkos.Wrapper.Impl.SerialImplAllocated) === Kokkos.Serial
+@test Kokkos.main_space_type(Kokkos.Wrapper.Impl.SerialImplDereferenced) === Kokkos.Serial
 
-@test_throws @error_match("must be a subtype") Kokkos.main_space_type(Kokkos.Space)
-@test_throws @error_match("must be a subtype") Kokkos.main_space_type(Kokkos.MemorySpace)
-@test_throws @error_match("must be a subtype") Kokkos.main_space_type(Kokkos.ExecutionSpace)
+@test_throws r"must be a subtype" Kokkos.main_space_type(Kokkos.Space)
+@test_throws r"must be a subtype" Kokkos.main_space_type(Kokkos.MemorySpace)
+@test_throws r"must be a subtype" Kokkos.main_space_type(Kokkos.ExecutionSpace)
 
-@test Kokkos.impl_space_type(Kokkos.Serial) === Kokkos.KokkosWrapper.Impl.SerialImpl
-@test Kokkos.impl_space_type(Kokkos.HostSpace) === Kokkos.KokkosWrapper.Impl.HostSpaceImpl
+@test Kokkos.impl_space_type(Kokkos.Serial) === Kokkos.Wrapper.Impl.SerialImpl
+@test Kokkos.impl_space_type(Kokkos.HostSpace) === Kokkos.Wrapper.Impl.HostSpaceImpl
 
-@test_throws @error_match("is not compiled") Kokkos.impl_space_type(TEST_UNAVAILABLE_BACKEND)
+@test_throws r"is not enabled" Kokkos.impl_space_type(TEST_UNAVAILABLE_BACKEND)
 
 serial = Kokkos.Serial()
 @test Kokkos.main_space_type(serial) === Kokkos.Serial
@@ -76,7 +76,8 @@ host_space = Kokkos.HostSpace()
 @test Kokkos.fence(serial, "test_fence_Serial") === nothing
 
 @test Kokkos.concurrency(serial) == 1
-@test Kokkos.concurrency(Kokkos.OpenMP()) == Threads.nthreads() skip=!TEST_OPENMP
+# Kokkos has a tendency to make things harder because of hyperthreads, therefore '≥' and not '=='
+@test Kokkos.concurrency(Kokkos.OpenMP()) ≥ Threads.nthreads() skip=!TEST_OPENMP
 
 alloc_ptr = Kokkos.allocate(host_space, 10)
 @test alloc_ptr !== C_NULL

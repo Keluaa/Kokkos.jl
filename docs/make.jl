@@ -3,14 +3,22 @@ push!(LOAD_PATH, joinpath(@__DIR__, "../"))
 
 using Kokkos
 using Documenter
-using CUDA  # For the extension documentation
+
+# For the extensions documentation
+using CUDA
+using AMDGPU
+using MPI
+
+KokkosAMDGPU = Base.get_extension(Kokkos, :KokkosAMDGPU)
+KokkosCUDA = Base.get_extension(Kokkos, :KokkosCUDA)
+KokkosMPI = Base.get_extension(Kokkos, :KokkosMPI)
 
 ci = get(ENV, "CI", "") == "true"
 
 DocMeta.setdocmeta!(Kokkos, :DocTestSetup, :(using Kokkos); recursive=true)
 
 makedocs(;
-    modules=[Kokkos],
+    modules=[Kokkos, KokkosAMDGPU, KokkosCUDA, KokkosMPI],
     authors="Keluaa <34173752+Keluaa@users.noreply.github.com> and contributors",
     repo="https://github.com/Keluaa/Kokkos.jl/blob/{commit}{path}#{line}",
     sitename="Kokkos.jl",
@@ -24,7 +32,7 @@ makedocs(;
         "Usage" => [
             "Calling a Kokkos library" => "calling_c.md",
             "Using views in an inaccessible memory space" => "inaccessible_views.md",
-            "Interoperability with CUDA.jl" => "interop.md",
+            "Interoperability with CUDA.jl and AMDGPU.jl" => "interop.md",
             "MPI" => "MPI.md"
         ],
         "Environment" => "environment.md",
@@ -32,7 +40,10 @@ makedocs(;
         "Views" => "views.md",
         "Compilation" => "compilation.md",
         "Library Management" => "library_management.md",
-        "Configuration options" => "config_options.md"
+        "Configuration options" => "config_options.md",
+        "Internals" => [
+            "Dynamic Compilation" => "dynamic_compilation.md"
+        ]
     ],
 )
 

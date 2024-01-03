@@ -4,7 +4,6 @@ CurrentModule = Kokkos
 
 # Calling a Kokkos library
 
-
 Suppose we want to wrap the following function:
 
 ```c++
@@ -27,44 +26,31 @@ Therefore, its complete type will change depending on the Kokkos configuration.
 
 In order for `Kokkos.jl` to properly call this function, we must build a view from Julia whose type
 matches exactly the complete type of `Kokkos::View<double*>`.
-This requires `Kokkos.jl` to compile some member functions of the complete `Kokkos::View` type, as
-well as its constructors.
 
+The [`View`](@ref) type represents such a complete view type.
+Its default parameters should match with those of our library, at the condition that Kokkos is
+configured in the same way.
 To achieve this you have two options:
- - let `Kokkos.jl` configure the library and itself, guaranteeing that the options match
- - the library containing the function is already compiled, or you cannot/don't want to change its
-   Kokkos configuration: you must configure `Kokkos.jl` with the exact same options
 
-In both cases, this is how you can configure `Kokkos.jl` for:
- - the element type: must be present in [view_types](@ref)
- - the dimension: must be present in [view_dims](@ref)
- - the [`Layout`](@ref): must be present in [view_layouts](@ref)
- - the [`MemorySpace`](@ref): configured through the [backends](@ref) options
- - the memory traits: not yet implemented
+- let `Kokkos.jl` configure the library and itself, guaranteeing that the options match
+- the library containing the function is already compiled, or you cannot/don't want to change its
+  Kokkos configuration: you must configure `Kokkos.jl` with the exact same options
 
-All possible combinations of those parameters are compiled when loading `Kokkos.jl`.
-For example, if `view_types = [Float64, Float32]`, `view_dims = [1, 2]`,
-`view_layouts = ["left", "right"]` and `backends = [Serial, Cuda]`, there will be a total of
-`2×2×2×2 = 16` different views compiled.
-
-!!! note
-
-    Your project is not affected by the [view_dims](@ref), [view_types](@ref) and
-    [view_layouts](@ref) options.
-    You only need to make sure that the combination of those options cover all usages of views in
-    your project.
-
+When calling a Kokkos method for the first time in a Julia session, `Kokkos.jl` will compile the
+C++ method into a shared library, which is then loaded with `CxxWrap.jl` to be used as a Julia
+method.
+See this chapter for more info about [Dynamic Compilation](@ref).
 
 ## Your CMake project
 
-The CMake project shouldn't need extra handling:
+The CMake project shouldn't need extra handling to be compatible:
 
 ```cmake
 # CMakeLists.txt
 cmake_minimum_required(VERSION 3.20)
 project(MyLib)
 
-set(CMAKE_CXX_EXTENSIONS OFF)  # Kokkos will warn you if this is not set to OFF
+# set(BUILD_SHARED_LIBS ON)  # Not mandatory, Kokkos.jl can add it automatically
 
 find_package(Kokkos REQUIRED)
 
@@ -77,11 +63,23 @@ project. `Kokkos.jl` can do that for you.
 The advantage of this approach is that your project and `Kokkos.jl` will share the same Kokkos
 installation, reducing the compilation time.
 
-If your project uses Kokkos in-tree, you have several options: 
- - keep the call to `add_subdirectory` the same, and configure [kokkos_path](@ref) to use the same
-   path
- - change it to `add_subdirectory(${Kokkos_ROOT} lib/kokkos)` (the second argument is arbitrary)
+If your project uses Kokkos in-tree, you have several options:
 
+- keep the call to `add_subdirectory` the same, and configure [kokkos_path](@ref) to use the same
+  path
+- use `find_package` if `Kokkos_ROOT` is defined:
+```cmake
+if (NOT DEFINED Kokkos_ROOT)
+    add_subdirectory(your/kokkos/path lib/kokkos)  # Use Kokkos in-tree
+else()
+    find_package(Kokkos REQUIRED)  # Use the provided Kokkos installation
+endif()
+```
+
+Be aware that using another Kokkos installation from the one used by `Kokkos.jl` might lead to
+obscure runtime/link time errors.
+A good first indicator of this issue would be the CMake warning that `Kokkos_ROOT` was not used by
+the project.
 
 !!! warning
 
@@ -93,12 +91,11 @@ If your project uses Kokkos in-tree, you have several options:
     When creating a project with a [`CMakeKokkosProject`](@ref), `"BUILD_SHARED_LIBS"` will be
     properly set to `"ON"`.
 
-
 ## Loading the wrapper library of `Kokkos.jl`
 
-`Kokkos.jl` relies on a wrapper library written in C++ to compile all possible combinations of
-`Kokkos::View`, as described by the [Configuration Options](@ref), as well as all
-[`ExecutionSpace`](@ref), [`MemorySpace`](@ref) needed and [other functions](@ref Environment).
+`Kokkos.jl` relies on a wrapper library written in C++ to compile the basic functions of Kokkos,
+spaces related methods and [backend-specific functions](@ref Environment).
+It is configured through the [Configuration Options](@ref).
 
 Upon loading `Kokkos.jl`, this wrapper library is not loaded (and maybe not compiled).
 Therefore, most Kokkos functions will not work (some methods might be missing, others will raise an
@@ -125,7 +122,6 @@ julia> Kokkos.initialize()  # Will also call `Kokkos.load_wrapper_lib()` if need
 !!! note
     Setting the environment variable `JULIA_DEBUG` to `Kokkos` will print all steps and commands
     called to compile and load the wrapper library, as well as for user libraries.
-
 
 ## Compiling and loading the library
 
@@ -168,7 +164,7 @@ the address of our `fill_view` function:
 
 ```julia-repl
 julia> v = Kokkos.View{Float64}(undef, 10)
-10-element Kokkos.Views.View1D_HostAllocated{Float64}:
+10-element Kokkos.Views.View{Float64, 1, Kokkos.LayoutRight, Kokkos.HostSpace}:
  6.365987373e-314
  1.14495326e-316
 ...
@@ -178,7 +174,7 @@ julia> ccall(get_symbol(my_lib, :fill_view),
              v, 0.1)
 
 julia> v
-10-element Kokkos.Views.View1D_HostAllocated{Float64}:
+10-element Kokkos.Views.View{Float64, 1, Kokkos.LayoutRight, Kokkos.HostSpace}:
  0.1
  0.1
 ...
@@ -212,10 +208,21 @@ reload.
 
 !!! warning
 
-    If any view which has been allocated by an external library is owned by Julia, it *must* be
-    finalized before unloading the library (i.e. either
-    [`finalize`](https://docs.julialang.org/en/v1/base/base/#Base.finalize) must be called on the
-    view, or the garbage collector did so automatically beforehand).
+    The full types of views (such as `Kokkos.Views.Impl1.View1D_R_HostAllocated{Float64}`) is ugly
+    and can change from one session to another. Do not rely on such types.
+
+    Use [`Views.main_view_type`](@ref) to get a more pleasant and stable type:
+    ```julia
+    julia> Kokkos.main_view_type(v)  # or `Kokkos.main_view_type(typeof(v))`
+    Kokkos.Views.View{Float64, 1, Kokkos.LayoutRight, Kokkos.HostSpace}
+    ```
+
+!!! warning
+
+    If any view which has been allocated by an external library is owned by Julia (i.e. in the case
+    where it is Julia which should call the destructor), it *must* be finalized before unloading the
+    library (i.e. either [`finalize`](https://docs.julialang.org/en/v1/base/base/#Base.finalize)
+    must be called on the view, or the garbage collector did so automatically beforehand).
 
     Failure to do so will result in nasty segfaults when the GC tries to call the finalizer on the
     view, which also happens when Julia is exiting.

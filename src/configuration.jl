@@ -3,6 +3,10 @@ HAS_CONFIGURATION_CHANGED = false
 
 
 function set_kokkos_version(version::Union{Nothing, Missing, AbstractString})
+    if version isa String && findlast('.', version) != length(version) - 2 && !endswith(version, "latest")
+        error("Invalid Kokkos version. The version must be a valid tag in the Kokkos repo: \
+               the patch version must have two digits. Use '3.7.02' and not '3.7.2'.")
+    end
     @set_preferences!("kokkos_version" => version)
     if !is_kokkos_wrapper_loaded()
         global LOCAL_KOKKOS_VERSION_STR = @load_preference("kokkos_version", __DEFAULT_KOKKOS_VERSION_STR)
@@ -15,6 +19,11 @@ function set_kokkos_version(version::Union{Nothing, Missing, AbstractString})
                Note that the version is only used if 'kokkos_path' is not set."
     end
     return LOCAL_KOKKOS_VERSION_STR
+end
+
+
+function set_kokkos_version(version::VersionNumber)
+    return set_kokkos_version(to_kokkos_version_string(version))
 end
 
 
@@ -31,7 +40,7 @@ function set_kokkos_path(path::Union{Nothing, Missing, AbstractString})
 end
 
 
-function set_cmake_options(options::Union{Nothing, Missing, Vector{<:AbstractString}})
+function set_cmake_options(options::Union{Nothing, Missing, Vector})
     @set_preferences!("cmake_options" => options)
     if !is_kokkos_wrapper_loaded()
         global KOKKOS_CMAKE_OPTIONS = @load_preference("cmake_options", __DEFAULT_KOKKOS_CMAKE_OPTIONS)
@@ -44,7 +53,7 @@ function set_cmake_options(options::Union{Nothing, Missing, Vector{<:AbstractStr
 end
 
 
-function set_kokkos_options(options::Union{Nothing, Missing, Vector{<:AbstractString}})
+function set_kokkos_options(options::Union{Nothing, Missing, Vector})
     @set_preferences!("kokkos_options" => options)
     if !is_kokkos_wrapper_loaded()
         global KOKKOS_LIB_OPTIONS = @load_preference("kokkos_options", __DEFAULT_KOKKOS_LIB_OPTIONS)
@@ -86,56 +95,7 @@ function set_backends(backends::Vector{DataType})
 end
 
 
-function set_view_dims(dims::Union{Nothing, Missing, Vector{Int}})
-    @set_preferences!("view_dims" => dims)
-    if !is_kokkos_wrapper_loaded()
-        global KOKKOS_VIEW_DIMS = @load_preference("view_dims", __DEFAULT_KOKKOS_VIEW_DIMS)
-    else
-        global HAS_CONFIGURATION_CHANGED = true
-        @info "New view dimensions set to $dims.\n\
-               Restart your Julia session for this change to take effect."
-    end
-    return KOKKOS_VIEW_DIMS
-end
-
-
-function set_view_types(types::Union{Nothing, Missing, Vector{<:AbstractString}})
-    @set_preferences!("view_types" => types)
-    if !is_kokkos_wrapper_loaded()
-        global KOKKOS_VIEW_TYPES = @load_preference("view_types", __DEFAULT_KOKKOS_VIEW_TYPES)
-    else
-        global HAS_CONFIGURATION_CHANGED = true
-        @info "New view types set to $types.\n\
-               Restart your Julia session for this change to take effect."
-    end
-    return KOKKOS_VIEW_TYPES
-end
-
-set_view_types(types::Vector{DataType}) = set_view_types(string.(nameof.(types)))
-
-
-function set_view_layouts(layouts::Union{Nothing, Missing, Vector{<:AbstractString}})
-    @set_preferences!("view_layouts" => layouts)
-    if !is_kokkos_wrapper_loaded()
-        global KOKKOS_VIEW_LAYOUTS = @load_preference("view_layouts", __DEFAULT_KOKKOS_VIEW_LAYOUTS)
-    else
-        global HAS_CONFIGURATION_CHANGED = true
-        @info "New view layouts set to $layouts.\n\
-               Restart your Julia session for this change to take effect."
-    end
-    return KOKKOS_VIEW_LAYOUTS
-end
-
-function set_view_layouts(layouts::Vector{DataType})
-    typeassert.(layouts, Type{<:Kokkos.Layout})
-    # Transform the types to the names as described in the docs
-    layouts_str = layouts .|> nameof .|> string .|> lowercase
-    layouts_str = chop.(layouts_str; head=length("Layout"), tail=0)  # Remove the leading 'Layout'
-    return set_view_layouts(layouts_str)
-end
-
-
-function set_build_type(build_type::Union{Nothing, Missing, AbstractString})
+function set_build_type(build_type::Union{Nothing, Missing, String})
     @set_preferences!("build_type" => build_type)
     if !is_kokkos_wrapper_loaded()
         global KOKKOS_BUILD_TYPE = @load_preference("build_type", __DEFAULT_KOKKOS_BUILD_TYPE)

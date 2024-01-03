@@ -5,8 +5,12 @@
 #include "jlcxx/jlcxx.hpp"
 #include "utils.h"
 
+#ifndef WRAPPER_BUILD
+#include "parameters.h"
+#endif
 
-#ifndef VIEW_LAYOUTS
+
+#if !defined(VIEW_LAYOUTS) && defined(WRAPPER_BUILD)
 /**
  * Controls which `Kokkos::View` layout types are to be instantiated.
  *
@@ -19,6 +23,11 @@
  * The registered method `compiled_layouts` returns a tuple of all compiled layout types.
  */
 #define VIEW_LAYOUTS deviceDefault, hostDefault
+#warning "No explicit value set for VIEW_LAYOUTS, using the default of 'deviceDefault, hostDefault'"
+#endif
+
+#ifndef DEST_LAYOUTS
+#define DEST_LAYOUTS VIEW_LAYOUTS
 #endif
 
 
@@ -30,9 +39,11 @@ namespace LayoutListHelper {
     using hostDefault = Kokkos::DefaultHostExecutionSpace::array_layout;
 
     using LayoutList = decltype(remove_duplicates(TList<VIEW_LAYOUTS>{}));
+    using DestLayoutList = decltype(remove_duplicates(TList<DEST_LAYOUTS>{}));
 }
 
 using LayoutListHelper::LayoutList;
+using LayoutListHelper::DestLayoutList;
 
 
 template<typename Layout>

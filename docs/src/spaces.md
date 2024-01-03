@@ -1,5 +1,5 @@
 ```@meta
-CurrentModule = Kokkos.Spaces
+CurrentModule = Kokkos
 ```
 
 # Execution & Memory Spaces
@@ -25,8 +25,8 @@ deallocate
 ## Constants
 
 ```@docs
-COMPILED_EXEC_SPACES
-COMPILED_MEM_SPACES
+ENABLED_EXEC_SPACES
+ENABLED_MEM_SPACES
 ```
 
 ## Default spaces
@@ -42,7 +42,7 @@ SHARED_HOST_PINNED_MEMORY_SPACE
 
 ## Backend-specific methods
 
-Those unexported methods are defined in the `Kokkos.Spaces.BackendFunctions` module.
+Those unexported methods are defined in the `Kokkos.BackendFunctions` module.
 They have methods only if their respective backend is enabled and Kokkos is initialized.
 
 ### OpenMP
@@ -58,4 +58,13 @@ BackendFunctions.omp_get_num_places
 BackendFunctions.omp_get_place_num_procs
 BackendFunctions.omp_get_place_proc_ids
 BackendFunctions.omp_capture_affinity
+```
+
+### Cuda / HIP
+
+```@docs
+BackendFunctions.device_id
+BackendFunctions.wrap_stream
+BackendFunctions.stream_ptr
+BackendFunctions.memory_info
 ```
