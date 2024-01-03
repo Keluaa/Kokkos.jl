@@ -76,7 +76,8 @@ host_space = Kokkos.HostSpace()
 @test Kokkos.fence(serial, "test_fence_Serial") === nothing
 
 @test Kokkos.concurrency(serial) == 1
-@test Kokkos.concurrency(Kokkos.OpenMP()) == Threads.nthreads() skip=!TEST_OPENMP
+# Kokkos has a tendency to make things harder because of hyperthreads, therefore '≥' and not '=='
+@test Kokkos.concurrency(Kokkos.OpenMP()) ≥ Threads.nthreads() skip=!TEST_OPENMP
 
 alloc_ptr = Kokkos.allocate(host_space, 10)
 @test alloc_ptr !== C_NULL
