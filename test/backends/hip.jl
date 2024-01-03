@@ -49,6 +49,8 @@ end
     @test size(roc_V) == size(V)
     @test strides(roc_V) == strides(V)
     AMDGPU.@allowscalar @test Vh == roc_V
+    @test Kokkos.BackendFunctions.device_id() == AMDGPU.HIP.device_id(AMDGPU.device(roc_V))
+    @test !roc_V.buf.own
 
     sub_V = Kokkos.subview(V, (1:3, 1:3))
     @test !Kokkos.span_is_contiguous(sub_V)

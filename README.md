@@ -32,15 +32,15 @@ All Kokkos backends should be supported by this package, but not all of them wer
 
 ## Supported functionalities
 
-* :heavy_check_mark: `Kokkos::initialize`, `Kokkos::finalize` and `Kokkos::InitializationSettings`
-* :heavy_check_mark: `Kokkos::View`, `Kokkos::View<T, MyLayout, SomeMemorySpace>` and `Kokkos::view_alloc`
+* :white_check_mark: `Kokkos::initialize`, `Kokkos::finalize` and `Kokkos::InitializationSettings`
+* :white_check_mark: `Kokkos::View`, `Kokkos::View<T, MyLayout, SomeMemorySpace>` and `Kokkos::view_alloc`
 * :x: `Kokkos::MemoryTraits` (planned)
-* :heavy_check_mark: `Kokkos::create_mirror`, `Kokkos::create_mirror_view`
-* :heavy_check_mark: `Kokkos::deep_copy`
-* :heavy_check_mark: `Kokkos::subview`
+* :white_check_mark: `Kokkos::create_mirror`, `Kokkos::create_mirror_view`
+* :white_check_mark: `Kokkos::deep_copy`
+* :white_check_mark: `Kokkos::subview`
 * :x: `Kokkos::resize`, `Kokkos::realloc` (planned)
-* :heavy_check_mark: `Kokkos::fence`
-* :heavy_check_mark: All execution spaces (`Kokkos::OpenMP`, `Kokkos::Cuda`...) and memory spaces (`Kokkos::HostSpace`, `Kokkos::CudaSpace`...)
+* :white_check_mark: `Kokkos::fence`
+* :white_check_mark: All execution spaces (`Kokkos::OpenMP`, `Kokkos::Cuda`...) and memory spaces (`Kokkos::HostSpace`, `Kokkos::CudaSpace`...)
 * :x: All parallel patterns (`Kokkos::parallel_for`, `Kokkos::parallel_reduce`, `Kokkos::parallel_scan`), reducers, execution policies and tasking
 * :x: Atomics
 * :x: All containers (`Kokkos::DualView`, `Kokkos::ScatterView`...) (planned)
@@ -49,13 +49,13 @@ All Kokkos backends should be supported by this package, but not all of them wer
 
 ## Tested backends
 
-* :heavy_check_mark: `Kokkos::Serial`
-* :heavy_check_mark: `Kokkos::OpenMP`
+* :white_check_mark: `Kokkos::Serial`
+* :white_check_mark: `Kokkos::OpenMP`
 * :x: `Kokkos::Threads`
 * :x: `Kokkos::HPX`
 * :x: `Kokkos::OpenMPTarget`
-* :heavy_check_mark: `Kokkos::Cuda` + interop with [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl)
-* :heavy_check_mark: `Kokkos::HIP` + interop with [AMDGPU.jl](https://github.com/JuliaGPU/AMDGPU.jl)
+* :white_check_mark: `Kokkos::Cuda` + interop with [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl)
+* :white_check_mark: `Kokkos::HIP` + interop with [AMDGPU.jl](https://github.com/JuliaGPU/AMDGPU.jl)
 * :x: `Kokkos::SYCL`
 * :x: `Kokkos::OpenACC`
 

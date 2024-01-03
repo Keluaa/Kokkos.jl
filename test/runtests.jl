@@ -10,7 +10,7 @@ const TEST_KOKKOS_VERSION = get(ENV, "TEST_KOKKOS_VERSION", "4.0.01")
 const TEST_CMAKE_OPTIONS = filter!(!isempty, (split(get(ENV, "TEST_CMAKE_OPTIONS", ""), '|')))
 
 const TEST_CUDA = parse(Bool, get(ENV, "TEST_KOKKOS_CUDA", "false"))
-const TEST_HIP  = parse(Bool, get(ENV, "TEST_KOKKOS_HIP", "false")) && !(v"1.8-" <= VERSION < v"1.9-")
+const TEST_HIP  = parse(Bool, get(ENV, "TEST_KOKKOS_HIP", "false"))
 TEST_CUDA && TEST_HIP && error("Only a single GPU backend can be enabled at once")
 
 const TEST_OPENMP = !(TEST_CUDA || TEST_HIP)
@@ -65,6 +65,7 @@ const TEST_VIEW_LAYOUTS = (Kokkos.LayoutLeft, Kokkos.LayoutRight, Kokkos.LayoutS
 
 TEST_CUDA && using CUDA
 TEST_HIP && using AMDGPU
+TEST_MPI && using MPI
 
 
 function print_test_config()
@@ -86,6 +87,12 @@ function print_test_config()
     println(" - VIEW_DIMS:             $(TEST_VIEW_DIMS)")
     println(" - VIEW_TYPES:            $(TEST_VIEW_TYPES)")
     println(" - VIEW_LAYOUTS:          $(TEST_VIEW_LAYOUTS)")
+
+    @static if VERSION >= v"1.9-"
+        TEST_CUDA && println(" - CUDA.jl:               ", pkgversion(CUDA))
+        TEST_HIP  && println(" - AMDGPU.jl:             ", pkgversion(AMDGPU))
+        TEST_MPI  && println(" - MPI.jl:                ", pkgversion(MPI))
+    end
 end
 
 

@@ -50,7 +50,7 @@ The CMake project shouldn't need extra handling to be compatible:
 cmake_minimum_required(VERSION 3.20)
 project(MyLib)
 
-set(CMAKE_CXX_EXTENSIONS OFF)  # Kokkos will warn you if this is not set to OFF
+# set(BUILD_SHARED_LIBS ON)  # Not mandatory, Kokkos.jl can add it automatically
 
 find_package(Kokkos REQUIRED)
 

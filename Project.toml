@@ -21,7 +21,7 @@ libcxxwrap_julia_jll = "3eaa8342-bff7-56a5-9981-c04077f7cee7"
 [compat]
 AMDGPU = "0.7"
 CUDA = "4.1, 5"
-CxxWrap = "0.13"
+CxxWrap = "0.14, 0.15"
 MPI = "0.20"
 Pidfile = "1.3.0"
 Preferences = "1"

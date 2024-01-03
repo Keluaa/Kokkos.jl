@@ -219,7 +219,11 @@ function register_new_functions(current_module, lib_path, lib_name)
         module_expr = quote
             module $name
                 using CxxWrap
-                @wrapmodule($lib_path, :define_kokkos_module)
+                @static if pkgversion(CxxWrap) >= v"0.14-"
+                    @wrapmodule(() -> $lib_path, :define_kokkos_module)
+                else
+                    @wrapmodule($lib_path, :define_kokkos_module)
+                end
             end
         end
         module_expr = module_expr.args[2]  # Needed because of the error '"module" expression not at top level'
