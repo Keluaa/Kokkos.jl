@@ -22,34 +22,30 @@ The types and functions covered are restrained by macros defined at build-time
 (NOT at configuration time!) through the `build_parameters.h` file generated from environment
 variables before compilation:
 
- - `VIEW_DIMENSIONS`: comma-separated list of dimensions to instantiate 
- - `VIEW_TYPES`: comma-separated list of C++ types to instantiate
- - `VIEW_LAYOUTS`: comma-separated list of layouts to instantiate, allows some aliases:
+ - `VIEW_DIMENSION`: dimension to instantiate 
+ - `VIEW_TYPE`: C++ type to instantiate
+ - `VIEW_LAYOUT`: layout to instantiate, allows some aliases:
     - `left`, `right`, `stride` are aliases for
       `Kokkos::LayoutLeft`, `Kokkos::LayoutRight` and `Kokkos::LayoutStride` respectively
     - `deviceDefault` is equivalent to `Kokkos::DefaultExecutionSpace::array_layout`
     - `hostDefault` is equivalent to `Kokkos::DefaultHostExecutionSpace::array_layout`
- - `EXEC_SPACE_FILTER`: comma-separated list of names of execution spaces (e.g. `"Host", "Cuda""`)
-   to instantiate. If empty, defaults to all enabled Kokkos execution spaces
- - `MEM_SPACE_FILTER`: comma-separated list of names of memory spaces (e.g. `"HostSpace", "CudaSpace"`)
-   to instantiate. If empty, default to all enabled Kokkos memory spaces
+    - `NONE` is for `void`
+ - `EXEC_SPACE`: name of execution space (e.g. `"Host", "Cuda"`) to instantiate. Defaults to `void`.
+ - `MEM_SPACE`: name of memory space (e.g. `"HostSpace", "CudaSpace"`) to instantiate. Defaults to `void`.
 
 Some variables are specific to some functions:
  - `Kokkos::deep_copy`
-   - `DEST_LAYOUTS`: same as `VIEW_LAYOUTS` for destination view layouts.
-     Defaults to `VIEW_LAYOUTS`.
-   - `DEST_MEM_SPACES`: comma-separated list of names of destination memory spaces
-     to instantiate. Behaves similarly to `MEM_SPACE_FILTER`, but if empty defaults to an empty list.
+   - `DEST_LAYOUT`: same as `VIEW_LAYOUT` for the destination view layout. Defaults to `VIEW_LAYOUT`.
+   - `DEST_MEM_SPACE`: same as `MEM_SPACE` for the destination memory space. Defaults to `void`.
    - `WITHOUT_EXEC_SPACE_ARG`: bool (as an integer: `0` or `1`), whether to compile
-     the version with a leading execution space parameter
+     the version with a leading execution space parameter.
  - `Kokkos::create_mirror[_view]`
-   - `DEST_MEM_SPACES`: same as for `Kokkos::deep_copy` 
+   - `DEST_MEM_SPACE`: same as for `Kokkos::deep_copy` 
    - `WITH_NOTHING_ARG`: bool (as an integer: `0` or `1`), whether to compile the
      version with an implicit memory space destination, which defaults to a host-accessible
-     memory space
+     memory space.
  - `Kokkos::subview`
-   - `SUBVIEW_DIMS`: comma-separated list of target dimensions of subviews.
-     Defaults to `VIEW_DIMENSIONS`.
+   - `SUBVIEW_DIM`: target dimension of the subview to instantiate.
 
 While debugging, you can use functions in `printing_utils.h` to print any type or any `TList`
 with no type-mangling.

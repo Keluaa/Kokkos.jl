@@ -165,11 +165,11 @@ using ExecutionSpaceList = BuildExecutionSpacesList<
 >;
 
 
-constexpr const std::array exec_space_filters = as_array<const char*>(EXEC_SPACE_FILTER);
-using FilteredExecutionSpaceList = decltype(filter_spaces<exec_space_filters.size(), exec_space_filters>(ExecutionSpaceList{}));
+static constexpr std::string_view EXEC_SPACE_STR = AS_STR(EXEC_SPACE);
 
+// The execution space with the same name as `EXEC_SPACE`, or `void`
+using ExecutionSpace = decltype(find_space<EXEC_SPACE_STR, void>(ExecutionSpaceList{}))::Arg<0>;
 
 using Idx = typename Kokkos::RangePolicy<>::index_type;
-
 
 #endif //KOKKOS_WRAPPER_EXECUTION_SPACES_H

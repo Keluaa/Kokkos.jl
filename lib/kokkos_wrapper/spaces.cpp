@@ -87,11 +87,15 @@ void post_register_all(jlcxx::Module& mod, TList<T...>)
 {
     (post_register_space<T>(mod), ...);
 
-    apply_to_all(build_all_combinations<TList<T...>, MemorySpacesList>(), [&](auto comb) {
-        using space = typename decltype(comb)::template Arg<0>;
-        using mem_space = typename decltype(comb)::template Arg<1>;
-        mod.method("accessible", [](jlcxx::SingletonType<SpaceInfo<space>>, jlcxx::SingletonType<SpaceInfo<mem_space>>) {
-            return (bool) Kokkos::SpaceAccessibility<space, mem_space>::accessible;
+    // Accessibility from any space to all memory spaces
+    apply_to_each(TList<T...>{}, [&](auto t_space) {
+        using space = typename decltype(t_space)::template Arg<0>;
+        apply_to_each(MemorySpacesList{}, [&](auto t_mem_space) {
+            using mem_space = typename decltype(t_mem_space)::template Arg<0>;
+            mod.method("accessible",
+            [](jlcxx::SingletonType<SpaceInfo<space>>, jlcxx::SingletonType<SpaceInfo<mem_space>>) {
+                return (bool) Kokkos::SpaceAccessibility<space, mem_space>::accessible;
+            });
         });
     });
 }

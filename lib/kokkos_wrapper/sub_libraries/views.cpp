@@ -299,8 +299,8 @@ struct RegisterUtils
     }
 
 
-    template<typename Wrapped, typename... Indices, std::size_t... I>
-    static void register_access_operator(Wrapped wrapped, TList<Indices...>, std::index_sequence<I...>)
+    template<typename Wrapped, typename... Indices>
+    static void register_access_operator(Wrapped wrapped, TList<Indices...>)
     {
         using WrappedT = typename decltype(wrapped)::type;
         // Add a method for integer indexing: `_get_ptr(i::Idx)` in 1D, `_get_ptr(i::Idx, j::Idx)` in 2D, etc
@@ -320,7 +320,7 @@ struct RegisterUtils
     static void register_access_operator(Wrapped wrapped) {
         // Some template parameter packs shenanigans are required for nvcc
         if constexpr (Kokkos::SpaceAccessibility<Kokkos::DefaultHostExecutionSpace, MemSpace>::accessible) {
-            register_access_operator(wrapped, repeat_type<Idx, D>(), std::make_index_sequence<D>{});
+            register_access_operator(wrapped, repeat_type<Idx, D>());
         } else {
             register_inaccessible_operator(wrapped, repeat_type<Idx, D>());
         }
@@ -353,73 +353,70 @@ struct RegisterUtils
 };
 
 
+template<typename ViewType, typename ViewDim, typename ViewLayout, typename ViewMemSpace>
 void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_module)
 {
-    apply_to_each(FilteredMemorySpaceList{}, [&](auto params) {
-        using MemSpace = typename decltype(params)::template Arg<0>;
+    using RegUtils = RegisterUtils<ViewDim, ViewLayout, ViewMemSpace>;
 
-        using RegUtils = RegisterUtils<Dimension, Layout, MemSpace>;
+    std::string name = RegUtils::build_view_type_name();
+    jl_value_t* view_type = RegUtils::build_abstract_array_type(views_module);
+    JL_GC_PUSH1(view_type)
 
-        std::string name = RegUtils::build_view_type_name();
-        jl_value_t* view_type = RegUtils::build_abstract_array_type(views_module);
-        JL_GC_PUSH1(view_type)
+    // We apply the type and other parameters separately: some type problems arise when specifying them all through
+    // `add_type`, irregularities such as `View{Float64, 2} <: AbstractArray{Float64, 2} == true` but an instance of a
+    // `View{Float64, 2}` would not be `isa AbstractArray{Float64, 2}`, preventing the inheritance of all `AbstractArray`
+    // behaviour.
+    mod.add_type<jlcxx::Parametric<jlcxx::TypeVar<1>>>(name, view_type)
+        .apply_combination<
+                ViewWrap,
+                jlcxx::ParameterList<ViewType>,
+                jlcxx::ParameterList<ViewDim>,
+                jlcxx::ParameterList<ViewLayout>,
+                jlcxx::ParameterList<ViewMemSpace>
+    >([&](auto wrapped) {
+        // `Wrapped_t` is mapped to the `View_<dim>D_<layout>_<mem space>` type: aka the 'impl' type.
+        using Wrapped_t = typename decltype(wrapped)::type;
 
-        // We apply the type and dimension separately: some type problems arise when specifying both through `add_type`,
-        // irregularities like `View{Float64, 2} <: AbstractArray{Float64, 2} == true` but an instance of a
-        // `View{Float64, 2}` would not be `isa AbstractArray{Float64, 2}`, preventing the inheritance of all
-        // AbstractArray behaviour.
-        mod.add_type<jlcxx::Parametric<jlcxx::TypeVar<1>>>(name, view_type)
-            .apply_combination<
-                    ViewWrap,
-                    jlcxx::ParameterList<VIEW_TYPE>,
-                    jlcxx::ParameterList<Dimension>,
-                    jlcxx::ParameterList<Layout>,
-                    jlcxx::ParameterList<MemSpace>
-        >([&](auto wrapped) {
-            // `Wrapped_t` is mapped to the `View_<dim>D_<layout>_<mem space>` type: aka the 'impl' type.
-            using Wrapped_t = typename decltype(wrapped)::type;
+        // `complete_type` is mapped to the `View{T, D, L, M}` type: aka the 'main' type. It is an abstract type on
+        // the Julia side.
+        // On the C++ side, it is mapped to `TList<Wrapped_t>`, to make it easy to build and work with.
+        using complete_type = TList<Wrapped_t>;
 
-            // `complete_type` is mapped to the `View{T, D, L, M}` type: aka the 'main' type. It is an abstract type on
-            // the Julia side.
-            // On the C++ side, it is mapped to `TList<Wrapped_t>`, to make it easy to build and work with.
-            using complete_type = TList<Wrapped_t>;
+        RegUtils::template register_constructor<Wrapped_t, complete_type>(mod, views_module);
+        RegUtils::register_access_operator(wrapped);
 
-            RegUtils::template register_constructor<Wrapped_t, complete_type>(mod, views_module);
-            RegUtils::register_access_operator(wrapped);
-
-            wrapped.method("impl_view_type", [](jlcxx::SingletonType<complete_type>) {
-                return jlcxx::julia_type<Wrapped_t>();
-            });
-
-            wrapped.method("host_mirror_space", [](jlcxx::SingletonType<complete_type>) {
-                return jlcxx::julia_type<typename Wrapped_t::host_mirror_space>()->super->super;
-            });
-
-            wrapped.method("cxx_type_name", [](jlcxx::SingletonType<complete_type>, bool mangled) {
-                if (mangled) {
-                    return std::string(typeid(typename Wrapped_t::kokkos_view_t).name());
-                } else {
-                    return std::string(get_type_name<typename Wrapped_t::kokkos_view_t>());
-                }
-            });
-
-            wrapped.method("view_data", &Wrapped_t::data);
-            wrapped.method("label", &Wrapped_t::label);
-            wrapped.method("memory_span", [](const Wrapped_t& view) { return view.impl_map().memory_span(); });
-            wrapped.method("span_is_contiguous", &Wrapped_t::span_is_contiguous);
-            wrapped.method("_get_dims", [](const Wrapped_t& view) { return std::tuple_cat(view.get_dims()); });
-            wrapped.method("_get_strides", [](const Wrapped_t& view) { return std::tuple_cat(view.get_strides()); });
-            wrapped.method("get_tracker", [](const Wrapped_t& view) {
-                if (view.impl_track().has_record()) {
-                    return reinterpret_cast<void*>(view.impl_track().template get_record<void>()->data());
-                } else {
-                    return (void*) nullptr;
-                }
-            });
+        wrapped.method("impl_view_type", [](jlcxx::SingletonType<complete_type>) {
+            return jlcxx::julia_type<Wrapped_t>();
         });
 
-        JL_GC_POP();
+        wrapped.method("host_mirror_space", [](jlcxx::SingletonType<complete_type>) {
+            return jlcxx::julia_type<typename Wrapped_t::host_mirror_space>()->super->super;
+        });
+
+        wrapped.method("cxx_type_name", [](jlcxx::SingletonType<complete_type>, bool mangled) {
+            if (mangled) {
+                return std::string(typeid(typename Wrapped_t::kokkos_view_t).name());
+            } else {
+                return std::string(get_type_name<typename Wrapped_t::kokkos_view_t>());
+            }
+        });
+
+        wrapped.method("view_data", &Wrapped_t::data);
+        wrapped.method("label", &Wrapped_t::label);
+        wrapped.method("memory_span", [](const Wrapped_t& view) { return view.impl_map().memory_span(); });
+        wrapped.method("span_is_contiguous", &Wrapped_t::span_is_contiguous);
+        wrapped.method("_get_dims", [](const Wrapped_t& view) { return std::tuple_cat(view.get_dims()); });
+        wrapped.method("_get_strides", [](const Wrapped_t& view) { return std::tuple_cat(view.get_strides()); });
+        wrapped.method("get_tracker", [](const Wrapped_t& view) {
+            if (view.impl_track().has_record()) {
+                return reinterpret_cast<void*>(view.impl_track().template get_record<void>()->data());
+            } else {
+                return (void*) nullptr;
+            }
+        });
     });
+
+    JL_GC_POP();
 }
 
 
@@ -453,6 +450,13 @@ JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
     // Called from 'Kokkos.Views.Impl_<number>'
     jl_module_t* views_module = mod.julia_module()->parent;
     import_all_views_methods(mod.julia_module(), views_module);
-    register_all_view_combinations(mod, views_module);
+
+    if constexpr (std::is_void_v<MemorySpace>) {
+        jl_errorf("No memory space with the name '" AS_STR(MEM_SPACE) "'\n"
+                  "Compilation parameters:\n%s", get_params_string());
+    } else {
+        register_all_view_combinations<VIEW_TYPE, Dimension, Layout, MemorySpace>(mod, views_module);
+    }
+
     mod.method("params_string", get_params_string);
 }

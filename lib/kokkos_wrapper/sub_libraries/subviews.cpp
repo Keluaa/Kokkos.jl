@@ -153,9 +153,10 @@ void register_subviews_for_view_and_layout(jlcxx::Module& mod)
         using SubViewStrided = typename SubView::template with_layout<Kokkos::LayoutStride>;
 
         // method signature: (View{T, D, L, M}, Tuple{Vararg{Union{Colon, AbstractUnitRange, Int64}}}, Val{SubDim}, LayoutStride)
-        mod.method("subview", [](const View& v, IndexVarargs* indexes,
-                                 jlcxx::SingletonType<jlcxx::Val<int64_t, SubView::dim>>,
-                                 jlcxx::SingletonType<Kokkos::LayoutStride>)
+        mod.method("subview",
+        [](const View& v, IndexVarargs* indexes,
+                jlcxx::SingletonType<jlcxx::Val<int64_t, SubView::dim>>,
+                jlcxx::SingletonType<Kokkos::LayoutStride>)
         {
             auto* jl_indexes = reinterpret_cast<jl_value_t*>(indexes);
 
@@ -172,9 +173,10 @@ void register_subviews_for_view_and_layout(jlcxx::Module& mod)
     }
 
     // method signature: (View{T, D, L, M}, Tuple{Vararg{Union{Colon, AbstractUnitRange, Int64}}}, Val{SubDim}, Layout)
-    mod.method("subview", [](const View& v, IndexVarargs* indexes,
-                             jlcxx::SingletonType<jlcxx::Val<int64_t, SubView::dim>>,
-                             jlcxx::SingletonType<typename View::layout>)
+    mod.method("subview",
+    [](const View& v, IndexVarargs* indexes,
+            jlcxx::SingletonType<jlcxx::Val<int64_t, SubView::dim>>,
+            jlcxx::SingletonType<typename View::layout>)
     {
         auto* jl_indexes = reinterpret_cast<jl_value_t*>(indexes);
 
@@ -193,25 +195,24 @@ void register_subviews_for_view_and_layout(jlcxx::Module& mod)
 
 void register_all_subviews(jlcxx::Module& mod)
 {
-    apply_to_each(FilteredMemorySpaceList{}, [&](auto view_t) {
-        using MemSpace = typename decltype(view_t)::template Arg<0>;
+    if constexpr (SubViewDimension::value > Dimension::value) {
+        jl_errorf("Expected a subview dimension lower than %d, got: %d.\n"
+                  "Compilation parameters:\n%s",
+                  Dimension::value, SubViewDimension::value, get_params_string());
+    } else if constexpr (std::is_void_v<MemorySpace>) {
+        jl_errorf("No memory space with the name '" AS_STR(MEM_SPACE) "'.\n"
+                  "Compilation parameters:\n%s", get_params_string());
+    } else {
+        using View = ViewWrap<VIEW_TYPE, Dimension, Layout, MemorySpace>;
+        using SubView = ViewWrap<VIEW_TYPE, SubViewDimension, Layout, MemorySpace>;
 
-        using View = ViewWrap<VIEW_TYPE, Dimension, Layout, MemSpace>;
-        using SubView = ViewWrap<VIEW_TYPE, SubViewDimension, Layout, MemSpace>;
-
-        if constexpr (SubViewDimension::value > Dimension::value) {
-            jl_errorf("Expected a subview dimension lower than %d, got: %d",
-                      Dimension::value, SubViewDimension::value);
+        if (!jlcxx::has_julia_type<SubView>()) {
+            jl_errorf("Missing view type for complete `Kokkos.subview` coverage: %dD of c++ type %s",
+                      SubViewDimension::value, typeid(SubView).name());
         }
-        else {
-            if (!jlcxx::has_julia_type<SubView>()) {
-                jl_errorf("Missing view type for complete `Kokkos.subview` coverage: %dD of c++ type %s",
-                          SubViewDimension::value, typeid(SubView).name());
-            }
 
-            register_subviews_for_view_and_layout<View, SubView, Layout>(mod);
-        }
-    });
+        register_subviews_for_view_and_layout<View, SubView, Layout>(mod);
+    }
 }
 
 

@@ -5,87 +5,62 @@
 #include "utils.h"
 
 
-struct NoExecSpaceArg {};
+template<typename DstView, typename SrcView>
+using deep_copyable_no_exec_t = decltype(Kokkos::deep_copy(DstView{}, SrcView{}));
 
 
-template<typename ExecSpace, typename DestView>
-struct DeepCopyDetector
+template<typename ExecSpace, typename DstView, typename SrcView>
+using deep_copyable_t = decltype(Kokkos::deep_copy(ExecSpace{}, DstView{}, SrcView{}));
+
+
+template<
+        typename Type, typename Dim,
+        typename SrcLayout, typename SrcMemSpace,
+        typename DstLayout, typename DstMemSpace>
+void register_deep_copy_method_without_exec_space(jlcxx::Module& mod)
 {
-    template<typename SrcView>
-    using deep_copyable_t = decltype(Kokkos::deep_copy(ExecSpace{}, DestView{}, SrcView{}));
+    using SrcView = ViewWrap<Type, Dim, SrcLayout, SrcMemSpace>;
+    using DestView = ViewWrap<Type, Dim, DstLayout, DstMemSpace>;
 
-    template<typename SrcView>
-    using is_deep_copyable = Kokkos::is_detected<deep_copyable_t, SrcView>;
-};
+    constexpr bool is_deep_copyable = Kokkos::is_detected<deep_copyable_no_exec_t, DestView, SrcView>::value;
 
-
-template<typename DestView>
-struct DeepCopyDetectorNoExecSpace
-{
-    template<typename SrcView>
-    using deep_copyable_t = decltype(Kokkos::deep_copy(DestView{}, SrcView{}));
-
-    template<typename SrcView>
-    using is_deep_copyable = Kokkos::is_detected<deep_copyable_t, SrcView>;
-};
-
-
-void register_all_deep_copy_combinations(jlcxx::Module& mod)
-{
-    auto combinations = build_all_combinations<
-#if WITHOUT_EXEC_SPACE_ARG == 0
-            decltype(FilteredExecutionSpaceList{}),
-#else
-            decltype(TList<NoExecSpaceArg>{}),
-#endif
-            DestMemSpaces
-    >();
-
-    apply_to_all(combinations, [&](auto combination)
+    mod.method("deep_copy",
+    [](const DestView& dest_view, const SrcView& src_view)
     {
-        using ExecSpace = typename decltype(combination)::template Arg<0>;
-        using DestMemSpace = typename decltype(combination)::template Arg<1>;
+        if constexpr (is_deep_copyable) {
+            Kokkos::deep_copy(dest_view, src_view);
+        } else {
+            jl_errorf("Deep copy is not possible from `%s` to `%s`",
+                      jl_typename_str((jl_value_t*) jlcxx::julia_type<SrcView>()),
+                      jl_typename_str((jl_value_t*) jlcxx::julia_type<DestView>()));
+        }
+    });
+}
 
-        using DestView = ViewWrap<VIEW_TYPE, Dimension, DestLayout, DestMemSpace>;
 
-        using Detector = std::conditional_t<std::is_same_v<ExecSpace, NoExecSpaceArg>,
-                DeepCopyDetectorNoExecSpace<typename DestView::kokkos_view_t>,
-                DeepCopyDetector<ExecSpace, typename DestView::kokkos_view_t>>;
+template<
+        typename Type, typename Dim,
+        typename SrcLayout, typename SrcMemSpace,
+        typename DstLayout, typename DstMemSpace,
+        typename ExecSpace>
+void register_deep_copy_method_with_exec_space(jlcxx::Module& mod)
+{
+    using SrcView = ViewWrap<Type, Dim, SrcLayout, SrcMemSpace>;
+    using DestView = ViewWrap<Type, Dim, DstLayout, DstMemSpace>;
 
-        apply_to_each(FilteredMemorySpaceList{}, [&](auto src_combination)
-        {
-            using SrcMemSpace = typename decltype(src_combination)::template Arg<0>;
-            using SrcView = ViewWrap<VIEW_TYPE, Dimension, Layout, SrcMemSpace>;
+    constexpr bool is_deep_copyable = Kokkos::is_detected<deep_copyable_t, ExecSpace, DestView, SrcView>::value;
 
-            constexpr bool is_deep_copyable = Detector::template is_deep_copyable<typename SrcView::kokkos_view_t>::value;
-
-            if constexpr (std::is_same_v<ExecSpace, NoExecSpaceArg>) {
-                mod.method("deep_copy",
-                [](const DestView& dest_view, const SrcView& src_view)
-                {
-                    if constexpr (is_deep_copyable) {
-                        Kokkos::deep_copy(dest_view, src_view);
-                    } else {
-                        jl_errorf("Deep copy is not possible from `%s` to `%s`",
-                                  jl_typename_str((jl_value_t*) jlcxx::julia_type<SrcView>()),
-                                  jl_typename_str((jl_value_t*) jlcxx::julia_type<DestView>()));
-                    }
-                });
-            } else {
-                mod.method("deep_copy",
-                [](const ExecSpace& exec_space, const DestView& dest_view, const SrcView& src_view)
-                {
-                    if constexpr (is_deep_copyable) {
-                        Kokkos::deep_copy(exec_space, dest_view, src_view);
-                    } else {
-                        jl_errorf("Deep copy is not possible from `%s` to `%s` in `%s`",
-                                  jl_typename_str((jl_value_t*) jlcxx::julia_type<SrcView>()),
-                                  jl_typename_str((jl_value_t*) jlcxx::julia_type<DestView>()),
-                                  jl_typename_str((jl_value_t*) jlcxx::julia_type<ExecSpace>()->super->super));
-                    }
-                });
-            }
-        });
+    mod.method("deep_copy",
+    [](const ExecSpace& exec_space, const DestView& dest_view, const SrcView& src_view)
+    {
+        if constexpr (is_deep_copyable) {
+            Kokkos::deep_copy(exec_space, dest_view, src_view);
+        } else {
+            jl_errorf("Deep copy is not possible from `%s` to `%s` in `%s`",
+                      jl_typename_str((jl_value_t*) jlcxx::julia_type<SrcView>()),
+                      jl_typename_str((jl_value_t*) jlcxx::julia_type<DestView>()),
+                      jl_typename_str((jl_value_t*) jlcxx::julia_type<ExecutionSpace>()->super->super));
+        }
     });
 }
 
@@ -95,6 +70,18 @@ JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
     // Called from 'Kokkos.Views.Impl<number>'
     jl_module_t* views_module = mod.julia_module()->parent;
     jl_module_import(mod.julia_module(), views_module, jl_symbol("deep_copy"));
-    register_all_deep_copy_combinations(mod);
+
+    if constexpr (std::is_void_v<DestMemorySpace>) {
+        jl_errorf("No memory space with the name '" AS_STR(DEST_MEM_SPACE) "' for the destination memory space.\n"
+                  "Compilation parameters:\n%s", get_params_string());
+    } else if constexpr (WITHOUT_EXEC_SPACE_ARG == 1) {
+        register_deep_copy_method_without_exec_space<VIEW_TYPE, Dimension, Layout, MemorySpace, DestLayout, DestMemorySpace>(mod);
+    } else if constexpr (std::is_void_v<ExecutionSpace>) {
+        jl_errorf("No execution space with the name '" AS_STR(EXEC_SPACE) "'.\n"
+                  "Compilation parameters:\n%s", get_params_string());
+    } else {
+        register_deep_copy_method_with_exec_space<VIEW_TYPE, Dimension, Layout, MemorySpace, DestLayout, DestMemorySpace, ExecutionSpace>(mod);
+    }
+
     mod.method("params_string", get_params_string);
 }

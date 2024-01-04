@@ -164,14 +164,14 @@ function build_compilation_parameters(
     subview_dim
 )
     # TODO: remove the `only` by propagating the changes to the caller, etc...
-    str_view_layout     = isempty(view_layout) ? ""     : only(view_layout)
-    str_view_dim        = isempty(view_dim)    ? ""     : only(view_dim)
-    str_view_type       = isempty(view_type)   ? ""     : only(view_type)
-    str_dest_layout     = isempty(dest_layout) ? "NONE" : only(dest_layout)
-    str_subview_dim     = isempty(subview_dim) ? "0"    : only(subview_dim)
-    str_exec_spaces     = join('"' .* exec_spaces .* '"', ',')
-    str_mem_spaces      = join('"' .* mem_spaces  .* '"', ',')
-    str_dest_mem_spaces = join('"' .* dest_mem_spaces .* '"', ',')
+    str_view_layout    = isempty(view_layout) ? ""     : only(view_layout)
+    str_view_dim       = isempty(view_dim)    ? ""     : only(view_dim)
+    str_view_type      = isempty(view_type)   ? ""     : only(view_type)
+    str_dest_layout    = isempty(dest_layout) ? "NONE" : only(dest_layout)
+    str_subview_dim    = isempty(subview_dim) ? "0"    : only(subview_dim)
+    str_exec_space     = isempty(exec_spaces) ? ""     : only(exec_spaces)
+    str_mem_space      = isempty(mem_spaces)  ? ""     : only(mem_spaces)
+    str_dest_mem_space = isempty(dest_mem_spaces) ? "" : only(dest_mem_spaces)
 
     # Those are environment variables which will their respective macros in the C++ lib.
     # See 'lib/kokkos_wrapper/build_parameters.sh'
@@ -179,10 +179,10 @@ function build_compilation_parameters(
         "VIEW_LAYOUT" => str_view_layout,
         "VIEW_DIM" => str_view_dim,
         "VIEW_TYPE" => str_view_type,
-        "EXEC_SPACES" => str_exec_spaces,
-        "MEM_SPACES" => str_mem_spaces,
+        "EXEC_SPACE" => str_exec_space,
+        "MEM_SPACE" => str_mem_space,
         "DEST_LAYOUT" => str_dest_layout,
-        "DEST_MEM_SPACES" => str_dest_mem_spaces,
+        "DEST_MEM_SPACE" => str_dest_mem_space,
         "WITHOUT_EXEC_SPACE_ARG" => Int(without_exec_space_arg),
         "WITH_NOTHING_ARG" => Int(with_nothing_arg),
         "SUBVIEW_DIM" => str_subview_dim

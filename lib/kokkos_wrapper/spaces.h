@@ -18,25 +18,22 @@ struct SpaceInfo {
 };
 
 
-template<std::size_t N, const std::array<const char*, N>& filters, typename... S, std::size_t... I>
-auto filter_spaces(TList<S...> spaces, std::index_sequence<I...>)
-{
-    return filter_types([&](auto space) {
-        return std::bool_constant<((SpaceInfo<decltype(space)>::julia_name == std::string_view(filters[I])) || ...)>{};
-    }, spaces);
-}
-
-
 /**
- * From an array of `N` space names, filter `spaces` to include only those whose name match one of the filters.
+ * Return a `TList<Match>{}` where `Match` is the space with the same name as 'filter'. There can only be only one match.
+ * If there is no match, `TList<Default>{}` is returned instead.
  */
-template<std::size_t N, const std::array<const char*, N>& filters, typename... S>
-auto filter_spaces(TList<S...> spaces)
+template<const std::string_view& filter, typename Default, typename... S>
+auto find_space(TList<S...> spaces)
 {
-    if constexpr (N == 0 || sizeof...(S) == 0) {
-        return spaces;
+    auto matches = filter_types([&](auto space) {
+        return std::bool_constant<SpaceInfo<decltype(space)>::julia_name == std::string_view(filter)>{};
+    }, spaces);
+
+    if constexpr (matches.size == 0) {
+        return TList<Default>{};
     } else {
-        return filter_spaces<N, filters>(spaces, std::make_index_sequence<N>{});
+        static_assert(matches.size <= 1, "Several spaces have the same name");  // Should not happen
+        return matches;
     }
 }
 

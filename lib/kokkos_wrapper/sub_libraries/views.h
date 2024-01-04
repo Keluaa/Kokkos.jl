@@ -47,6 +47,9 @@ struct ViewWrap : public KokkosViewT
     template<typename OtherLayout>
     using with_layout = ViewWrap<T, DimCst, OtherLayout, MemSpace, MemTraits>;
 
+    template<typename OtherMemSpace>
+    using with_mem_space = ViewWrap<T, DimCst, Layout, OtherMemSpace, MemTraits>;
+
     static constexpr size_t dim = DimCst::value;
 
 #ifdef __INTEL_COMPILER
