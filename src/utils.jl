@@ -28,6 +28,10 @@ Julia on OpenMP threads: there can be as many threads as needed.
     affinities, making the OpenMP variables useless.
 """
 function set_omp_vars(; places = "cores", bind = "close", num_threads = Base.Threads.nthreads())
+    if is_initialized()
+        error("OpenMP variables should be set before initializing Kokkos")
+    end
+
     ENV["OMP_PLACES"] = places
     ENV["OMP_PROC_BIND"] = bind
     ENV["OMP_NUM_THREADS"] = num_threads
