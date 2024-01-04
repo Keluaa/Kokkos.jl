@@ -146,7 +146,7 @@ function _finalize_all_views()
     lock(TRACKED_VIEWS) do
         for (view, _) in TRACKED_VIEWS
             # Only views which are still alive are iterated over
-            finalize(view)
+            Base.finalize(view)
         end
     end
 end
