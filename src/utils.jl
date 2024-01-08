@@ -132,9 +132,16 @@ function print_configuration end
 
 Calls [`Kokkos::finalize()`](https://kokkos.github.io/kokkos-core-wiki/API/core/initialize_finalize/finalize.html).
 
+!!! info
+
+    If Kokkos isn't already finalized, `finalize` will be called automatically at process exit
+    through `Base.atexit`.
+
 !!! warning
 
     Kokkos requires that all view destructors should be called **before** calling `finalize`.
+    This is done automatically for all views allocated through `Kokkos.jl` upon calling `finalize`,
+    and therefore they will all become invalid.
 """
 function finalize end
 
@@ -164,6 +171,14 @@ function is_finalized()
     !is_kokkos_wrapper_loaded() && return false
     # Defined in 'kokkos_wrapper.cpp', in 'define_kokkos_module'
     return Kokkos.Wrapper.Impl.is_finalized()
+end
+
+
+function _atexit_hook()
+    !is_kokkos_wrapper_loaded() && return
+    !is_initialized() && return  # Either `Kokkos.initialize` was never called, or `Kokkos.finalize` was already called
+    is_finalized() && return  # `Kokkos.finalize` was already called
+    Kokkos.finalize()
 end
 
 

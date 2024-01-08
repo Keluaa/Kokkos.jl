@@ -137,6 +137,21 @@ function get_tracker(@nospecialize(v::View))
 end
 
 
+const TRACKED_VIEWS = WeakKeyDict{View, Bool}()
+
+
+function _finalize_all_views()
+    # Called by `Kokkos::finalize` through a finalize hook. All views allocated by Kokkos.jl will be
+    # invalid afterwards. Manual calls shouldn't cause any problem.
+    lock(TRACKED_VIEWS) do
+        for (view, _) in TRACKED_VIEWS
+            # Only views which are still alive are iterated over
+            finalize(view)
+        end
+    end
+end
+
+
 """
     impl_view_type(::Type{View{T, D, L, S}})
 
@@ -431,7 +446,7 @@ host_mirror(v::View) = host_mirror(typeof(v))
 
 
 """
-    create_mirror(src::View; mem_space = nothing, zero_fill = false)
+    create_mirror(src::View; mem_space = nothing, zero_fill = false, track = true)
 
 Create a new [`View`](@ref) in the same way as `similar(src)`, with the same layout and padding as
 `src`.
@@ -445,14 +460,14 @@ If `zero_fill` is true, the new view will have all of its elements set to their 
 
 This function relies on [Dynamic Compilation](@ref).
 """
-function create_mirror(src::View; mem_space = nothing, zero_fill = false)
-    return create_mirror(src, mem_space, zero_fill)
+function create_mirror(src::View; mem_space = nothing, zero_fill = false, track = true)
+    return create_mirror(src, mem_space, zero_fill, track)
 end
 
 
-function create_mirror(src::View, mem_space, zero_fill)
-    @nospecialize src mem_space zero_fill
-    return DynamicCompilation.@compile_and_call(create_mirror, (src, mem_space, zero_fill), begin
+function create_mirror(src::View, mem_space, zero_fill, track)
+    @nospecialize src mem_space
+    view = DynamicCompilation.@compile_and_call(create_mirror, (src, mem_space, zero_fill), begin
         compile_view(typeof(src); for_function=create_mirror, no_error=true)
         compile_view(host_mirror(typeof(src)); for_function=create_mirror, no_error=true)
         view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(typeof(src))
@@ -463,25 +478,31 @@ function create_mirror(src::View, mem_space, zero_fill)
             with_nothing_arg = isnothing(mem_space)
         )
     end)
+
+    if track
+        TRACKED_VIEWS[view] = true
+    end
+
+    return view
 end
 
 
 """
-    create_mirror_view(src::View; mem_space = nothing, zero_fill = false)
+    create_mirror_view(src::View; mem_space = nothing, zero_fill = false, track = true)
 
 Equivalent to [`create_mirror`](@ref), but if `src` is already accessible by the host, `src` is
 returned and no view is created.
 
 This function relies on [Dynamic Compilation](@ref).
 """
-function create_mirror_view(src::View; mem_space = nothing, zero_fill = false)
-    return create_mirror_view(src, mem_space, zero_fill)
+function create_mirror_view(src::View; mem_space = nothing, zero_fill = false, track = true)
+    return create_mirror_view(src, mem_space, zero_fill, track)
 end
 
 
-function create_mirror_view(src::View, mem_space, zero_fill)
-    @nospecialize src mem_space zero_fill
-    return DynamicCompilation.@compile_and_call(
+function create_mirror_view(src::View, mem_space, zero_fill, track)
+    @nospecialize src mem_space
+    view = DynamicCompilation.@compile_and_call(
             create_mirror_view, (src, mem_space, zero_fill), begin
         compile_view(typeof(src); for_function=create_mirror_view, no_error=true)
         compile_view(host_mirror(typeof(src)); for_function=create_mirror_view, no_error=true)
@@ -493,6 +514,12 @@ function create_mirror_view(src::View, mem_space, zero_fill)
             with_nothing_arg = isnothing(mem_space)
         )
     end)
+
+    if track
+        TRACKED_VIEWS[view] = true
+    end
+
+    return view
 end
 
 
@@ -506,7 +533,7 @@ with the same memory space (but maybe not the same layout).
 Unspecified dimensions are completed by `:`, e.g. if `v` is a 3D view `(1,)` and `(1, :, :)` will
 return the same subview.
 
-A subview may need `LayoutStride` to be compiled in order to be represented.
+If `v` is tracked to be automatically finalized, then the subview will be as well.
 
 Equivalent to [`Kokkos::subview`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/subview.html).
 
@@ -554,7 +581,7 @@ This function relies on [Dynamic Compilation](@ref).
 """
 function subview(view::View, indexes::Tuple, subview_dim::Type{<:Val}, subview_layout::Type)
     @nospecialize view indexes subview_dim subview_layout
-    return DynamicCompilation.@compile_and_call(
+    sv = DynamicCompilation.@compile_and_call(
             subview, (view, indexes, subview_dim, subview_layout), begin
         view_t = typeof(view)
         sub_dim = first(subview_dim.parameters)
@@ -575,6 +602,15 @@ function subview(view::View, indexes::Tuple, subview_dim::Type{<:Val}, subview_l
             view_types, view_dims, view_layouts, mem_spaces, subview_dims
         )
     end)
+
+    # Explicit lock to avoid locking twice on `haskey` then `setindex!`
+    lock(TRACKED_VIEWS) do
+        if haskey(TRACKED_VIEWS, view)
+            TRACKED_VIEWS[sv] = true
+        end
+    end
+
+    return sv
 end
 
 
@@ -657,7 +693,8 @@ end
         layout = nothing,
         label = "",
         zero_fill = true,
-        dim_pad = false
+        dim_pad = false,
+        track = true
     )
 
 Construct an N-dimensional `View{T}`. `Layout` and `MemSpace` are optional type arguments.
@@ -682,6 +719,10 @@ If `zero_fill=true`, all elements will be set to `0`. Uses `Kokkos::WithoutIniti
 `dim_pad` controls the padding of dimensions. Uses `Kokkos::AllowPadding` internally. If `true`,
 then a view might not have a layout identical to a classic `Array`, for better memory alignment.
 
+If `track == true`, the view will be added to the global dict of views (as a `WeakRef`), which is
+used when [`finalize`](@ref) is called in order to properly free all views. This can have a little
+overhead, hence the possibility to disable it.
+
 See [the Kokkos documentation about `Kokkos::view_alloc()`](https://kokkos.github.io/kokkos-core-wiki/API/core/view/view_alloc.html)
 for more info.
 
@@ -692,7 +733,8 @@ function View{T, D, L, S}(dims::Dims{D};
     layout = nothing,
     label = "",
     zero_fill = true,
-    dim_pad = false
+    dim_pad = false,
+    track = true
 ) where {T, D, L, S}
     if isnothing(mem_space)
         # ok
@@ -719,7 +761,14 @@ function View{T, D, L, S}(dims::Dims{D};
         error("the `View` constructor with a `LayoutStride` requires a instance of the layout")
     end
 
-    return alloc_view(View{T, D, L, S}, dims, mem_space, layout, label, zero_fill, dim_pad)
+    view = alloc_view(View{T, D, L, S}, dims, mem_space, layout, label, zero_fill, dim_pad)
+
+    if track
+        # `setindex!` of `WeakKeyDict` is thread-safe
+        TRACKED_VIEWS[view] = true
+    end
+
+    return view
 end
 
 View{T, D, L, S}(::UndefInitializer, dims::Dims{D}; kwargs...) where {T, D, L, S} =

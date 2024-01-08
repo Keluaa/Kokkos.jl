@@ -84,6 +84,8 @@ function __init__()
         @require MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195" include("../ext/KokkosMPI.jl")
         @require CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba" include("../ext/KokkosCUDA.jl")
     end
+
+    Base.atexit(_atexit_hook())
 end
 
 end
