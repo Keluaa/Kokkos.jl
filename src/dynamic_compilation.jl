@@ -99,49 +99,31 @@ end
 
 function build_lib_name(
     cmake_target,
-    view_layouts, view_dims, view_types,
-    exec_spaces, mem_spaces,
-    dest_layouts, dest_mem_spaces,
+    view_layout, view_dim, view_type,
+    exec_space, mem_space,
+    dest_layout, dest_space,
     without_exec_space_arg, with_nothing_arg,
-    subview_dims
+    subview_dim
 )
-    # All arguments are tuples/vectors of strings
+    # All arguments are strings
     parts = [cmake_target]
 
-    if !isempty(view_dims)
-        view_dims = sort(view_dims)
-        push!(parts, join(view_dims .* "D", "_"))
-    end
+    !isempty(view_dim)     && push!(parts, view_dim .* "D")
+    !isempty(view_layout)  && push!(parts, uppercase(view_layout[1:1]))  # Keep only the first letter
+    !isempty(view_type)    && push!(parts, view_type)
+    !isempty(exec_space)   && push!(parts, exec_space)
+    !isempty(mem_space)    && push!(parts, mem_space)
 
-    if !isempty(view_layouts)
-        view_layouts = sort(getindex.(view_layouts, 1) .|> uppercase)  # Keep only the first letter
-        push!(parts, join(view_layouts))
-    end
-
-    for list in (view_types, exec_spaces, mem_spaces)
-        isempty(list) && continue
-        list = sort(list)
-        push!(parts, join(list, "_"))
-    end
-
-    if !isempty(dest_layouts) || !isempty(dest_mem_spaces) || !isempty(subview_dims)
+    if !isempty(dest_layout) || !isempty(dest_space) || !isempty(subview_dim)
         push!(parts, "to")
     end
 
-    if !isempty(dest_layouts)
-        dest_layouts = sort(getindex.(dest_layouts, 1) .|> uppercase)  # Keep only the first letter
-        push!(parts, join(dest_layouts))
-    end
-
-    for list in (dest_mem_spaces, subview_dims)
-        if !isempty(list)
-            list = sort(list)
-            push!(parts, join(list, "_"))
-        end
-    end
+    !isempty(dest_layout)  && push!(parts, uppercase(dest_layout[1:1]))
+    !isempty(dest_space)   && push!(parts, dest_space)
+    !isempty(subview_dim)  && push!(parts, subview_dim)
 
     without_exec_space_arg && push!(parts, "no_exec")
-    with_nothing_arg && push!(parts, "with_default")
+    with_nothing_arg       && push!(parts, "with_default")
 
     return join(parts, "_") * SHARED_LIB_EXT
 end
@@ -158,34 +140,28 @@ end
 
 function build_compilation_parameters(
     view_layout, view_dim, view_type,
-    exec_spaces, mem_spaces,
-    dest_layout, dest_mem_spaces,
+    exec_space, mem_space,
+    dest_layout, dest_space,
     without_exec_space_arg, with_nothing_arg,
     subview_dim
 )
-    # TODO: remove the `only` by propagating the changes to the caller, etc...
-    str_view_layout    = isempty(view_layout) ? ""     : only(view_layout)
-    str_view_dim       = isempty(view_dim)    ? ""     : only(view_dim)
-    str_view_type      = isempty(view_type)   ? ""     : only(view_type)
-    str_dest_layout    = isempty(dest_layout) ? "NONE" : only(dest_layout)
-    str_subview_dim    = isempty(subview_dim) ? "0"    : only(subview_dim)
-    str_exec_space     = isempty(exec_spaces) ? ""     : only(exec_spaces)
-    str_mem_space      = isempty(mem_spaces)  ? ""     : only(mem_spaces)
-    str_dest_mem_space = isempty(dest_mem_spaces) ? "" : only(dest_mem_spaces)
+    # Special case for parameters which should have a default value
+    dest_layout = isempty(dest_layout) ? "NONE" : dest_layout
+    subview_dim = isempty(subview_dim) ? "0"    : subview_dim
 
     # Those are environment variables which will their respective macros in the C++ lib.
     # See 'lib/kokkos_wrapper/build_parameters.sh'
     return Dict(
-        "VIEW_LAYOUT" => str_view_layout,
-        "VIEW_DIM" => str_view_dim,
-        "VIEW_TYPE" => str_view_type,
-        "EXEC_SPACE" => str_exec_space,
-        "MEM_SPACE" => str_mem_space,
-        "DEST_LAYOUT" => str_dest_layout,
-        "DEST_MEM_SPACE" => str_dest_mem_space,
+        "VIEW_LAYOUT" => view_layout,
+        "VIEW_DIM" => view_dim,
+        "VIEW_TYPE" => view_type,
+        "EXEC_SPACE" => exec_space,
+        "MEM_SPACE" => mem_space,
+        "DEST_LAYOUT" => dest_layout,
+        "DEST_MEM_SPACE" => dest_space,
         "WITHOUT_EXEC_SPACE_ARG" => Int(without_exec_space_arg),
         "WITH_NOTHING_ARG" => Int(with_nothing_arg),
-        "SUBVIEW_DIM" => str_subview_dim
+        "SUBVIEW_DIM" => subview_dim
     )
 end
 
@@ -244,59 +220,60 @@ The library is a CxxWrap module, which is then loaded into `current_module` in t
 `Impl<number>` with '<number>' the total count of calls to `compile_and_load` in this Julia session.
 """
 function compile_and_load(current_module, cmake_target;
-    view_layouts = nothing,
-    view_dims = nothing,
-    view_types = nothing,
-    exec_spaces = nothing,
-    mem_spaces = nothing,
-    dest_layouts = nothing,
-    dest_mem_spaces = nothing,
+    view_layout = nothing,
+    view_dim = nothing,
+    view_type = nothing,
+    exec_space = nothing,
+    mem_space = nothing,
+    dest_layout = nothing,
+    dest_space = nothing,
     without_exec_space_arg = false,
     with_nothing_arg = false,
-    subview_dims = nothing
+    subview_dim = nothing
 )
-    view_layouts, view_dims, view_types, 
-        exec_spaces, mem_spaces, dest_layouts,
-        dest_mem_spaces, subview_dims = __validate_parameters(;
-            view_layouts, view_dims, view_types,
-            exec_spaces, mem_spaces,
-            dest_layouts, dest_mem_spaces,
-            subview_dims
+    view_layout, view_dim, view_type,
+        exec_space, mem_space,
+        dest_layout, dest_space,
+        subview_dim = __validate_parameters(;
+            view_layout, view_dim, view_type,
+            exec_space, mem_space,
+            dest_layout, dest_space,
+            subview_dim
     )
 
     @debug "Compiling $cmake_target with:\n\t$(join([
-        "view_layouts = $view_layouts",
-        "view_dims = $view_dims",
-        "view_types = $view_types",
-        "exec_spaces = $exec_spaces",
-        "mem_spaces = $mem_spaces",
-        "dest_layouts = $dest_layouts",
-        "dest_mem_spaces = $dest_mem_spaces",
+        "view_layout = $view_layout",
+        "view_dim = $view_dim",
+        "view_type = $view_type",
+        "exec_space = $exec_space",
+        "mem_space = $mem_space",
+        "dest_layout = $dest_layout",
+        "dest_space = $dest_space",
         "without_exec_space_arg = $without_exec_space_arg",
         "with_nothing_arg = $with_nothing_arg",
-        "subview_dims = $subview_dims"
+        "subview_dim = $subview_dim"
     ], "\n\t"))"
 
     # The lib name must uniquely identify a compilation with its parameters, in order to be able to
     # reuse a previously compiled lib safely.
     lib_name = build_lib_name(
         cmake_target,
-        view_layouts, view_dims, view_types,
-        exec_spaces, mem_spaces,
-        dest_layouts, dest_mem_spaces,
+        view_layout, view_dim, view_type,
+        exec_space, mem_space,
+        dest_layout, dest_space,
         without_exec_space_arg, with_nothing_arg,
-        subview_dims
+        subview_dim
     )
 
     lib_path = joinpath(Wrapper.get_kokkos_func_libs_dir(), lib_name)
 
     if !is_lib_up_to_date(lib_path)
         parameters = build_compilation_parameters(
-            view_layouts, view_dims, view_types,
-            exec_spaces, mem_spaces,
-            dest_layouts, dest_mem_spaces,
+            view_layout, view_dim, view_type,
+            exec_space, mem_space,
+            dest_layout, dest_space,
             without_exec_space_arg, with_nothing_arg,
-            subview_dims
+            subview_dim
         )
         @debug "Building '$cmake_target' in lib at '$lib_path'"
         compile_lib(cmake_target, lib_path, parameters)
