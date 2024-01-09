@@ -353,6 +353,24 @@ struct RegisterUtils
 };
 
 
+template<>
+struct jlcxx::Finalizer<ViewWrap<VIEW_TYPE, Dimension, Layout, MemorySpace>, jlcxx::SpecializedFinalizer>
+{
+    static void finalize(ViewWrap<VIEW_TYPE, Dimension, Layout, MemorySpace>* view)
+    {
+        if (!Kokkos::is_finalized()) {
+            delete view;
+        } else {
+            // Kokkos would have called `abort`, in our case it is better to not do that and let Julia exit gracefully
+            // later.
+            fprintf(stderr, "ERROR - Kokkos.jl: view '%s' was finalized after `Kokkos.finalize()` was called.\n"
+                            "Consider using `track=true` to automatically finalize all views.\n",
+                    view->label().c_str());
+        }
+    }
+};
+
+
 template<typename ViewType, typename ViewDim, typename ViewLayout, typename ViewMemSpace>
 void register_all_view_combinations(jlcxx::Module& mod, jl_module_t* views_module)
 {

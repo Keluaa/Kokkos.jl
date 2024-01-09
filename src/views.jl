@@ -142,12 +142,18 @@ const TRACKED_VIEWS = WeakKeyDict{View, Bool}()
 
 function _finalize_all_views()
     # Called by `Kokkos::finalize` through a finalize hook. All views allocated by Kokkos.jl will be
-    # invalid afterwards. Manual calls shouldn't cause any problem.
+    # invalid afterwards. Manual calls shouldn't cause any issues.
+
+    # Important: objects scheduled for deletion are skipped while iterating a `WeakKeyDict`, but
+    # they are not yet `finalize`d. Forcing a complete GC sweep will force the call to their finalizer.
+    GC.gc(true)
+
     lock(TRACKED_VIEWS) do
         for (view, _) in TRACKED_VIEWS
             # Only views which are still alive are iterated over
             Base.finalize(view)
         end
+        empty!(TRACKED_VIEWS)
     end
 end
 
@@ -463,7 +469,9 @@ If `zero_fill` is true, the new view will have all of its elements set to their 
 This function relies on [Dynamic Compilation](@ref).
 """
 function create_mirror(src::View; mem_space = nothing, zero_fill = false, track = true)
-    return create_mirror(src, mem_space, zero_fill, track)
+    mirror = create_mirror(src, mem_space, zero_fill)
+    track && (TRACKED_VIEWS[mirror] = true)
+    return mirror
 end
 
 
@@ -480,12 +488,6 @@ function create_mirror(src::View, mem_space, zero_fill)
             with_nothing_arg = isnothing(mem_space)
         )
     end)
-
-    if track
-        TRACKED_VIEWS[view] = true
-    end
-
-    return view
 end
 
 
@@ -498,7 +500,9 @@ returned and no view is created.
 This function relies on [Dynamic Compilation](@ref).
 """
 function create_mirror_view(src::View; mem_space = nothing, zero_fill = false, track = true)
-    return create_mirror_view(src, mem_space, zero_fill, track)
+    mirror = create_mirror_view(src, mem_space, zero_fill)
+    track && (TRACKED_VIEWS[mirror] = true)
+    return mirror
 end
 
 
@@ -516,12 +520,6 @@ function create_mirror_view(src::View, mem_space, zero_fill)
             with_nothing_arg = isnothing(mem_space)
         )
     end)
-
-    if track
-        TRACKED_VIEWS[view] = true
-    end
-
-    return view
 end
 
 
@@ -604,15 +602,6 @@ function subview(view::View, indexes::Tuple, subview_dim::Type{<:Val}, subview_l
             view_type, view_dim, view_layout, mem_space, subview_dim=sub_dim
         )
     end)
-
-    # Explicit lock to avoid locking twice on `haskey` then `setindex!`
-    lock(TRACKED_VIEWS) do
-        if haskey(TRACKED_VIEWS, view)
-            TRACKED_VIEWS[sv] = true
-        end
-    end
-
-    return sv
 end
 
 
@@ -645,7 +634,16 @@ function subview(
     indexes::Tuple{Vararg{Union{Int, Colon, AbstractUnitRange}}}
 ) where {T, D, L, S}
     subview_dim, subview_layout = _get_subview_dim_and_layout(D, L, typeof(indexes))
-    return subview(v, indexes, Val{subview_dim}, subview_layout)
+    sub_v = subview(v, indexes, Val{subview_dim}, subview_layout)
+
+    # Explicit lock to avoid locking twice on `haskey` then `setindex!`
+    lock(TRACKED_VIEWS) do
+        if haskey(TRACKED_VIEWS, v)
+            TRACKED_VIEWS[sub_v] = true
+        end
+    end
+
+    return sub_v
 end
 
 
@@ -766,7 +764,7 @@ function View{T, D, L, S}(dims::Dims{D};
     view = alloc_view(View{T, D, L, S}, dims, mem_space, layout, label, zero_fill, dim_pad)
 
     if track
-        # `setindex!` of `WeakKeyDict` is thread-safe
+        # Note: `setindex!` of `WeakKeyDict` is thread-safe
         TRACKED_VIEWS[view] = true
     end
 
