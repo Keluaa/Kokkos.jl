@@ -43,11 +43,15 @@ void apply_to_each(TList<Combinations...>, Functor&& f, Args... args)
 }
 
 
-template<typename T, std::size_t... I>
-auto repeat_type(std::index_sequence<I...>)
+template<typename T>
+struct RepeatType
 {
-    return ((I, TList<T>{}) + ...);  // Behold! A situation where the comma operator is required and useful!
-}
+    template<std::size_t>
+    using type = T;
+
+    template<std::size_t... S>
+    static auto repeated(std::index_sequence<S...>) { return TList<type<S>...>{}; }
+};
 
 
 /**
@@ -56,13 +60,7 @@ auto repeat_type(std::index_sequence<I...>)
 template<typename T, std::size_t N>
 auto repeat_type()
 {
-    if constexpr (N == 0) {
-        return TList<>{};
-    } else if constexpr (N == 1) {
-        return TList<T>{};
-    } else {
-        return repeat_type<T>(std::make_index_sequence<N>{});
-    }
+    return RepeatType<T>::repeated(std::make_index_sequence<N>{});
 }
 
 
