@@ -95,6 +95,6 @@ end
         test_send_subview_loop(s, i, Kokkos.DEFAULT_DEVICE_MEM_SPACE)  # Device to Device  
     end
 
-    GC.gc(true)
     @test_nowarn Kokkos.finalize()
+    GC.gc(true)
 end

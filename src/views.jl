@@ -137,19 +137,20 @@ function get_tracker(@nospecialize(v::View))
 end
 
 
-const TRACKED_VIEWS = WeakKeyDict{View, Bool}()
+include("weak_view_dict.jl")
+const TRACKED_VIEWS = WeakViewDict()
 
 
 function _finalize_all_views()
     # Called by `Kokkos::finalize` through a finalize hook. All views allocated by Kokkos.jl will be
     # invalid afterwards. Manual calls shouldn't cause any issues.
 
-    # Important: objects scheduled for deletion are skipped while iterating a `WeakKeyDict`, but
+    # Important: objects scheduled for deletion are skipped while iterating a `WeakViewDict`, but
     # they are not yet `finalize`d. Forcing a complete GC sweep will force the call to their finalizer.
     GC.gc(true)
 
     lock(TRACKED_VIEWS) do
-        for (view, _) in TRACKED_VIEWS
+        for view in TRACKED_VIEWS
             # Only views which are still alive are iterated over
             Base.finalize(view)
         end
@@ -470,7 +471,7 @@ This function relies on [Dynamic Compilation](@ref).
 """
 function create_mirror(src::View; mem_space = nothing, zero_fill = false, track = true)
     mirror = create_mirror(src, mem_space, zero_fill)
-    track && (TRACKED_VIEWS[mirror] = true)
+    track && push!(TRACKED_VIEWS, mirror)
     return mirror
 end
 
@@ -501,7 +502,7 @@ This function relies on [Dynamic Compilation](@ref).
 """
 function create_mirror_view(src::View; mem_space = nothing, zero_fill = false, track = true)
     mirror = create_mirror_view(src, mem_space, zero_fill)
-    track && (TRACKED_VIEWS[mirror] = true)
+    track && push!(TRACKED_VIEWS, mirror)
     return mirror
 end
 
@@ -639,7 +640,7 @@ function subview(
     # Explicit lock to avoid locking twice on `haskey` then `setindex!`
     lock(TRACKED_VIEWS) do
         if haskey(TRACKED_VIEWS, v)
-            TRACKED_VIEWS[sub_v] = true
+            push!(TRACKED_VIEWS, sub_v)
         end
     end
 
@@ -764,8 +765,7 @@ function View{T, D, L, S}(dims::Dims{D};
     view = alloc_view(View{T, D, L, S}, dims, mem_space, layout, label, zero_fill, dim_pad)
 
     if track
-        # Note: `setindex!` of `WeakKeyDict` is thread-safe
-        TRACKED_VIEWS[view] = true
+        push!(TRACKED_VIEWS, view)
     end
 
     return view
