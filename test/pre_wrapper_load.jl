@@ -25,15 +25,11 @@ default_path = Kokkos.LOCAL_KOKKOS_DIR
 @test Kokkos.set_kokkos_options(missing) == Kokkos.KOKKOS_LIB_OPTIONS       == Kokkos.__DEFAULT_KOKKOS_LIB_OPTIONS
 @test Kokkos.set_build_type(missing)     == Kokkos.KOKKOS_BUILD_TYPE        == Kokkos.__DEFAULT_KOKKOS_BUILD_TYPE
 @test Kokkos.set_build_dir(missing)      == Kokkos.KOKKOS_BUILD_DIR         == Kokkos.__DEFAULT_KOKKOS_BUILD_DIR
+@test Kokkos.set_backends(missing)       == Kokkos.KOKKOS_BACKENDS          == Kokkos.__DEFAULT_KOKKOS_BACKENDS
 
 if TEST_OPENMP
-    # Default test config
-    @test Kokkos.set_cmake_options(missing)  == Kokkos.KOKKOS_CMAKE_OPTIONS     == Kokkos.__DEFAULT_KOKKOS_CMAKE_OPTIONS
-    @test Kokkos.set_backends(missing)       == Kokkos.KOKKOS_BACKENDS          == Kokkos.__DEFAULT_KOKKOS_BACKENDS
-else
     # CMake options might be different for the GPU backends, therefore we do not test them
-    backends_list = [TEST_BACKEND_HOST, TEST_BACKEND_DEVICE] .|> nameof .|> string
-    @test Kokkos.set_backends(missing)       == Kokkos.KOKKOS_BACKENDS          == backends_list
+    @test Kokkos.set_cmake_options(missing)  == Kokkos.KOKKOS_CMAKE_OPTIONS     == Kokkos.__DEFAULT_KOKKOS_CMAKE_OPTIONS
 end
 
 # Set the configuration back to what other tests expect (on top of the default values)
