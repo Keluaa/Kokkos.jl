@@ -1,15 +1,10 @@
 
-"""
-    WeakViewDict
-
-Very similar to `Base.WeakKeyDict`, but its keys are `Ptr{Cvoid}` and values are `WeakRef`s to `View`
-objects. It is used to track view objects.
-
-We cannot use `WeakKeyDict` as would need to hash the view, but this is inefficient and sometimes
-impossible when the view is inaccessible. Any overload of `Base.hash` would go against what the
-function operates on any `AbstractArray`. Therefore implementing a `WeakKeyDict` with `WeakRef`
-values was the simplest path.
-"""
+# Very similar to `Base.WeakKeyDict`, but its keys are `Ptr{Cvoid}` and values are `WeakRef`s to `View`
+# objects. It is used to track view objects.
+# We cannot use `WeakKeyDict` as would need to hash the view, but this is inefficient and sometimes
+# impossible when the view is inaccessible. Any overload of `Base.hash` would go against what the
+# function operates on any `AbstractArray`. Therefore implementing a `WeakKeyDict` with `WeakRef`
+# values was the simplest path.
 mutable struct WeakViewDict <: AbstractDict{Ptr{Cvoid}, View}
     d::Dict{Ptr{Cvoid}, WeakRef}
     lock::ReentrantLock
