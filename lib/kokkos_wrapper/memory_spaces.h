@@ -7,10 +7,7 @@
 #include "spaces.h"
 #include "utils.h"
 #include "kokkos_utils.h"
-
-#ifndef WRAPPER_BUILD
 #include "parameters.h"
-#endif
 
 
 template<>
@@ -118,27 +115,13 @@ using MemorySpacesList = TList<
 >;
 
 
-#ifndef MEM_SPACE_FILTER
-#define MEM_SPACE_FILTER
-#endif
+static constexpr std::string_view MEM_SPACE_STR = AS_STR(MEM_SPACE);
+static constexpr std::string_view DEST_MEM_SPACE_STR = AS_STR(DEST_MEM_SPACE);
 
-#ifndef DEST_MEM_SPACES
-#define DEST_MEM_SPACES
-#endif
+// The memory space with the same name as `MEM_SPACE`, or `void`
+using MemorySpace = decltype(find_space<MEM_SPACE_STR, void>(MemorySpacesList{}))::Arg<0>;
 
-
-constexpr const std::array mem_space_filters = as_array<const char*>(MEM_SPACE_FILTER);
-using FilteredMemorySpaceList = decltype(filter_spaces<mem_space_filters.size(), mem_space_filters>(MemorySpacesList{}));
-
-constexpr const std::array dst_mem_spaces = as_array<const char*>(DEST_MEM_SPACES);
-using DestMemSpaces = std::conditional_t<
-        dst_mem_spaces.empty(),
-        TList<>,
-        decltype(filter_spaces<dst_mem_spaces.size(), dst_mem_spaces>(MemorySpacesList{}))
->;
-
-static_assert(mem_space_filters.empty() || mem_space_filters.size() == FilteredMemorySpaceList::size);
-static_assert(dst_mem_spaces.size() == DestMemSpaces::size);
-
+// The memory space with the same name as `DEST_MEM_SPACE`, or `void`
+using DestMemorySpace = decltype(find_space<DEST_MEM_SPACE_STR, void>(MemorySpacesList{}))::Arg<0>;
 
 #endif //KOKKOS_WRAPPER_MEMORY_SPACES_H

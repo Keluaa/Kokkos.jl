@@ -1,7 +1,7 @@
 name = "Kokkos"
 uuid = "3296cea9-b0de-4b57-aba0-ce554b517c3b"
 authors = ["Keluaa <34173752+Keluaa@users.noreply.github.com> and contributors"]
-version = "0.5.3"
+version = "0.5.4"
 
 [deps]
 CxxWrap = "1f15a43c-97ca-5a2a-ae31-89f07a497df4"
@@ -19,7 +19,7 @@ UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 libcxxwrap_julia_jll = "3eaa8342-bff7-56a5-9981-c04077f7cee7"
 
 [compat]
-AMDGPU = "0.7"
+AMDGPU = "0.8"
 CUDA = "4.1, 5"
 CxxWrap = "0.14, 0.15"
 MPI = "0.20"

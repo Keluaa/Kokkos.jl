@@ -12,26 +12,26 @@
  * Stolen from https://stackoverflow.com/a/20170989, with support for more compilers.
  */
 template <typename T>
-constexpr std::string_view get_type_name()
+std::string_view get_type_name()
 {
 #if defined(__clang__)
-    constexpr auto prefix = std::string_view{"[T = "};
-    constexpr auto suffix = "]";
-    constexpr auto function = std::string_view{__PRETTY_FUNCTION__};
+    const auto prefix = std::string_view{"[T = "};
+    const auto suffix = "]";
+    const auto function = std::string_view{__PRETTY_FUNCTION__};
 #elif defined(__INTEL_COMPILER) || defined(__NVCOMPILER)
-    constexpr auto prefix = std::string_view{"with T = "};
-    constexpr auto suffix = "]";
-    constexpr auto function = std::string_view{__PRETTY_FUNCTION__};
+    const auto prefix = std::string_view{"with T = "};
+    const auto suffix = "]";
+    const auto function = std::string_view{__PRETTY_FUNCTION__};
 #elif defined(__GNUC__)
-    constexpr auto prefix = std::string_view{"with T = "};
-    constexpr auto suffix = "; ";
-    constexpr auto function = std::string_view{__PRETTY_FUNCTION__};
+    const auto prefix = std::string_view{"with T = "};
+    const auto suffix = "; ";
+    const auto function = std::string_view{__PRETTY_FUNCTION__};
 #elif defined(_MSC_VER)
-    constexpr auto prefix = std::string_view{"get_type_name<"};
-    constexpr auto suffix = ">(void)";
-    constexpr auto function = std::string_view{__FUNCSIG__};
+    const auto prefix = std::string_view{"get_type_name<"};
+    const auto suffix = ">(void)";
+    const auto function = std::string_view{__FUNCSIG__};
 #else
-#error "Unsupported compiler. Please report it to https://github.com/Keluaa/Kokkos.jl alongside your compiler info."
+    return typeid(T).name()
 #endif
 
     const auto start = function.find(prefix) + prefix.size();

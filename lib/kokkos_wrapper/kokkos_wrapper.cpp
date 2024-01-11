@@ -3,10 +3,6 @@
 
 #include "spaces.h"
 #include "layouts.h"
-#include "views.h"
-#include "copy.h"
-#include "mirrors.h"
-#include "subviews.h"
 
 #include <sstream>
 
@@ -215,7 +211,7 @@ JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
     mod.method("is_finalized", (bool (*)()) &Kokkos::is_finalized);
 
     mod.method("fence", [](){ Kokkos::fence(); });
-#ifdef __INTEL_COMPILER
+#if defined(__INTEL_COMPILER) || defined(__INTEL_LLVM_COMPILER)
     mod.method("fence", [](const std::string& s){ Kokkos::fence(s); });
 #else
     mod.method("fence", &Kokkos::fence);
@@ -229,8 +225,4 @@ JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
 
     define_all_layouts(mod);
     define_all_spaces(mod);
-    define_kokkos_views(mod);
-    define_kokkos_deep_copy(mod);
-    define_kokkos_mirrors(mod);
-    define_kokkos_subview(mod);
 }

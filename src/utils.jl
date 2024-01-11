@@ -28,6 +28,10 @@ Julia on OpenMP threads: there can be as many threads as needed.
     affinities, making the OpenMP variables useless.
 """
 function set_omp_vars(; places = "cores", bind = "close", num_threads = Base.Threads.nthreads())
+    if is_initialized()
+        error("OpenMP variables should be set before initializing Kokkos")
+    end
+
     ENV["OMP_PLACES"] = places
     ENV["OMP_PROC_BIND"] = bind
     ENV["OMP_NUM_THREADS"] = num_threads
@@ -279,67 +283,43 @@ end
 
 
 function __validate_parameters(;
-    view_layouts, view_dims, view_types,
-    exec_spaces, mem_spaces,
-    dest_layouts, dest_mem_spaces,
-    subview_dims
+    view_layout, view_dim, view_type,
+    exec_space, mem_space,
+    dest_layout, dest_space,
+    subview_dim
 )
-    view_layouts    = @something view_layouts    DataType[]
-    view_dims       = @something view_dims       Int[]
-    view_types      = @something view_types      DataType[]
-    exec_spaces     = @something exec_spaces     DataType[]
-    mem_spaces      = @something mem_spaces      DataType[]
-    dest_layouts    = @something dest_layouts    DataType[]
-    dest_mem_spaces = @something dest_mem_spaces DataType[]
-    subview_dims    = @something subview_dims    Int[]
-
-    view_layouts    = unique(view_layouts)
-    view_dims       = unique(view_dims)
-    view_types      = unique(view_types)
-    exec_spaces     = unique(exec_spaces)
-    mem_spaces      = unique(mem_spaces)
-    dest_layouts    = unique(dest_layouts)
-    dest_mem_spaces = unique(dest_mem_spaces)
-    subview_dims    = unique(subview_dims)
-
-    exec_spaces     = main_space_type.(exec_spaces)
-    mem_spaces      = main_space_type.(mem_spaces)
-    dest_mem_spaces = main_space_type.(dest_mem_spaces)
-
-    all_dims = union(view_dims, subview_dims)
+    all_dims = filter(!isnothing, union([view_dim], [subview_dim]))
     if !all(d -> (0 ≤ d ≤ 8), all_dims)
         wrong_dims = filter(d -> (0 ≤ d ≤ 8), all_dims)
         wrong_dims_str = join(wrong_dims, ", ", " and ")
         error("Kokkos only supports dimensions from 0 to 8, got: " * wrong_dims_str)
     end
 
-    if any((!enabled).(exec_spaces))
-        wrong_exec = filter(!enabled, exec_spaces)
-        wrong_exec_str = join(wrong_exec, ", ", " and ")
-        error("Cannot compile for disabled execution space: " * wrong_exec_str)
+    if !isnothing(exec_space) && !enabled(main_space_type(exec_space))
+        error("Cannot compile for disabled execution space: " * main_space_type(exec_space))
     end
 
-    all_mem_spaces = union(mem_spaces, dest_mem_spaces)
-    if any((!enabled).(all_mem_spaces))
-        wrong_mem = filter(!enabled, all_mem_spaces)
+    all_mem_spaces = filter(!isnothing, union([mem_space], [dest_space]))
+    if any((!enabled ∘ main_space_type).(all_mem_spaces))
+        wrong_mem = filter(!enabled ∘ main_space_type, all_mem_spaces)
         wrong_mem_str = join(wrong_mem, ", ", " and ")
         error("Cannot compile for disabled memory space: " * wrong_mem_str)
     end
 
     # Convert to string
-    view_types      = Wrapper.julia_type_to_c.(view_types)
-    view_layouts    = [lowercase(string(nameof(l)))[7:end] for l in view_layouts]  # Remove leading 'Layout'
-    dest_layouts    = [lowercase(string(nameof(l)))[7:end] for l in dest_layouts]
-    view_dims       = string.(view_dims)
-    subview_dims    = string.(subview_dims)
-    exec_spaces     = nameof.(exec_spaces)     .|> string
-    mem_spaces      = nameof.(mem_spaces)      .|> string
-    dest_mem_spaces = nameof.(dest_mem_spaces) .|> string
+    view_dim    = isnothing(view_dim)    ? "" : string(view_dim)
+    subview_dim = isnothing(subview_dim) ? "" : string(subview_dim)
+    view_type   = isnothing(view_type)   ? "" : Wrapper.julia_type_to_c(view_type)
+    exec_space  = isnothing(exec_space)  ? "" : string(nameof(main_space_type(exec_space)))
+    mem_space   = isnothing(mem_space)   ? "" : string(nameof(main_space_type(mem_space)))
+    dest_space  = isnothing(dest_space)  ? "" : string(nameof(main_space_type(dest_space)))
+    view_layout = isnothing(view_layout) ? "" : lowercase(string(nameof(view_layout)))[7:end]  # Remove leading 'Layout'
+    dest_layout = isnothing(dest_layout) ? "" : lowercase(string(nameof(dest_layout)))[7:end]
 
-    return view_layouts, view_dims, view_types,
-           exec_spaces, mem_spaces,
-           dest_layouts, dest_mem_spaces,
-           subview_dims
+    return view_layout, view_dim, view_type,
+           exec_space, mem_space,
+           dest_layout, dest_space,
+           subview_dim
 end
 
 

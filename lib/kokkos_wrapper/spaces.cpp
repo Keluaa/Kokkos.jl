@@ -55,10 +55,6 @@ void post_register_space(jlcxx::Module& mod)
             return jlcxx::julia_type<typename Space::memory_space>()->super->super;
         });
         mod.method("array_layout", [](jlcxx::SingletonType<SpaceInfo<Space>>) {
-            if constexpr (!is_element_in_list<typename Space::array_layout>(LayoutList{})) {
-                jl_errorf("Space `%s` has `%s` as default layout, but it is not compiled",
-                          Space::name(), layout_name<typename Space::array_layout>().data());
-            }
             return jlcxx::julia_type<typename Space::array_layout>();
         });
     } else {
@@ -91,11 +87,15 @@ void post_register_all(jlcxx::Module& mod, TList<T...>)
 {
     (post_register_space<T>(mod), ...);
 
-    apply_to_all(build_all_combinations<TList<T...>, MemorySpacesList>(), [&](auto comb) {
-        using space = typename decltype(comb)::template Arg<0>;
-        using mem_space = typename decltype(comb)::template Arg<1>;
-        mod.method("accessible", [](jlcxx::SingletonType<SpaceInfo<space>>, jlcxx::SingletonType<SpaceInfo<mem_space>>) {
-            return (bool) Kokkos::SpaceAccessibility<space, mem_space>::accessible;
+    // Accessibility from any space to all memory spaces
+    apply_to_each(TList<T...>{}, [&](auto t_space) {
+        using space = typename decltype(t_space)::template Arg<0>;
+        apply_to_each(MemorySpacesList{}, [&](auto t_mem_space) {
+            using mem_space = typename decltype(t_mem_space)::template Arg<0>;
+            mod.method("accessible",
+            [](jlcxx::SingletonType<SpaceInfo<space>>, jlcxx::SingletonType<SpaceInfo<mem_space>>) {
+                return (bool) Kokkos::SpaceAccessibility<space, mem_space>::accessible;
+            });
         });
     });
 }

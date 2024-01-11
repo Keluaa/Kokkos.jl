@@ -144,7 +144,7 @@ function setup_local_kokkos_source()
 
     @debug "Checkout Kokkos $LOCAL_KOKKOS_VERSION_STR (hash: $release_hash) in repo at $LOCAL_KOKKOS_DIR..."
     @static if USE_CLI_GIT
-        run_cmd_print_on_error(Cmd(`git checkout $release_hash`; dir=LOCAL_KOKKOS_DIR))
+        run_cmd_print_on_error(Cmd(`git checkout -q $release_hash`; dir=LOCAL_KOKKOS_DIR))
     else
         LibGit2.checkout!(repo, release_hash)
     end

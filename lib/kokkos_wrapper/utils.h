@@ -4,8 +4,8 @@
 #include <tuple>
 
 
-template <class...>
-constexpr bool always_false = false;
+#define AS_STR_IMPL(x) #x
+#define AS_STR(x) AS_STR_IMPL(x)
 
 
 /**
@@ -36,159 +36,6 @@ template <typename T>
 constexpr bool is_tlist_v = is_tlist<T>::value;
 
 
-/**
- * Helper function to transform a 'std::integer_sequence<int, 1, 2, ...>' into a
- * 'TList<std::integral_constant<std::size_t, 1>, ...>'
- * This way each int is stored into its own type, instead of a single sequence type.
- */
-template<typename I, I... Dims>
-constexpr auto tlist_from_sequence(std::integer_sequence<I, Dims...>)
-{
-    if constexpr (sizeof...(Dims) == 0) {
-        return TList<>{};
-    } else {
-        return (TList<std::integral_constant<std::size_t, Dims>>{} + ...);
-    }
-}
-
-
-template<typename Element, typename... Args>
-constexpr bool is_element_in_list(TList<Args...>)
-{
-    return (std::is_same_v<Element, Args> || ...);
-}
-
-
-template<typename... Unique, typename Element, typename... Args>
-constexpr auto remove_duplicates(TList<Unique...>, TList<Element, Args...>)
-{
-    // If Element is present in the remaining Args, do not add it to the stack, then recurse with the remaining Args
-    if constexpr (sizeof...(Args) == 0) {
-        return TList<Unique..., Element>{};
-    } else if constexpr (!is_element_in_list<Element>(TList<Args...>{})) {
-        return remove_duplicates(TList<Unique..., Element>{}, TList<Args...>{});
-    } else {
-        return remove_duplicates(TList<Unique...>{}, TList<Args...>{});
-    }
-}
-
-
-/**
- * Simple recursive template function to return the template list with no duplicate types.
- */
-template<typename... Args>
-constexpr auto remove_duplicates(TList<Args...>)
-{
-    if constexpr (sizeof...(Args) == 0) {
-        return TList<>{};
-    } else {
-        return remove_duplicates(TList<>{}, TList<Args...>{});
-    }
-}
-
-
-template<std::size_t offset, std::size_t... Idx>
-auto offset_index_sequence(std::index_sequence<Idx...>)
-{
-    return std::index_sequence<(Idx + offset)...>{};
-}
-
-
-template<std::size_t start, std::size_t end>
-auto build_index_sequence()
-{
-    static_assert(start >= 0);
-    static_assert(start <= end);
-    return offset_index_sequence<start>(std::make_index_sequence<end - start>{});
-}
-
-
-template<typename... T, std::size_t... I>
-auto sub_tlist(TList<T...>, std::index_sequence<I...>)
-{
-    return TList<typename TList<T...>::template Arg<I>...>{};
-}
-
-
-/**
- * Returns the TList elements from 'start' to 'end' (exclusive).
- *
- *     sub_tlist<1, 3>(TList<short, int, long, double>) => TList<int, long>
- *     sub_tlist<1, 1>(TList<short, int, long, double>) => TList<>
- */
-template<std::size_t start, std::size_t end, typename... T>
-auto sub_tlist(TList<T...> l)
-{
-    static_assert(end <= sizeof...(T));
-    return sub_tlist(l, build_index_sequence<start, end>());
-}
-
-
-template<typename... Stack, typename... List>
-constexpr auto build_all_combinations(TList<Stack...>, TList<List...>)
-{
-    if constexpr (sizeof...(List) == 0) {
-        static_assert(always_false<List...>, "Empty list passed to 'build_all_combinations'");
-    } else {
-        return (TList<TList<Stack..., List>>{} + ...);
-    }
-}
-
-
-template<typename NextList, typename... NextLists, typename... Stack, typename... List>
-constexpr auto build_all_combinations(TList<Stack...>, TList<List...>)
-{
-    // Add to N copies of the stack one of the N elements of List, then recurse to the next lists (if there is any)
-    if constexpr (sizeof...(NextLists) == 0) {
-        if constexpr (sizeof...(List) == 0) {
-            return build_all_combinations<>(TList<Stack...>{}, NextList{});
-        } else {
-            return (build_all_combinations<>(TList<Stack..., List>{}, NextList{}) + ...);
-        }
-    } else {
-        if constexpr (sizeof...(List) == 0) {
-            return build_all_combinations<NextLists...>(TList<Stack...>{}, NextList{});
-        } else {
-            return (build_all_combinations<NextLists...>(TList<Stack..., List>{}, NextList{}) + ...);
-        }
-    }
-}
-
-
-/**
- * Return a TList containing other TLists of all combinations of all elements of all given lists.
- *
- * Example:
- *
- *     using floats = TList<double, float>;
- *     using ints = TList<short, int, long>;
- *     using combinations = build_all_combinations<floats, ints>();
- *
- * Then `combinations` is of type:
- *
- *     TList<
- *          TList<double, short>,
- *          TList<double, int>,
- *          TList<double, long>,
- *          TList<float, short>,
- *          TList<float, int>,
- *          TList<float, long>
- *     >
- */
-template<typename List, typename... NextLists>
-constexpr auto build_all_combinations()
-{
-    return build_all_combinations<NextLists...>(TList<>{}, List{});
-}
-
-
-template<typename Functor, typename... Combinations>
-void apply_to_all(TList<Combinations...>, Functor&& f)
-{
-    (f(Combinations{}), ...);
-}
-
-
 template<typename Functor, typename... Combinations, typename... Args>
 void apply_to_each(TList<Combinations...>, Functor&& f, Args... args)
 {
@@ -196,33 +43,15 @@ void apply_to_each(TList<Combinations...>, Functor&& f, Args... args)
 }
 
 
-template<typename Functor, typename... Combinations, std::size_t... I, typename... Args>
-void apply_with_index(TList<Combinations...>, std::index_sequence<I...>, Functor&& f, Args... args)
-{
-    (f(TList<Combinations>{}, I, std::forward<Args...>(args)...), ...);
-}
-
-
-/**
- * Applies `f` on each element of `combinations` (passed to `f` in a TList singleton) alongside their index.
- * `f` is called as `f(TList<Element>{}, i, args...)`.
- */
-template<typename Functor, typename... Combinations, typename... Args>
-void apply_with_index(TList<Combinations...> combinations, Functor&& f, Args... args)
-{
-    apply_with_index(combinations, std::index_sequence_for<Combinations...>{}, f, std::forward<Args...>(args)...);
-}
-
-
 template<typename T>
-TList<T> repeat_type(std::size_t) { return {}; }
-
-
-template<typename T, std::size_t... I>
-auto repeat_type(std::index_sequence<I...>)
+struct RepeatType
 {
-    return (repeat_type<T>(I) + ...);
-}
+    template<std::size_t>
+    using type = T;
+
+    template<std::size_t... S>
+    static auto repeated(std::index_sequence<S...>) { return TList<type<S>...>{}; }
+};
 
 
 /**
@@ -231,13 +60,7 @@ auto repeat_type(std::index_sequence<I...>)
 template<typename T, std::size_t N>
 auto repeat_type()
 {
-    if constexpr (N == 0) {
-        return TList<>{};
-    } else if constexpr (N == 1) {
-        return TList<T>{};
-    } else {
-        return repeat_type<T>(std::make_index_sequence<N>{});
-    }
+    return RepeatType<T>::repeated(std::make_index_sequence<N>{});
 }
 
 
@@ -251,16 +74,10 @@ constexpr auto filter_types(Functor&& f, TList<T...>)
 }
 
 
-/**
- * Creates a `std::array<T, N>` from the arguments. Supports arrays of size 0.
- */
-template<typename T, typename... A>
-constexpr auto as_array(A... args)
+template<typename T, typename... V>
+constexpr std::size_t count_same()
 {
-    std::array<T, sizeof...(A)> array{};
-    [[maybe_unused]] int i = 0;
-    ([&](){ array[i++] = args; }(), ...);
-    return array;
+    return (std::is_same_v<T, V> + ...);
 }
 
 

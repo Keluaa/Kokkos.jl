@@ -149,7 +149,7 @@ end
     if !TEST_MPI_ONLY
         include("misc.jl")
 
-        GC.gc(true)  # Call the finalizers of all created views
-        @test_nowarn Kokkos.finalize()
+        @test_nowarn Kokkos.finalize()  # Let the finalize hook call the finalizers of all views
+        GC.gc(true)  # Any view which calls its finalizer here should throw
     end
 end

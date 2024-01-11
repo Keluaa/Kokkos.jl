@@ -7,10 +7,7 @@
 #include "spaces.h"
 #include "utils.h"
 #include "kokkos_utils.h"
-
-#ifndef WRAPPER_BUILD
 #include "parameters.h"
-#endif
 
 
 #ifdef KOKKOS_ENABLE_SERIAL
@@ -168,16 +165,11 @@ using ExecutionSpaceList = BuildExecutionSpacesList<
 >;
 
 
-#ifndef EXEC_SPACE_FILTER
-#define EXEC_SPACE_FILTER
-#endif
+static constexpr std::string_view EXEC_SPACE_STR = AS_STR(EXEC_SPACE);
 
-
-constexpr const std::array exec_space_filters = as_array<const char*>(EXEC_SPACE_FILTER);
-using FilteredExecutionSpaceList = decltype(filter_spaces<exec_space_filters.size(), exec_space_filters>(ExecutionSpaceList{}));
-
+// The execution space with the same name as `EXEC_SPACE`, or `void`
+using ExecutionSpace = decltype(find_space<EXEC_SPACE_STR, void>(ExecutionSpaceList{}))::Arg<0>;
 
 using Idx = typename Kokkos::RangePolicy<>::index_type;
-
 
 #endif //KOKKOS_WRAPPER_EXECUTION_SPACES_H

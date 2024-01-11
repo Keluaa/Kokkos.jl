@@ -40,7 +40,7 @@ abstract type View{T, D, L <: Layout, M <: MemorySpace} <: Base.AbstractArray{T,
 
 
 function _extract_view_params(view_t::Type{<:View})
-    return [eltype(view_t)], [ndims(view_t)], [array_layout(view_t)], [memory_space(view_t)]
+    return eltype(view_t), ndims(view_t), array_layout(view_t), memory_space(view_t)
 end
 
 
@@ -70,9 +70,9 @@ function compile_view(view_t::Type{<:View}; for_function=nothing, no_error=false
     @debug "Compiling view $view_t"
 
     try
-        view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(view_t)
+        view_type, view_dim, view_layout, mem_space = _extract_view_params(view_t)
         DynamicCompilation.compile_and_load(@__MODULE__, "views";
-            view_types, view_dims, view_layouts, mem_spaces
+            view_type, view_dim, view_layout, mem_space
         )
     catch
         println(stderr, "Defined types: ")
@@ -137,17 +137,24 @@ function get_tracker(@nospecialize(v::View))
 end
 
 
-const TRACKED_VIEWS = WeakKeyDict{View, Bool}()
+include("weak_view_dict.jl")
+const TRACKED_VIEWS = WeakViewDict()
 
 
 function _finalize_all_views()
     # Called by `Kokkos::finalize` through a finalize hook. All views allocated by Kokkos.jl will be
-    # invalid afterwards. Manual calls shouldn't cause any problem.
+    # invalid afterwards. Manual calls shouldn't cause any issues.
+
+    # Important: objects scheduled for deletion are skipped while iterating a `WeakViewDict`, but
+    # they are not yet `finalize`d. Forcing a complete GC sweep will force the call to their finalizer.
+    GC.gc(true)
+
     lock(TRACKED_VIEWS) do
-        for (view, _) in TRACKED_VIEWS
+        for view in TRACKED_VIEWS
             # Only views which are still alive are iterated over
-            finalize(view)
+            Base.finalize(view)
         end
+        empty!(TRACKED_VIEWS)
     end
 end
 
@@ -350,7 +357,8 @@ This function relies on [Dynamic Compilation](@ref).
 function deep_copy(dest::View, src::View)
     @nospecialize dest src
     return DynamicCompilation.@compile_and_call(deep_copy, (dest, src), begin
-        compile_view.((typeof(dest), typeof(src)); for_function=deep_copy, no_error=true)
+        compile_view(typeof(dest); for_function=deep_copy, no_error=true)
+        compile_view(typeof(src);  for_function=deep_copy, no_error=true)
 
         # Requirements in accordance with: https://kokkos.github.io/kokkos-core-wiki/API/core/view/deep_copy.html#requirements
         if eltype(src) != eltype(dest)
@@ -363,13 +371,13 @@ function deep_copy(dest::View, src::View)
                    src=$(ndims(src)), dest=$(ndims(dest))")
         end
 
-        view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(typeof(src))
-        _, _, dest_layouts, dest_mem_spaces = _extract_view_params(typeof(dest))
+        view_type, view_dim, view_layout, mem_space = _extract_view_params(typeof(src))
+        _, _, dest_layout, dest_space = _extract_view_params(typeof(dest))
 
         DynamicCompilation.compile_and_load(@__MODULE__, "copy";
-            view_types, view_dims, view_layouts,
-            mem_spaces, dest_layouts, dest_mem_spaces,
-            without_exec_space_arg = true,
+            view_type, view_dim, view_layout,
+            mem_space, dest_layout, dest_space,
+            without_exec_space_arg = true
         )
     end)
 end
@@ -378,7 +386,8 @@ end
 function deep_copy(space::ExecutionSpace, dest::View, src::View)
     @nospecialize space dest src
     return DynamicCompilation.@compile_and_call(deep_copy, (space, dest, src), begin
-        compile_view.((typeof(dest), typeof(src)); for_function=deep_copy, no_error=true)
+        compile_view(typeof(dest); for_function=deep_copy, no_error=true)
+        compile_view(typeof(src);  for_function=deep_copy, no_error=true)
 
         # Requirements in accordance with: https://kokkos.github.io/kokkos-core-wiki/API/core/view/deep_copy.html#requirements
         if eltype(src) != eltype(dest)
@@ -391,13 +400,13 @@ function deep_copy(space::ExecutionSpace, dest::View, src::View)
                 src=$(ndims(src)), dest=$(ndims(dest))")
         end
 
-        view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(typeof(src))
-        _, _, dest_layouts, dest_mem_spaces = _extract_view_params(typeof(dest))
+        view_type, view_dim, view_layout, mem_space = _extract_view_params(typeof(src))
+        _, _, dest_layout, dest_space = _extract_view_params(typeof(dest))
 
-        exec_spaces = [typeof(space)]
         DynamicCompilation.compile_and_load(@__MODULE__, "copy";
-            view_types, view_dims, view_layouts,
-            mem_spaces, exec_spaces, dest_layouts, dest_mem_spaces,
+            view_type, view_dim, view_layout,
+            mem_space, dest_layout, dest_space,
+            exec_space=typeof(space),
             without_exec_space_arg = false
         )
     end)
@@ -461,29 +470,25 @@ If `zero_fill` is true, the new view will have all of its elements set to their 
 This function relies on [Dynamic Compilation](@ref).
 """
 function create_mirror(src::View; mem_space = nothing, zero_fill = false, track = true)
-    return create_mirror(src, mem_space, zero_fill, track)
+    mirror = create_mirror(src, mem_space, zero_fill)
+    track && push!(TRACKED_VIEWS, mirror)
+    return mirror
 end
 
 
-function create_mirror(src::View, mem_space, zero_fill, track)
+function create_mirror(src::View, mem_space, zero_fill)
     @nospecialize src mem_space
-    view = DynamicCompilation.@compile_and_call(create_mirror, (src, mem_space, zero_fill), begin
+    return DynamicCompilation.@compile_and_call(create_mirror, (src, mem_space, zero_fill), begin
         compile_view(typeof(src); for_function=create_mirror, no_error=true)
         compile_view(host_mirror(typeof(src)); for_function=create_mirror, no_error=true)
-        view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(typeof(src))
-        dest_mem_spaces = isnothing(mem_space) ? DataType[] : [typeof(mem_space)]
+        view_type, view_dim, view_layout, src_mem_space = _extract_view_params(typeof(src))
+        dest_space = isnothing(mem_space) ? nothing : typeof(mem_space)
         DynamicCompilation.compile_and_load(@__MODULE__, "mirrors";
-            view_types, view_dims, view_layouts,
-            mem_spaces, dest_mem_spaces,
+            view_type, view_dim, view_layout,
+            mem_space = src_mem_space, dest_space,
             with_nothing_arg = isnothing(mem_space)
         )
     end)
-
-    if track
-        TRACKED_VIEWS[view] = true
-    end
-
-    return view
 end
 
 
@@ -496,30 +501,26 @@ returned and no view is created.
 This function relies on [Dynamic Compilation](@ref).
 """
 function create_mirror_view(src::View; mem_space = nothing, zero_fill = false, track = true)
-    return create_mirror_view(src, mem_space, zero_fill, track)
+    mirror = create_mirror_view(src, mem_space, zero_fill)
+    track && push!(TRACKED_VIEWS, mirror)
+    return mirror
 end
 
 
-function create_mirror_view(src::View, mem_space, zero_fill, track)
+function create_mirror_view(src::View, mem_space, zero_fill)
     @nospecialize src mem_space
-    view = DynamicCompilation.@compile_and_call(
+    return DynamicCompilation.@compile_and_call(
             create_mirror_view, (src, mem_space, zero_fill), begin
         compile_view(typeof(src); for_function=create_mirror_view, no_error=true)
         compile_view(host_mirror(typeof(src)); for_function=create_mirror_view, no_error=true)
-        view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(typeof(src))
-        dest_mem_spaces = isnothing(mem_space) ? DataType[] : [typeof(mem_space)]
+        view_type, view_dim, view_layout, src_mem_space = _extract_view_params(typeof(src))
+        dest_space = isnothing(mem_space) ? nothing : typeof(mem_space)
         DynamicCompilation.compile_and_load(@__MODULE__, "mirrors";
-            view_types, view_dims, view_layouts,
-            mem_spaces, dest_mem_spaces,
+            view_type, view_dim, view_layout,
+            mem_space = src_mem_space, dest_space,
             with_nothing_arg = isnothing(mem_space)
         )
     end)
-
-    if track
-        TRACKED_VIEWS[view] = true
-    end
-
-    return view
 end
 
 
@@ -581,13 +582,14 @@ This function relies on [Dynamic Compilation](@ref).
 """
 function subview(view::View, indexes::Tuple, subview_dim::Type{<:Val}, subview_layout::Type)
     @nospecialize view indexes subview_dim subview_layout
-    sv = DynamicCompilation.@compile_and_call(
+    return DynamicCompilation.@compile_and_call(
             subview, (view, indexes, subview_dim, subview_layout), begin
         view_t = typeof(view)
-        sub_dim = first(subview_dim.parameters)
+        sub_dim = first(subview_dim.parameters)::Int
 
         sub_view_t = View{eltype(view_t), sub_dim, array_layout(view_t), memory_space(view_t)}
-        compile_view.((view_t, sub_view_t); for_function=subview, no_error=true)
+        compile_view(view_t;     for_function=subview, no_error=true)
+        compile_view(sub_view_t; for_function=subview, no_error=true)
 
         if (array_layout(view_t) != LayoutStride)
             # We also need the strided version of the subview type since we are compiling for all
@@ -596,21 +598,11 @@ function subview(view::View, indexes::Tuple, subview_dim::Type{<:Val}, subview_l
             compile_view(sub_view_strided; for_function=subview, no_error=true)
         end
 
-        view_types, view_dims, view_layouts, mem_spaces = _extract_view_params(view_t)
-        subview_dims = [sub_dim]
+        view_type, view_dim, view_layout, mem_space = _extract_view_params(view_t)
         DynamicCompilation.compile_and_load(@__MODULE__, "subviews";
-            view_types, view_dims, view_layouts, mem_spaces, subview_dims
+            view_type, view_dim, view_layout, mem_space, subview_dim=sub_dim
         )
     end)
-
-    # Explicit lock to avoid locking twice on `haskey` then `setindex!`
-    lock(TRACKED_VIEWS) do
-        if haskey(TRACKED_VIEWS, view)
-            TRACKED_VIEWS[sv] = true
-        end
-    end
-
-    return sv
 end
 
 
@@ -643,7 +635,16 @@ function subview(
     indexes::Tuple{Vararg{Union{Int, Colon, AbstractUnitRange}}}
 ) where {T, D, L, S}
     subview_dim, subview_layout = _get_subview_dim_and_layout(D, L, typeof(indexes))
-    return subview(v, indexes, Val{subview_dim}, subview_layout)
+    sub_v = subview(v, indexes, Val{subview_dim}, subview_layout)
+
+    # Explicit lock to avoid locking twice on `haskey` then `setindex!`
+    lock(TRACKED_VIEWS) do
+        if haskey(TRACKED_VIEWS, v)
+            push!(TRACKED_VIEWS, sub_v)
+        end
+    end
+
+    return sub_v
 end
 
 
@@ -764,8 +765,7 @@ function View{T, D, L, S}(dims::Dims{D};
     view = alloc_view(View{T, D, L, S}, dims, mem_space, layout, label, zero_fill, dim_pad)
 
     if track
-        # `setindex!` of `WeakKeyDict` is thread-safe
-        TRACKED_VIEWS[view] = true
+        push!(TRACKED_VIEWS, view)
     end
 
     return view

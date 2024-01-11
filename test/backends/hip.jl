@@ -20,7 +20,7 @@ import Kokkos: View
 
     sub_A = @view A[5:end]  # Returns a contiguous ROCArray with a non-zero offset to its parent
     @test sub_A isa ROCArray
-    @test pointer(sub_A) == pointer(A) + sub_A.offset
+    @test pointer(sub_A) == pointer(A) + sub_A.offset * sizeof(eltype(sub_A))
 
     sub_A_v = Kokkos.view_wrap(sub_A)
 
@@ -50,7 +50,6 @@ end
     @test strides(roc_V) == strides(V)
     AMDGPU.@allowscalar @test Vh == roc_V
     @test Kokkos.BackendFunctions.device_id() == AMDGPU.HIP.device_id(AMDGPU.device(roc_V))
-    @test !roc_V.buf.own
 
     sub_V = Kokkos.subview(V, (1:3, 1:3))
     @test !Kokkos.span_is_contiguous(sub_V)
@@ -69,7 +68,7 @@ end
     BF = Kokkos.BackendFunctions
     exec = Kokkos.HIP()
 
-    did = AMDGPU.default_device_id() - 1
+    did = AMDGPU.device_id() - 1
 
     @test BF.device_id() == did
     @test BF.device_id(exec) == did

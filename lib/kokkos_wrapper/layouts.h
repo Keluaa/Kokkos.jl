@@ -4,46 +4,25 @@
 #include "Kokkos_Core.hpp"
 #include "jlcxx/jlcxx.hpp"
 #include "utils.h"
-
-#ifndef WRAPPER_BUILD
 #include "parameters.h"
-#endif
-
-
-#if !defined(VIEW_LAYOUTS) && defined(WRAPPER_BUILD)
-/**
- * Controls which `Kokkos::View` layout types are to be instantiated.
- *
- * Layout types are specified as comma separated list of either:
- *  - a complete name: `Kokkos::LayoutRight` or `Kokkos::DefaultExecutionSpace::array_layout`
- *  - one of 'left', 'right', 'stride', 'deviceDefault' or 'hostDefault'
- *
- * Duplicates are allowed.
- *
- * The registered method `compiled_layouts` returns a tuple of all compiled layout types.
- */
-#define VIEW_LAYOUTS deviceDefault, hostDefault
-#warning "No explicit value set for VIEW_LAYOUTS, using the default of 'deviceDefault, hostDefault'"
-#endif
-
-#ifndef DEST_LAYOUTS
-#define DEST_LAYOUTS VIEW_LAYOUTS
-#endif
 
 
 namespace LayoutListHelper {
+    // Simple namespace which allows to reliably specify layouts from a macro without using their complete name
+
     using left = Kokkos::LayoutLeft;
     using right = Kokkos::LayoutRight;
     using stride = Kokkos::LayoutStride;
     using deviceDefault = Kokkos::DefaultExecutionSpace::array_layout;
     using hostDefault = Kokkos::DefaultHostExecutionSpace::array_layout;
+    using NONE = void;
 
-    using LayoutList = decltype(remove_duplicates(TList<VIEW_LAYOUTS>{}));
-    using DestLayoutList = decltype(remove_duplicates(TList<DEST_LAYOUTS>{}));
+    using Layout = VIEW_LAYOUT;
+    using DestLayout = DEST_LAYOUT;
 }
 
-using LayoutListHelper::LayoutList;
-using LayoutListHelper::DestLayoutList;
+using LayoutListHelper::Layout;
+using LayoutListHelper::DestLayout;
 
 
 template<typename Layout>

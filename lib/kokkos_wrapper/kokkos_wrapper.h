@@ -7,7 +7,4 @@
 
 #include "Kokkos_Core.hpp"
 
-
-JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod);
-
 #endif //KOKKOS_WRAPPER_KOKKOS_WRAPPER_H
