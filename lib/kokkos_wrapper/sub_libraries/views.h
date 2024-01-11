@@ -3,40 +3,12 @@
 #define KOKKOS_WRAPPER_VIEWS_H
 
 #include "kokkos_wrapper.h"
-
 #include "layouts.h"
+#include "execution_spaces.h"
+#include "parameters.h"
 
 
-#ifndef VIEW_DIMENSIONS
-/**
- * Controls which `Kokkos::View` dimensions are instantiated.
- * Dimensions are specified as comma separated list of integers.
- *
- * Each dimension adds one pointer for all data types of the views: `Kokkos::View<T*>` in 1D, `Kokkos::View<T**>` in
- * 2D, etc, as well as one more index argument for the `()` operator.
- *
- * The registered method `compiled_dims` returns a tuple of all compiled dimensions.
- */
-#define VIEW_DIMENSIONS 1, 2
-#endif
-
-
-#ifndef VIEW_TYPES
-/**
- * Controls which `Kokkos::View` types are instantiated.
- * Types are specified as comma separated list of type names.
- *
- * One `Kokkos::View` will be instantiated for each combination of type, dimensions, layout, and memory spaces.
- *
- * The registered method `compiled_types` returns a tuple of all compiled types.
- */
-#define VIEW_TYPES double, float, int64_t
-#endif
-
-
-using Idx = typename Kokkos::RangePolicy<>::index_type;
-
-using DimensionsToInstantiate = std::integer_sequence<int, VIEW_DIMENSIONS>;
+using Dimension = std::integral_constant<int, VIEW_DIMENSION>;
 
 
 /**
@@ -56,7 +28,8 @@ struct add_pointers<T, 0> { using type = T; };
  * It is this type that is registered with CxxWrap, not Kokkos::View, therefore all Julia methods defined with CxxWrap
  * should use this type in their arguments / return type, not Kokkos::View.
  *
- * Importantly, the `Kokkos::View` type is complete: it has the same parameters as the type returned by `Kokkos::subview`.
+ * Importantly, the `Kokkos::View` type is complete: it has the same parameters as the type returned by `Kokkos::subview`
+ * and can represent any `Kokkos::View` exactly.
  */
 template<typename T, typename DimCst, typename LayoutType, typename MemSpace,
          typename MemTraits = Kokkos::MemoryTraits<0>,
@@ -72,11 +45,12 @@ struct ViewWrap : public KokkosViewT
     using kokkos_view_t = KokkosViewT;
 
     template<typename OtherLayout>
-    using with_layout = ViewWrap<T, DimCst, OtherLayout, MemSpace>;
+    using with_layout = ViewWrap<T, DimCst, OtherLayout, MemSpace, MemTraits>;
+
+    template<typename OtherMemSpace>
+    using with_mem_space = ViewWrap<T, DimCst, Layout, OtherMemSpace, MemTraits>;
 
     static constexpr size_t dim = DimCst::value;
-
-    using IdxTuple = decltype(std::tuple_cat(std::array<Idx, dim>()));
 
 #ifdef __INTEL_COMPILER
     template<typename... Args>
@@ -105,10 +79,5 @@ struct ViewWrap : public KokkosViewT
         return strides;
     }
 };
-
-
-jl_datatype_t* get_idx_type();
-
-void define_kokkos_views(jlcxx::Module& mod);
 
 #endif //KOKKOS_WRAPPER_VIEWS_H

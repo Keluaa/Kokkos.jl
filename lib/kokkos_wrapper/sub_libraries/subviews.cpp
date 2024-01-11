@@ -2,9 +2,12 @@
 #include "utils.h"
 #include "memory_spaces.h"
 #include "layouts.h"
-#include "subviews.h"
+#include "views.h"
 
 #include <variant>
+
+
+using SubViewDimension = std::integral_constant<int, SUBVIEW_DIM>;
 
 
 struct Colon_t {};  // Mapped to 'Base.Colon'
@@ -19,17 +22,23 @@ using Range = std::pair<ptrdiff_t, ptrdiff_t>;
 
 void setup_type_mappings()
 {
-    auto idx_t = (jl_datatype_t*) jl_eval_string("Tuple{Vararg{Union{Colon, AbstractUnitRange{Int64}, Int64}}}");
-    if (idx_t == nullptr)
-        jl_rethrow();
-    jlcxx::set_julia_type<IndexVarargs*>(idx_t);
+    if (!jlcxx::has_julia_type<IndexVarargs*>()) {
+        auto idx_t = (jl_datatype_t*) jl_eval_string("Tuple{Vararg{Union{Colon, AbstractUnitRange{Int64}, Int64}}}");
+        if (idx_t == nullptr)
+            jl_rethrow();
+        jlcxx::set_julia_type<IndexVarargs*>(idx_t);
+    }
 
-    auto colon_t = (jl_datatype_t*) jl_get_global(jl_base_module, jl_symbol("Colon"));
-    jlcxx::set_julia_type<Colon_t>(colon_t);
+    if (!jlcxx::has_julia_type<Colon_t>()) {
+        auto colon_t = (jl_datatype_t*) jl_get_global(jl_base_module, jl_symbol("Colon"));
+        jlcxx::set_julia_type<Colon_t>(colon_t);
+    }
 
-    jl_value_t* range_union_all = jl_get_global(jl_base_module, jl_symbol("AbstractUnitRange"));
-    jl_value_t* range_t = jl_apply_type1(range_union_all, (jl_value_t*) jlcxx::julia_base_type<int64_t>());
-    jlcxx::set_julia_type<AbstractUnitRange_t>((jl_datatype_t*) range_t);
+    if (!jlcxx::has_julia_type<AbstractUnitRange_t>()) {
+        jl_value_t* range_union_all = jl_get_global(jl_base_module, jl_symbol("AbstractUnitRange"));
+        jl_value_t* range_t = jl_apply_type1(range_union_all, (jl_value_t*) jlcxx::julia_base_type<int64_t>());
+        jlcxx::set_julia_type<AbstractUnitRange_t>((jl_datatype_t*) range_t);
+    }
 }
 
 
@@ -96,13 +105,13 @@ size_t jl_indexes_to_cpp(jl_value_t* jl_indexes,
 }
 
 
-template<typename T, typename... V>
-constexpr std::size_t count_same()
-{
-    return (std::is_same_v<T, V> + ...);
-}
-
-
+/**
+ * Instantiates all possible combinations of `Kokkos::subview()` which, when applied to a `View`, returns a `SubView`.
+ * `Indexes` are the list of index types given to `Kokkos::subview`.
+ *
+ * `Indexes` are `std::variant<int64_t, Range>`. `int64_t` reduces the dimension of the resulting view, while `Range`
+ * does not.
+ */
 template<typename View, typename SubView, typename... Indexes>
 SubView do_subview(const View& view, const std::tuple<Indexes...>& indexes_tuple)
 {
@@ -135,26 +144,20 @@ SubView do_subview(const View& view, const std::tuple<Indexes...>& indexes_tuple
 }
 
 
-static bool missing_layout_stride_msg_displayed = false;
-
-
 template<typename View, typename SubView, typename Layout>
 void register_subviews_for_view_and_layout(jlcxx::Module& mod)
 {
-    if constexpr (!is_element_in_list<Kokkos::LayoutStride>(LayoutList{})) {
-        // We need Kokkos::LayoutStride for complete Kokkos::subview support
-        if (!missing_layout_stride_msg_displayed) {
-            std::cerr << "Warning: missing 'LayoutStride' in the list of layouts to compile.\n"
-                    << "  `Kokkos.subview()` will not be able to cover all possible cases.\n";
-            missing_layout_stride_msg_displayed = true;
-        }
-    } else if constexpr (!std::is_same_v<typename View::layout, Kokkos::LayoutStride>) {
+    if constexpr (!std::is_same_v<typename View::layout, Kokkos::LayoutStride>) {
         // A subview of a View with a LayoutLeft or LayoutRight can have a LayoutStride, which means that the return
         // value is different and therefore requires a separate method.
         using SubViewStrided = typename SubView::template with_layout<Kokkos::LayoutStride>;
 
         // method signature: (View{T, D, L, M}, Tuple{Vararg{Union{Colon, AbstractUnitRange, Int64}}}, Val{SubDim}, LayoutStride)
-        mod.method("subview", [](const View& v, IndexVarargs* indexes, jlcxx::SingletonType<jlcxx::Val<int64_t, SubView::dim>>, jlcxx::SingletonType<Kokkos::LayoutStride>) {
+        mod.method("subview",
+        [](const View& v, IndexVarargs* indexes,
+                jlcxx::SingletonType<jlcxx::Val<int64_t, SubView::dim>>,
+                jlcxx::SingletonType<Kokkos::LayoutStride>)
+        {
             auto* jl_indexes = reinterpret_cast<jl_value_t*>(indexes);
 
             std::array<std::variant<int64_t, Range>, View::dim> view_indexes;
@@ -170,7 +173,11 @@ void register_subviews_for_view_and_layout(jlcxx::Module& mod)
     }
 
     // method signature: (View{T, D, L, M}, Tuple{Vararg{Union{Colon, AbstractUnitRange, Int64}}}, Val{SubDim}, Layout)
-    mod.method("subview", [](const View& v, IndexVarargs* indexes, jlcxx::SingletonType<jlcxx::Val<int64_t, SubView::dim>>, jlcxx::SingletonType<typename View::layout>) {
+    mod.method("subview",
+    [](const View& v, IndexVarargs* indexes,
+            jlcxx::SingletonType<jlcxx::Val<int64_t, SubView::dim>>,
+            jlcxx::SingletonType<typename View::layout>)
+    {
         auto* jl_indexes = reinterpret_cast<jl_value_t*>(indexes);
 
         std::array<std::variant<int64_t, Range>, View::dim> view_indexes;
@@ -188,53 +195,34 @@ void register_subviews_for_view_and_layout(jlcxx::Module& mod)
 
 void register_all_subviews(jlcxx::Module& mod)
 {
-    using DimsList = decltype(tlist_from_sequence(DimensionsToInstantiate{}));
+    if constexpr (SubViewDimension::value > Dimension::value) {
+        jl_errorf("Expected a subview dimension lower than %d, got: %d.\n"
+                  "Compilation parameters:\n%s",
+                  Dimension::value, SubViewDimension::value, get_params_string());
+    } else if constexpr (std::is_void_v<MemorySpace>) {
+        jl_errorf("No memory space with the name '" AS_STR(MEM_SPACE) "'.\n"
+                  "Compilation parameters:\n%s", get_params_string());
+    } else {
+        using View = ViewWrap<VIEW_TYPE, Dimension, Layout, MemorySpace>;
+        using SubView = ViewWrap<VIEW_TYPE, SubViewDimension, Layout, MemorySpace>;
 
-    auto view_combinations = build_all_combinations<
-            TList<VIEW_TYPES>,
-            DimsList,
-            LayoutList,
-            MemorySpacesList
-    >();
+        if (!jlcxx::has_julia_type<SubView>()) {
+            jl_errorf("Missing view type for complete `Kokkos.subview` coverage: %dD of c++ type %s",
+                      SubViewDimension::value, typeid(SubView).name());
+        }
 
-    setup_type_mappings();
-
-    apply_to_all(view_combinations, [&](auto view_t) {
-        using Type = typename decltype(view_t)::template Arg<0>;
-        using Dimension = typename decltype(view_t)::template Arg<1>;
-        using Layout = typename decltype(view_t)::template Arg<2>;
-        using MemSpace = typename decltype(view_t)::template Arg<3>;
-
-        using View = ViewWrap<Type, Dimension, Layout, MemSpace>;
-
-        // Get the list of dimensions which are less than or equal to 'Dimension'
-        constexpr auto SubDimsList = filter_types([](auto D) {
-            return std::bool_constant<decltype(D)::value <= Dimension::value>{};
-        }, DimsList{});
-
-        apply_to_each(SubDimsList, [&](auto sub_dim_t) {
-            using SubDimension = typename decltype(sub_dim_t)::template Arg<0>;
-            using SubView = ViewWrap<Type, SubDimension, Layout, MemSpace>;
-
-            if (!jlcxx::has_julia_type<SubView>()) {
-                jl_errorf("Missing view type for complete `Kokkos.subview` coverage: %dD of c++ type %s",
-                          SubDimension::value, typeid(SubView).name());
-            }
-
-            register_subviews_for_view_and_layout<View, SubView, Layout>(mod);
-        });
-    });
+        register_subviews_for_view_and_layout<View, SubView, Layout>(mod);
+    }
 }
 
 
-void define_kokkos_subview(jlcxx::Module& mod)
+JLCXX_MODULE define_kokkos_module(jlcxx::Module& mod)
 {
-    jl_module_t* wrapper_module = mod.julia_module()->parent;
-    auto* views_module = (jl_module_t*) jl_get_global(wrapper_module->parent, jl_symbol("Views"));
-
+    // Called from 'Kokkos.Views.Impl<number>'
+    jl_module_t* views_module = mod.julia_module()->parent;
     jl_module_import(mod.julia_module(), views_module, jl_symbol("subview"));
 
-    mod.set_override_module(views_module);
+    setup_type_mappings();
     register_all_subviews(mod);
-    mod.unset_override_module();
+    mod.method("params_string", get_params_string);
 }

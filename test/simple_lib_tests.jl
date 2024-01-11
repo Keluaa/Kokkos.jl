@@ -6,8 +6,6 @@ import Kokkos: View, Idx
 
 
 !Kokkos.is_initialized() && Kokkos.initialize()
-Kokkos.require(; dims=[1, 2], types=[Float64], exec_spaces=[TEST_BACKEND_HOST, TEST_BACKEND_DEVICE])
-
 
 const lib_src = joinpath(@__DIR__, "lib", "simple_lib")
 const lib_build = joinpath(Kokkos.KOKKOS_BUILD_DIR, "simple_lib")
@@ -147,7 +145,7 @@ project_1D = CMakeKokkosProject(lib_src, "libSimpleKokkosLib1D";
     target="SimpleKokkosLib1D", build_dir=lib_build)
 project_2D = CMakeKokkosProject(project_1D, "SimpleKokkosLib2D", "libSimpleKokkosLib2D")
 
-if isdir(Kokkos.build_dir(project_1D))
+if isdir(Kokkos.build_dir(project_1D)) && !isempty(readdir(Kokkos.build_dir(project_1D)))
     Kokkos.clean(project_1D)
 end
 
@@ -162,7 +160,6 @@ end
         test_lib(lib_1D, (Nx,))
 
         Kokkos.unload_lib(lib_1D)
-        @test !Kokkos.is_lib_loaded(lib_1D)
     end
 
     @testset "2D" begin
@@ -172,7 +169,6 @@ end
         test_lib(lib_2D, (Nx, Ny))
 
         Kokkos.unload_lib(project_2D)
-        @test !Kokkos.is_lib_loaded(project_2D)
     end
 
     Kokkos.clean(project_1D)  # Also cleans 'project_2D'

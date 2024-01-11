@@ -3,6 +3,9 @@
 #include "utils.h"
 
 
+using LayoutList = TList<Kokkos::LayoutLeft, Kokkos::LayoutRight, Kokkos::LayoutStride>;
+
+
 template<typename Layout>
 void register_layout(jl_module_t* views_module)
 {
@@ -29,9 +32,10 @@ auto build_julia_layouts_tuple()
     constexpr size_t layout_count = LayoutList::size;
     std::array<jl_value_t*, layout_count> array{};
 
-    apply_with_index(LayoutList{}, [&](auto type, size_t i) {
+    size_t i = 0;
+    apply_to_each(LayoutList{}, [&](auto type) {
         using T = typename decltype(type)::template Arg<0>;
-        array[i] = (jl_value_t*) jlcxx::julia_type<T>();
+        array[i++] = (jl_value_t*) jlcxx::julia_type<T>();
     });
 
     return std::tuple_cat(array);
@@ -41,8 +45,8 @@ auto build_julia_layouts_tuple()
 void define_all_layouts(jlcxx::Module& mod)
 {
     jl_module_t* wrapper_module = mod.julia_module()->parent;
-    auto* views_module = (jl_module_t*) jl_get_global(wrapper_module->parent, jl_symbol("Views"));
+    auto* main_module = (jl_module_t*) wrapper_module->parent;
 
-    register_layouts(views_module, LayoutList{});
+    register_layouts(main_module, LayoutList{});
     mod.method("__compiled_layouts", [](){ return build_julia_layouts_tuple(); });
 }

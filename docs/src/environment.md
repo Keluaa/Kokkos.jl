@@ -21,7 +21,6 @@ is_kokkos_wrapper_loaded
 build_in_scratch
 build_in_tmp
 build_in_project
-require
 configinfo
 versioninfo
 print_configuration

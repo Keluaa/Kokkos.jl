@@ -6,6 +6,7 @@ if(NOT DEFINED CMAKE_CXX_STANDARD)
 endif()
 
 if(NOT DEFINED CMAKE_CXX_EXTENSIONS)
+    # Required to be OFF when using Clang CUDA to avoid errors like '__float128 is not supported on this target'
     set(CMAKE_CXX_EXTENSIONS OFF)
 endif()
 
@@ -27,7 +28,7 @@ endif()
 
 
 if(Kokkos_ENABLE_CUDA)
-    set(Kokkos_ENABLE_CUDA_CONSTEXPR ON)  # Needed by KokkosWrapper
+    set(Kokkos_ENABLE_CUDA_CONSTEXPR ON)
     if (NOT DEFINED Kokkos_ENABLE_CUDA_LAMBDA)
         set(Kokkos_ENABLE_CUDA_LAMBDA ON)
     endif()
@@ -50,38 +51,18 @@ endif()
 add_subdirectory(${Kokkos_ROOT} lib/kokkos)
 
 
-if(NOT DEFINED VIEW_DIMENSIONS)
-    set(VIEW_DIMENSIONS "1,2")
-endif()
-
-if(NOT DEFINED VIEW_TYPES)
-    set(VIEW_TYPES "double,int64_t")
-endif()
-
-if (NOT DEFINED VIEW_LAYOUTS)
-    set(VIEW_LAYOUTS "deviceDefault,hostDefault")
-endif()
-
-
-add_library(KokkosWrapper SHARED
+set(WRAPPER_SOURCES
         kokkos_wrapper.cpp kokkos_wrapper.h
-        execution_spaces.h
-        memory_spaces.h
+        execution_spaces.h memory_spaces.h
         spaces.cpp spaces.h
         space_specific_methods.cpp
         layouts.cpp layouts.h
-        views.cpp views.h
-        copy.cpp copy.h
-        mirrors.cpp mirrors.h
-        subviews.cpp subviews.h
-        utils.h printing_utils.h)
-target_link_libraries(KokkosWrapper PUBLIC JlCxx::cxxwrap_julia)
-target_link_libraries(KokkosWrapper PRIVATE Kokkos::kokkos)
-target_compile_definitions(KokkosWrapper PRIVATE
-        VIEW_DIMENSIONS=${VIEW_DIMENSIONS}
-        VIEW_TYPES=${VIEW_TYPES}
-        VIEW_LAYOUTS=${VIEW_LAYOUTS}
-)
+        utils.h printing_utils.h kokkos_utils.h)
+
+
+add_library(KokkosWrapper SHARED ${WRAPPER_SOURCES})
+target_link_libraries(KokkosWrapper PUBLIC JlCxx::cxxwrap_julia Kokkos::kokkos)
+target_compile_definitions(KokkosWrapper PRIVATE WRAPPER_BUILD)
 target_compile_options(KokkosWrapper PRIVATE
         $<$<CONFIG:Debug>:-Wall -Wextra -Wpedantic>
 )
@@ -89,3 +70,5 @@ target_compile_options(KokkosWrapper PRIVATE
 if(Kokkos_ENABLE_OPENMP)
     target_link_libraries(KokkosWrapper PRIVATE OpenMP::OpenMP_CXX)
 endif()
+
+add_subdirectory(sub_libraries)

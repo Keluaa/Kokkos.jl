@@ -1,7 +1,5 @@
 @testset "MPI" begin
 
-using MPI
-
 N_PROC = 4
 TEST_FILE = joinpath(@__DIR__, "mpi_tests.jl")
 
