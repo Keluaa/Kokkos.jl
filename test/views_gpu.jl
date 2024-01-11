@@ -181,8 +181,8 @@ v10 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_
     @test occursin(string(Kokkos.main_view_type(v3)), text)
     @test occursin("inaccessible view", text)
 
-    @test display(v3) === nothing
-    @test print(v3) === nothing
+    buf = IOBuffer()
+    @test print(buf, v3) === nothing
 end
 
 

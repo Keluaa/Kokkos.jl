@@ -2,6 +2,13 @@
 #ifndef KOKKOS_WRAPPER_PARAMETERS_H
 #define KOKKOS_WRAPPER_PARAMETERS_H
 
+#include "kokkos_utils.h"
+
+#if KOKKOS_VERSION_CMP(<, 4, 0, 0)
+// Avoid macro redefinition warning in Kokkos 3
+#undef EXEC_SPACE
+#endif
+
 #ifdef WRAPPER_BUILD
 // When building the wrapper library, we should not rely on dynamic build-time parameters.
 // TODO: move all dependant values to some other header, and remove this to make sure no code in the wrapper lib uses any of those
