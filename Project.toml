@@ -18,23 +18,34 @@ TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 libcxxwrap_julia_jll = "3eaa8342-bff7-56a5-9981-c04077f7cee7"
 
-[compat]
-AMDGPU = "0.8"
-CUDA = "4.1, 5"
-CxxWrap = "0.14, 0.15"
-MPI = "0.20"
-Pidfile = "1.3.0"
-Preferences = "1"
-ProgressMeter = "1"
-Requires = "1"
-Scratch = "1"
-julia = "1.9"
-libcxxwrap_julia_jll = "≥ 0.9.7"
+[weakdeps]
+AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
 
 [extensions]
 KokkosAMDGPU = "AMDGPU"
 KokkosCUDA = "CUDA"
 KokkosMPI = "MPI"
+
+[compat]
+AMDGPU = "0.8"
+CUDA = "4.1, 5"
+CxxWrap = "0.14, 0.15"
+FileWatching = "1"
+LibGit2 = "1"
+Libdl = "1"
+MPI = "0.20"
+Pidfile = "1.3.0"
+Preferences = "1"
+Printf = "1"
+ProgressMeter = "1"
+Requires = "1"
+Scratch = "1"
+TOML = "1"
+UUIDs = "1"
+julia = "1.9"
+libcxxwrap_julia_jll = "≥ 0.9.7"
 
 [extras]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
@@ -46,8 +57,3 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test", "Preferences", "Logging", "MPI", "CUDA", "AMDGPU"]
-
-[weakdeps]
-AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
-CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
-MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
