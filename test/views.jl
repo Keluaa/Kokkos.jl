@@ -262,7 +262,7 @@ v10 = Kokkos.View{Float64}(undef, 3, 4; layout=Kokkos.LayoutStride(Base.size_to_
 
 
 view_t = Kokkos.View{Float64, 2, Kokkos.LayoutRight, Kokkos.HostSpace}
-@test Kokkos.cxx_type_name(view_t) == "Kokkos::View<double**, Kokkos::LayoutRight, Kokkos::Device<Kokkos::OpenMP, Kokkos::HostSpace>, Kokkos::MemoryTraits<0> >"
+@test Kokkos.cxx_type_name(view_t) == "Kokkos::View<double**, Kokkos::LayoutRight, Kokkos::Device<$TEST_EXEC_HOST_CPP_NAME, Kokkos::HostSpace>, Kokkos::MemoryTraits<0> >"
 @test Kokkos.cxx_type_name(view_t(undef, 2, 2)) == Kokkos.cxx_type_name(view_t)
 @test Kokkos.cxx_type_name(Kokkos.impl_view_type(view_t)) == Kokkos.cxx_type_name(view_t)
 @test occursin("MemoryTraits", String(Kokkos.cxx_type_name(view_t, true)))  # This should be broad enough to pass on all compilers
@@ -310,6 +310,7 @@ end
 
             if isnothing(exec_space)
                 Kokkos.deep_copy(v_dst, v_src)
+                TEST_BACKEND_DEVICE == Kokkos.HPX && Kokkos.fence()  # HPX backend is async by design
             else
                 Kokkos.deep_copy(exec_space, v_dst, v_src)
                 Kokkos.fence(exec_space)

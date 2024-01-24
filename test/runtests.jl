@@ -13,8 +13,12 @@ const TEST_CUDA = parse(Bool, get(ENV, "TEST_KOKKOS_CUDA", "false"))
 const TEST_HIP  = parse(Bool, get(ENV, "TEST_KOKKOS_HIP", "false"))
 TEST_CUDA && TEST_HIP && error("Only a single GPU backend can be enabled at once")
 
-const TEST_OPENMP = !(TEST_CUDA || TEST_HIP)
-const TEST_DEVICE_IS_HOST = TEST_OPENMP
+const TEST_THREADS = parse(Bool, get(ENV, "TEST_KOKKOS_THREADS", "false"))
+const TEST_HPX = parse(Bool, get(ENV, "TEST_KOKKOS_HPX", "false"))
+TEST_THREADS && TEST_HPX && error("Only a sinlge CPU multithreading backend can be enabled at once")
+
+const TEST_OPENMP = !(TEST_CUDA || TEST_HIP || TEST_SYCL || TEST_THREADS || TEST_HPX)
+const TEST_DEVICE_IS_HOST = TEST_OPENMP || TEST_THREADS || TEST_HPX
 
 const TEST_MPI_ONLY = parse(Bool, get(ENV, "TEST_KOKKOS_MPI_ONLY", "false"))
 const TEST_MPI = parse(Bool, get(ENV, "TEST_KOKKOS_MPI", "true")) || TEST_MPI_ONLY
@@ -23,6 +27,7 @@ if TEST_CUDA
     const TEST_BACKEND_HOST          = Kokkos.Serial
     const TEST_BACKEND_DEVICE        = Kokkos.Cuda
     const TEST_UNAVAILABLE_BACKEND   = Kokkos.HIP
+    const TEST_EXEC_HOST_CPP_NAME    = "Kokkos::Serial"
 
     const TEST_MEM_SPACE_HOST        = Kokkos.HostSpace
     const TEST_MEM_SPACES_DEVICE     = (Kokkos.CudaSpace, Kokkos.CudaUVMSpace)
@@ -34,6 +39,7 @@ elseif TEST_HIP
     const TEST_BACKEND_HOST          = Kokkos.Serial
     const TEST_BACKEND_DEVICE        = Kokkos.HIP
     const TEST_UNAVAILABLE_BACKEND   = Kokkos.Cuda
+    const TEST_EXEC_HOST_CPP_NAME    = "Kokkos::Serial"
 
     const TEST_MEM_SPACE_HOST        = Kokkos.HostSpace
     const TEST_MEM_SPACES_DEVICE     = (Kokkos.HIPSpace, Kokkos.HIPManagedSpace)
@@ -43,8 +49,9 @@ elseif TEST_HIP
     const TEST_MEM_PINNED            = Kokkos.HIPHostPinnedSpace
 else
     const TEST_BACKEND_HOST          = Kokkos.Serial
-    const TEST_BACKEND_DEVICE        = Kokkos.OpenMP
+    const TEST_BACKEND_DEVICE        = TEST_THREADS ? Kokkos.Threads : (TEST_HPX ? Kokkos.HPX : Kokkos.OpenMP)
     const TEST_UNAVAILABLE_BACKEND   = Kokkos.Cuda
+    const TEST_EXEC_HOST_CPP_NAME    = "Kokkos::" * (TEST_THREADS ? "Threads" : (TEST_HPX ? "Experimental::HPX" : "OpenMP"))
 
     const TEST_MEM_SPACE_HOST        = Kokkos.HostSpace
     const TEST_MEM_SPACES_DEVICE     = (Kokkos.HostSpace,)
@@ -72,6 +79,8 @@ function print_test_config()
     println("Test configuration:")
     println(" - TEST_KOKKOS_VERSION:   $TEST_KOKKOS_VERSION")
     println(" - TEST_OPENMP:           $TEST_OPENMP")
+    println(" - TEST_THREADS:          $TEST_THREADS")
+    println(" - TEST_HPX:              $TEST_HPX")
     println(" - TEST_CUDA:             $TEST_CUDA")
     println(" - TEST_HIP:              $TEST_HIP")
     println(" - TEST_MPI:              $TEST_MPI (only MPI: $TEST_MPI_ONLY)")
@@ -103,8 +112,9 @@ end
 
     Kokkos.build_in_project()  # Use the same directory as Pkg.test uses, forcing a complete compilation
 
-    Kokkos.set_omp_vars()
-    if TEST_OPENMP
+    TEST_OPENMP && Kokkos.set_omp_vars()
+
+    if TEST_DEVICE_IS_HOST
         @test_logs min_level=Logging.Warn @test_nowarn Kokkos.load_wrapper_lib(; loading_bar=false)
     else
         # GPU backends add some warnings which I can't get rid of

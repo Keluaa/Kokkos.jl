@@ -96,13 +96,13 @@ struct jlcxx::IsMirroredType<Kokkos_HIP::HIP> : std::false_type {};
 
 #ifdef KOKKOS_ENABLE_HPX
 template<>
-struct SpaceInfo<Kokkos::HPX> {
-    using space = Kokkos::HPX;
+struct SpaceInfo<Kokkos::Experimental::HPX> {
+    using space = Kokkos::Experimental::HPX;
     static constexpr std::string_view julia_name = "HPX";
 };
 
 template<>
-struct jlcxx::IsMirroredType<Kokkos::HPX> : std::false_type {};
+struct jlcxx::IsMirroredType<Kokkos::Experimental::HPX> : std::false_type {};
 #endif
 
 
@@ -156,7 +156,7 @@ using ExecutionSpaceList = BuildExecutionSpacesList<
 #endif // KOKKOS_ENABLE_HIP
 
 #ifdef KOKKOS_ENABLE_HPX
-        , Kokkos::HPX
+        , Kokkos::Experimental::HPX
 #endif // KOKKOS_ENABLE_HPX
 
 #ifdef KOKKOS_ENABLE_SYCL
