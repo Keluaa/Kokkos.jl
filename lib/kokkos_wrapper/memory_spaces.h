@@ -20,6 +20,29 @@ struct SpaceInfo<Kokkos::HostSpace>
 template<>
 struct jlcxx::IsMirroredType<Kokkos::HostSpace> : std::false_type {};
 
+#ifdef KOKKOS_ENABLE_OPENACC
+template<>
+struct SpaceInfo<Kokkos::Experimental::OpenACCSpace>
+{
+    using space = Kokkos::Experimental::OpenACCSpace;
+    static constexpr std::string_view julia_name = "OpenACCSpace";
+};
+
+template<>
+struct jlcxx::IsMirroredType<Kokkos::Experimental::OpenACCSpace> : std::false_type {};
+#endif // KOKKOS_ENABLE_OPENACC
+
+#ifdef KOKKOS_ENABLE_OPENMPTARGET
+template<>
+struct SpaceInfo<Kokkos::Experimental::OpenMPTargetSpace>
+{
+    using space = Kokkos::Experimental::OpenMPTargetSpace;
+    static constexpr std::string_view julia_name = "OpenMPTargetSpace";
+};
+
+template<>
+struct jlcxx::IsMirroredType<Kokkos::Experimental::OpenMPTargetSpace> : std::false_type {};
+#endif // KOKKOS_ENABLE_OPENMPTARGET
 
 #ifdef KOKKOS_ENABLE_CUDA
 template<>
@@ -121,6 +144,14 @@ struct jlcxx::IsMirroredType<Kokkos::Experimental::SYCLHostUSMSpace> : std::fals
  */
 using MemorySpacesList = TList<
           Kokkos::HostSpace
+
+#ifdef KOKKOS_ENABLE_OPENACC
+        , Kokkos::Experimental::OpenACCSpace
+#endif // KOKKOS_ENABLE_OPENACC
+
+#ifdef KOKKOS_ENABLE_OPENMPTARGET
+        , Kokkos::Experimental::OpenMPTargetSpace
+#endif // KOKKOS_ENABLE_OPENMPTARGET
 
 #ifdef KOKKOS_ENABLE_CUDA
         , Kokkos::CudaSpace

@@ -69,6 +69,8 @@ Abstract super-type of all memory spaces.
 
 Sub-types:
  - `HostSpace`
+ - `OpenACCSpace`
+ - `OpenMPTargetSpace`
  - `CudaSpace`
  - `CudaHostPinnedSpace`
  - `CudaUVMSpace`
@@ -84,6 +86,8 @@ respective backend.
 """
 abstract type MemorySpace           <: Space       end
 abstract type HostSpace             <: MemorySpace end
+abstract type OpenACCSpace          <: MemorySpace end
+abstract type OpenMPTargetSpace     <: MemorySpace end
 abstract type CudaSpace             <: MemorySpace end
 abstract type CudaHostPinnedSpace   <: MemorySpace end
 abstract type CudaUVMSpace          <: MemorySpace end
@@ -97,6 +101,7 @@ abstract type SYCLHostUSMSpace      <: MemorySpace end
 
 const ALL_MEM_SPACES = [
     HostSpace,
+    OpenACCSpace, OpenMPTargetSpace,
     CudaSpace, CudaHostPinnedSpace, CudaUVMSpace,
     HIPSpace, HIPHostPinnedSpace, HIPManagedSpace,
     SYCLDeviceUSMSpace, SYCLSharedUSMSpace, SYCLHostUSMSpace
@@ -221,7 +226,7 @@ impl_space_type(::Type{S}) where {S <: Space} = error("space $S is not enabled")
 
 # Space constructors
 for S_type in (Serial, OpenMP, OpenACC, OpenMPTarget, Threads, Cuda, HIP, HPX, SYCL,
-               HostSpace,
+               HostSpace, OpenACCSpace, OpenMPTargetSpace,
                CudaSpace, CudaHostPinnedSpace, CudaUVMSpace,
                HIPSpace, HIPHostPinnedSpace, HIPManagedSpace,
                SYCLDeviceUSMSpace, SYCLSharedUSMSpace, SYCLHostUSMSpace)

@@ -36,25 +36,25 @@ struct jlcxx::IsMirroredType<Kokkos::OpenMP> : std::false_type {};
 
 #ifdef KOKKOS_ENABLE_OPENACC
 template<>
-struct SpaceInfo<Kokkos::OpenACC> {
-    using space = Kokkos::OpenACC;
+struct SpaceInfo<Kokkos::Experimental::OpenACC> {
+    using space = Kokkos::Experimental::OpenACC;
     static constexpr std::string_view julia_name = "OpenACC";
 };
 
 template<>
-struct jlcxx::IsMirroredType<Kokkos::OpenACC> : std::false_type {};
+struct jlcxx::IsMirroredType<Kokkos::Experimental::OpenACC> : std::false_type {};
 #endif
 
 
 #ifdef KOKKOS_ENABLE_OPENMPTARGET
 template<>
-struct SpaceInfo<Kokkos::OpenMPTarget> {
-    using space = Kokkos::OpenMPTarget;
+struct SpaceInfo<Kokkos::Experimental::OpenMPTarget> {
+    using space = Kokkos::Experimental::OpenMPTarget;
     static constexpr std::string_view julia_name = "OpenMPTarget";
 };
 
 template<>
-struct jlcxx::IsMirroredType<Kokkos::OpenMPTarget> : std::false_type {};
+struct jlcxx::IsMirroredType<Kokkos::Experimental::OpenMPTarget> : std::false_type {};
 #endif
 
 
@@ -136,11 +136,11 @@ using ExecutionSpaceList = BuildExecutionSpacesList<
 #endif // KOKKOS_ENABLE_OPENMP
 
 #ifdef KOKKOS_ENABLE_OPENACC
-        , Kokkos::OpenACC
+        , Kokkos::Experimental::OpenACC
 #endif // KOKKOS_ENABLE_OPENACC
 
 #ifdef KOKKOS_ENABLE_OPENMPTARGET
-        , Kokkos::OpenMPTarget
+        , Kokkos::Experimental::OpenMPTarget
 #endif // KOKKOS_ENABLE_OPENMPTARGET
 
 #ifdef KOKKOS_ENABLE_THREADS
