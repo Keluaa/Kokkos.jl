@@ -85,6 +85,36 @@ template<>
 struct jlcxx::IsMirroredType<Kokkos_HIP::HIPManagedSpace> : std::false_type {};
 #endif // KOKKOS_ENABLE_HIP
 
+#ifdef KOKKOS_ENABLE_SYCL
+template<>
+struct SpaceInfo<Kokkos::Experimental::SYCLDeviceUSMSpace>
+{
+    using space = Kokkos::Experimental::SYCLDeviceUSMSpace;
+    static constexpr std::string_view julia_name = "SYCLDeviceUSMSpace";
+};
+
+template<>
+struct SpaceInfo<Kokkos::Experimental::SYCLSharedUSMSpace>
+{
+    using space = Kokkos::Experimental::SYCLSharedUSMSpace;
+    static constexpr std::string_view julia_name = "SYCLSharedUSMSpace";
+};
+
+template<>
+struct SpaceInfo<Kokkos::Experimental::SYCLHostUSMSpace>
+{
+    using space = Kokkos::Experimental::SYCLHostUSMSpace;
+    static constexpr std::string_view julia_name = "SYCLHostUSMSpace";
+};
+
+template<>
+struct jlcxx::IsMirroredType<Kokkos::Experimental::SYCLDeviceUSMSpace> : std::false_type {};
+template<>
+struct jlcxx::IsMirroredType<Kokkos::Experimental::SYCLSharedUSMSpace> : std::false_type {};
+template<>
+struct jlcxx::IsMirroredType<Kokkos::Experimental::SYCLHostUSMSpace> : std::false_type {};
+#endif // KOKKOS_ENABLE_SYCL
+
 
 /**
  * Template list of all enabled Kokkos memory spaces
@@ -107,10 +137,9 @@ using MemorySpacesList = TList<
 #endif // KOKKOS_ENABLE_HIP
 
 #ifdef KOKKOS_ENABLE_SYCL
-#error "SYCL memory spaces are not yet supported"
-//        , Kokkos::Experimental::SYCLDeviceUSMSpace
-//        , Kokkos::Experimental::SYCLSharedUSMSpace
-//        , Kokkos::Experimental::SYCLHostUSMSpace
+        , Kokkos::Experimental::SYCLDeviceUSMSpace
+        , Kokkos::Experimental::SYCLSharedUSMSpace
+        , Kokkos::Experimental::SYCLHostUSMSpace
 #endif // KOKKOS_ENABLE_SYCL
 >;
 

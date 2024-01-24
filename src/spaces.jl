@@ -75,6 +75,9 @@ Sub-types:
  - `HIPSpace`
  - `HIPHostPinnedSpace`
  - `HIPManagedSpace`
+ - `SYCLDeviceUSMSpace`
+ - `SYCLSharedUSMSpace`
+ - `SYCLHostUSMSpace`
 
 Sub-types work the same as for [`ExecutionSpace`](@ref). They can be enabled by enabling their
 respective backend.
@@ -87,9 +90,17 @@ abstract type CudaUVMSpace          <: MemorySpace end
 abstract type HIPSpace              <: MemorySpace end
 abstract type HIPHostPinnedSpace    <: MemorySpace end
 abstract type HIPManagedSpace       <: MemorySpace end
+abstract type SYCLDeviceUSMSpace    <: MemorySpace end
+abstract type SYCLSharedUSMSpace    <: MemorySpace end
+abstract type SYCLHostUSMSpace      <: MemorySpace end
 
 
-const ALL_MEM_SPACES = [HostSpace, CudaSpace, CudaHostPinnedSpace, CudaUVMSpace, HIPSpace, HIPHostPinnedSpace, HIPManagedSpace]
+const ALL_MEM_SPACES = [
+    HostSpace,
+    CudaSpace, CudaHostPinnedSpace, CudaUVMSpace,
+    HIPSpace, HIPHostPinnedSpace, HIPManagedSpace,
+    SYCLDeviceUSMSpace, SYCLSharedUSMSpace, SYCLHostUSMSpace
+]
 
 
 # Defined in 'spaces.cpp', in 'post_register_space'
@@ -210,8 +221,10 @@ impl_space_type(::Type{S}) where {S <: Space} = error("space $S is not enabled")
 
 # Space constructors
 for S_type in (Serial, OpenMP, OpenACC, OpenMPTarget, Threads, Cuda, HIP, HPX, SYCL,
-               HostSpace, CudaSpace, CudaHostPinnedSpace, CudaUVMSpace,
-               HIPSpace, HIPHostPinnedSpace, HIPManagedSpace)
+               HostSpace,
+               CudaSpace, CudaHostPinnedSpace, CudaUVMSpace,
+               HIPSpace, HIPHostPinnedSpace, HIPManagedSpace,
+               SYCLDeviceUSMSpace, SYCLSharedUSMSpace, SYCLHostUSMSpace)
     @eval (::Type{$S_type})() = impl_space_type($S_type)()
 end
 
