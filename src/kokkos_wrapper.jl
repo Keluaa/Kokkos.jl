@@ -142,11 +142,20 @@ function setup_local_kokkos_source()
         release_hash = string(LibGit2.GitHash(release_commit))
     end
 
-    @debug "Checkout Kokkos $LOCAL_KOKKOS_VERSION_STR (hash: $release_hash) in repo at $LOCAL_KOKKOS_DIR..."
     @static if USE_CLI_GIT
-        run_cmd_print_on_error(Cmd(`git checkout -q $release_hash`; dir=LOCAL_KOKKOS_DIR))
+        head_commit_hash = readchomp(Cmd(`git rev-parse HEAD`; dir=LOCAL_KOKKOS_DIR))
     else
-        LibGit2.checkout!(repo, release_hash)
+        head_commit = LibGit2.GitCommit(repo, "HEAD")
+        head_commit_hash = string(LibGit2.GitHash(head_commit))
+    end
+
+    if head_commit_hash != release_hash
+        @debug "Checkout Kokkos $LOCAL_KOKKOS_VERSION_STR (hash: $release_hash) in repo at $LOCAL_KOKKOS_DIR..."
+        @static if USE_CLI_GIT
+            run_cmd_print_on_error(Cmd(`git checkout -q $release_hash`; dir=LOCAL_KOKKOS_DIR))
+        else
+            LibGit2.checkout!(repo, release_hash)
+        end
     end
 end
 
