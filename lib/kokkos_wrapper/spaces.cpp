@@ -39,12 +39,8 @@ void register_space(jlcxx::Module& mod, jl_module_t* spaces_module)
             space_type.method("concurrency", [](const Space& s){ return s.concurrency(); });
         }
 
-        if constexpr (std::is_member_function_pointer_v<decltype(&Space::fence)>) {
-            space_type.method("fence", &Space::fence);
-        } else {
-            space_type.method("fence", [](const Space& s){ return s.fence(); });
-            space_type.method("fence", [](const Space& s, const std::string& name){ return s.fence(name); });
-        }
+        space_type.method("fence", [](const Space& s){ return s.fence(); });
+        space_type.method("fence", [](const Space& s, const std::string& name){ return s.fence(name); });
     }
 
     mod.method("kokkos_name", [](jlcxx::SingletonType<SpaceInfo<Space>>) { return std::string(Space::name()); });

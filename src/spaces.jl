@@ -237,12 +237,13 @@ end
 # Defined in 'spaces.cpp', in 'register_space'
 """
     fence(exec_space::ExecutionSpace)
+    fence(exec_space::ExecutionSpace, label::String)
 
 Wait for all asynchronous tasks operating on this execution space instance to complete.
 
-Equivalent to [`exec_space.fence()`](https://kokkos.github.io/kokkos-core-wiki/API/core/execution_spaces.html#functionality).
+Equivalent to [`exec_space.fence(label)`](https://kokkos.github.io/kokkos-core-wiki/API/core/execution_spaces.html#functionality).
 """
-function fence(::ExecutionSpace) end
+function fence end
 
 
 # Defined in 'spaces.cpp', in 'register_space'

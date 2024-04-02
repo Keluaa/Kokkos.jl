@@ -88,7 +88,11 @@ end
     cu_stream = CUDA.CUstream(stream)
     pctx = Ref{CUDA.CUcontext}()
     CUDA.cuStreamGetCtx(cu_stream, pctx)
-    ctx = CUDA._CuContext(pctx[])
+    if pkgversion(CUDA) < v"5.2.0"
+        ctx = CUDA._CuContext(pctx[])
+    else
+        ctx = CUDA.UnsafeCuContext(pctx[])
+    end
     @test CUDA.deviceid(CUDA.device(ctx)) == did
 end
 
