@@ -47,25 +47,24 @@ All Kokkos backends should be supported by this package, but not all of them wer
 * :x: SIMD
 * :x: View hooks
 
-## Tested backends
+## Supported backends
 
 * :white_check_mark: `Kokkos::Serial`
 * :white_check_mark: `Kokkos::OpenMP`
-* :x: `Kokkos::Threads`
-* :x: `Kokkos::HPX`
-* :x: `Kokkos::OpenMPTarget`
-* :white_check_mark: `Kokkos::Cuda` + interop with [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl)
-* :white_check_mark: `Kokkos::HIP` + interop with [AMDGPU.jl](https://github.com/JuliaGPU/AMDGPU.jl)
-* :x: `Kokkos::SYCL`
-* :x: `Kokkos::OpenACC`
+* :white_check_mark: `Kokkos::Cuda`* + interop with [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl) (tested with Clang and nvcc)
+* :white_check_mark: `Kokkos::HIP`* + interop with [AMDGPU.jl](https://github.com/JuliaGPU/AMDGPU.jl)
+* :white_check_mark: `Kokkos::Threads`*
+* :white_check_mark: `Kokkos::HPX`*
+* :question: `Kokkos::OpenMPTarget`**
+* :question: `Kokkos::OpenACC`**
+* :x: `Kokkos::SYCL`* (interop with [oneAPI.jl](https://github.com/JuliaGPU/oneAPI.jl) is planned)
 
-### Known issues
+\*: tested locally, not through GitHub CI
+<br>**: can compile, not tested as the is backend too experimental
 
-* The NVCC compiler is unable to compile the wrapper library. Use Clang instead (Clang-11 is the
-version used to test this backend).
-* `Kokkos::Cuda ERROR: Failed to call Kokkos::Cuda::finalize()` message when exiting Julia:
-`Kokkos.finalize()` is not yet called automatically upon quitting Julia, as it would require to call
-the finalizers of all views before doing so.
+## Known issues
+
 * Memory leaks on GPU: this is a side effect of Julia's GC which cannot manage device memory. From
-Julia's POV, a `Kokkos.View` is only a pointer in the host memory. Calling `GC.gc(true)` will fix the
-issue.
+Julia's POV, a `Kokkos.View` is only a pointer in the host memory. Calling `GC.gc(true)` manually
+will fix the issue.
+* The NVHPC compiler cannot correctly compile the wrapper library due to compiler bugs. There is currently no plan to fix this issue.

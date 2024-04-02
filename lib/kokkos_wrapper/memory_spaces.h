@@ -20,6 +20,29 @@ struct SpaceInfo<Kokkos::HostSpace>
 template<>
 struct jlcxx::IsMirroredType<Kokkos::HostSpace> : std::false_type {};
 
+#ifdef KOKKOS_ENABLE_OPENACC
+template<>
+struct SpaceInfo<Kokkos::Experimental::OpenACCSpace>
+{
+    using space = Kokkos::Experimental::OpenACCSpace;
+    static constexpr std::string_view julia_name = "OpenACCSpace";
+};
+
+template<>
+struct jlcxx::IsMirroredType<Kokkos::Experimental::OpenACCSpace> : std::false_type {};
+#endif // KOKKOS_ENABLE_OPENACC
+
+#ifdef KOKKOS_ENABLE_OPENMPTARGET
+template<>
+struct SpaceInfo<Kokkos::Experimental::OpenMPTargetSpace>
+{
+    using space = Kokkos::Experimental::OpenMPTargetSpace;
+    static constexpr std::string_view julia_name = "OpenMPTargetSpace";
+};
+
+template<>
+struct jlcxx::IsMirroredType<Kokkos::Experimental::OpenMPTargetSpace> : std::false_type {};
+#endif // KOKKOS_ENABLE_OPENMPTARGET
 
 #ifdef KOKKOS_ENABLE_CUDA
 template<>
@@ -85,12 +108,50 @@ template<>
 struct jlcxx::IsMirroredType<Kokkos_HIP::HIPManagedSpace> : std::false_type {};
 #endif // KOKKOS_ENABLE_HIP
 
+#ifdef KOKKOS_ENABLE_SYCL
+template<>
+struct SpaceInfo<Kokkos::Experimental::SYCLDeviceUSMSpace>
+{
+    using space = Kokkos::Experimental::SYCLDeviceUSMSpace;
+    static constexpr std::string_view julia_name = "SYCLDeviceUSMSpace";
+};
+
+template<>
+struct SpaceInfo<Kokkos::Experimental::SYCLSharedUSMSpace>
+{
+    using space = Kokkos::Experimental::SYCLSharedUSMSpace;
+    static constexpr std::string_view julia_name = "SYCLSharedUSMSpace";
+};
+
+template<>
+struct SpaceInfo<Kokkos::Experimental::SYCLHostUSMSpace>
+{
+    using space = Kokkos::Experimental::SYCLHostUSMSpace;
+    static constexpr std::string_view julia_name = "SYCLHostUSMSpace";
+};
+
+template<>
+struct jlcxx::IsMirroredType<Kokkos::Experimental::SYCLDeviceUSMSpace> : std::false_type {};
+template<>
+struct jlcxx::IsMirroredType<Kokkos::Experimental::SYCLSharedUSMSpace> : std::false_type {};
+template<>
+struct jlcxx::IsMirroredType<Kokkos::Experimental::SYCLHostUSMSpace> : std::false_type {};
+#endif // KOKKOS_ENABLE_SYCL
+
 
 /**
  * Template list of all enabled Kokkos memory spaces
  */
 using MemorySpacesList = TList<
           Kokkos::HostSpace
+
+#ifdef KOKKOS_ENABLE_OPENACC
+        , Kokkos::Experimental::OpenACCSpace
+#endif // KOKKOS_ENABLE_OPENACC
+
+#ifdef KOKKOS_ENABLE_OPENMPTARGET
+        , Kokkos::Experimental::OpenMPTargetSpace
+#endif // KOKKOS_ENABLE_OPENMPTARGET
 
 #ifdef KOKKOS_ENABLE_CUDA
         , Kokkos::CudaSpace
@@ -107,10 +168,9 @@ using MemorySpacesList = TList<
 #endif // KOKKOS_ENABLE_HIP
 
 #ifdef KOKKOS_ENABLE_SYCL
-#error "SYCL memory spaces are not yet supported"
-//        , Kokkos::Experimental::SYCLDeviceUSMSpace
-//        , Kokkos::Experimental::SYCLSharedUSMSpace
-//        , Kokkos::Experimental::SYCLHostUSMSpace
+        , Kokkos::Experimental::SYCLDeviceUSMSpace
+        , Kokkos::Experimental::SYCLSharedUSMSpace
+        , Kokkos::Experimental::SYCLHostUSMSpace
 #endif // KOKKOS_ENABLE_SYCL
 >;
 

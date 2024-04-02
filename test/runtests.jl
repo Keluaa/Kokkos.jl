@@ -11,10 +11,15 @@ const TEST_CMAKE_OPTIONS = filter!(!isempty, (split(get(ENV, "TEST_CMAKE_OPTIONS
 
 const TEST_CUDA = parse(Bool, get(ENV, "TEST_KOKKOS_CUDA", "false"))
 const TEST_HIP  = parse(Bool, get(ENV, "TEST_KOKKOS_HIP", "false"))
-TEST_CUDA && TEST_HIP && error("Only a single GPU backend can be enabled at once")
+const TEST_SYCL = parse(Bool, get(ENV, "TEST_KOKKOS_SYCL", "false"))
+(TEST_CUDA + TEST_HIP + TEST_SYCL) > 1 && error("Only a single GPU backend can be enabled at once")
 
-const TEST_OPENMP = !(TEST_CUDA || TEST_HIP)
-const TEST_DEVICE_IS_HOST = TEST_OPENMP
+const TEST_THREADS = parse(Bool, get(ENV, "TEST_KOKKOS_THREADS", "false"))
+const TEST_HPX = parse(Bool, get(ENV, "TEST_KOKKOS_HPX", "false"))
+TEST_THREADS && TEST_HPX && error("Only a sinlge CPU multithreading backend can be enabled at once")
+
+const TEST_OPENMP = !(TEST_CUDA || TEST_HIP || TEST_SYCL || TEST_THREADS || TEST_HPX)
+const TEST_DEVICE_IS_HOST = TEST_OPENMP || TEST_THREADS || TEST_HPX
 
 const TEST_MPI_ONLY = parse(Bool, get(ENV, "TEST_KOKKOS_MPI_ONLY", "false"))
 const TEST_MPI = parse(Bool, get(ENV, "TEST_KOKKOS_MPI", "true")) || TEST_MPI_ONLY
@@ -23,6 +28,7 @@ if TEST_CUDA
     const TEST_BACKEND_HOST          = Kokkos.Serial
     const TEST_BACKEND_DEVICE        = Kokkos.Cuda
     const TEST_UNAVAILABLE_BACKEND   = Kokkos.HIP
+    const TEST_EXEC_HOST_CPP_NAME    = "Kokkos::Serial"
 
     const TEST_MEM_SPACE_HOST        = Kokkos.HostSpace
     const TEST_MEM_SPACES_DEVICE     = (Kokkos.CudaSpace, Kokkos.CudaUVMSpace)
@@ -34,6 +40,7 @@ elseif TEST_HIP
     const TEST_BACKEND_HOST          = Kokkos.Serial
     const TEST_BACKEND_DEVICE        = Kokkos.HIP
     const TEST_UNAVAILABLE_BACKEND   = Kokkos.Cuda
+    const TEST_EXEC_HOST_CPP_NAME    = "Kokkos::Serial"
 
     const TEST_MEM_SPACE_HOST        = Kokkos.HostSpace
     const TEST_MEM_SPACES_DEVICE     = (Kokkos.HIPSpace, Kokkos.HIPManagedSpace)
@@ -41,10 +48,23 @@ elseif TEST_HIP
 
     const TEST_MEM_SHARED            = Kokkos.HIPManagedSpace
     const TEST_MEM_PINNED            = Kokkos.HIPHostPinnedSpace
+elseif TEST_SYCL
+    const TEST_BACKEND_HOST          = Kokkos.Serial
+    const TEST_BACKEND_DEVICE        = Kokkos.SYCL
+    const TEST_UNAVAILABLE_BACKEND   = Kokkos.Cuda
+    const TEST_EXEC_HOST_CPP_NAME    = "Kokkos::Serial"
+
+    const TEST_MEM_SPACE_HOST        = Kokkos.HostSpace
+    const TEST_MEM_SPACES_DEVICE     = (Kokkos.SYCLDeviceUSMSpace, Kokkos.SYCLSharedUSMSpace)
+    const TEST_UNAVAILABLE_MEM_SPACE = Kokkos.CudaSpace
+
+    const TEST_MEM_SHARED            = Kokkos.SYCLSharedUSMSpace
+    const TEST_MEM_PINNED            = Kokkos.SYCLHostUSMSpace
 else
     const TEST_BACKEND_HOST          = Kokkos.Serial
-    const TEST_BACKEND_DEVICE        = Kokkos.OpenMP
+    const TEST_BACKEND_DEVICE        = TEST_THREADS ? Kokkos.Threads : (TEST_HPX ? Kokkos.HPX : Kokkos.OpenMP)
     const TEST_UNAVAILABLE_BACKEND   = Kokkos.Cuda
+    const TEST_EXEC_HOST_CPP_NAME    = "Kokkos::" * (TEST_THREADS ? "Threads" : (TEST_HPX ? "Experimental::HPX" : "OpenMP"))
 
     const TEST_MEM_SPACE_HOST        = Kokkos.HostSpace
     const TEST_MEM_SPACES_DEVICE     = (Kokkos.HostSpace,)
@@ -56,7 +76,7 @@ end
 
 const TEST_MAIN_MEM_SPACE_DEVICE = first(TEST_MEM_SPACES_DEVICE)
 
-const TEST_DEVICE_ACCESSIBLE = !(TEST_CUDA || TEST_HIP)
+const TEST_DEVICE_ACCESSIBLE = !(TEST_CUDA || TEST_HIP || TEST_SYCL)
 
 const TEST_VIEW_DIMS = (1, 2)
 const TEST_VIEW_TYPES = (Float64, Int64)
@@ -64,16 +84,20 @@ const TEST_VIEW_LAYOUTS = (Kokkos.LayoutLeft, Kokkos.LayoutRight, Kokkos.LayoutS
 
 
 TEST_CUDA && using CUDA
-TEST_HIP && using AMDGPU
-TEST_MPI && using MPI
+TEST_HIP  && using AMDGPU
+TEST_SYCL && using oneAPI
+TEST_MPI  && using MPI
 
 
 function print_test_config()
     println("Test configuration:")
     println(" - TEST_KOKKOS_VERSION:   $TEST_KOKKOS_VERSION")
     println(" - TEST_OPENMP:           $TEST_OPENMP")
+    println(" - TEST_THREADS:          $TEST_THREADS")
+    println(" - TEST_HPX:              $TEST_HPX")
     println(" - TEST_CUDA:             $TEST_CUDA")
     println(" - TEST_HIP:              $TEST_HIP")
+    println(" - TEST_SYCL:             $TEST_SYCL")
     println(" - TEST_MPI:              $TEST_MPI (only MPI: $TEST_MPI_ONLY)")
     println(" - BACKEND_HOST:          $(nameof(TEST_BACKEND_HOST))")
     println(" - BACKEND_DEVICE:        $(nameof(TEST_BACKEND_DEVICE))")
@@ -91,6 +115,7 @@ function print_test_config()
     @static if VERSION >= v"1.9-"
         TEST_CUDA && println(" - CUDA.jl:               ", pkgversion(CUDA))
         TEST_HIP  && println(" - AMDGPU.jl:             ", pkgversion(AMDGPU))
+        TEST_SYCL && println(" - oneAPI.jl:             ", pkgversion(oneAPI))
         TEST_MPI  && println(" - MPI.jl:                ", pkgversion(MPI))
     end
 end
@@ -103,8 +128,9 @@ end
 
     Kokkos.build_in_project()  # Use the same directory as Pkg.test uses, forcing a complete compilation
 
-    Kokkos.set_omp_vars()
-    if TEST_OPENMP
+    TEST_OPENMP && Kokkos.set_omp_vars()
+
+    if TEST_DEVICE_IS_HOST
         @test_logs min_level=Logging.Warn @test_nowarn Kokkos.load_wrapper_lib(; loading_bar=false)
     else
         # GPU backends add some warnings which I can't get rid of
@@ -136,6 +162,8 @@ end
             include("backends/cuda.jl")
         elseif TEST_HIP
             include("backends/hip.jl")
+        elseif TEST_SYCL
+            include("backends/sycl.jl")
         end
 
         include("projects.jl")

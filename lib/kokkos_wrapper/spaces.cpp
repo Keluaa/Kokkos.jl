@@ -30,8 +30,17 @@ void register_space(jlcxx::Module& mod, jl_module_t* spaces_module)
         space_type.method("allocate", [](const Space& s, ptrdiff_t size) { return s.allocate(size); });
         space_type.method("deallocate", [](const Space& s, void* ptr, ptrdiff_t size) { return s.deallocate(ptr, size); });
     } else if constexpr (Kokkos::is_execution_space<Space>::value) {
-        space_type.method("concurrency", [](const Space& s){ return s.concurrency(); });  // Serial::concurrency is static, while OpenMP::concurrency is not
-        space_type.method("fence", &Space::fence);
+        // There is some inconsistencies with those two functions, some being fixed in later Kokkos versions.
+        // e.g. `Kokkos::Serial::concurrency` is not a static member method in 4.x, but in 4.0 `Kokkos::Serial::concurrency`
+        // is still a static member method. The same goes with `fence`, but because of the OpenMPTarget backend.
+        if constexpr (std::is_member_function_pointer_v<decltype(&Space::concurrency)>) {
+            space_type.method("concurrency", &Space::concurrency);
+        } else {
+            space_type.method("concurrency", [](const Space& s){ return s.concurrency(); });
+        }
+
+        space_type.method("fence", [](const Space& s){ return s.fence(); });
+        space_type.method("fence", [](const Space& s, const std::string& name){ return s.fence(name); });
     }
 
     mod.method("kokkos_name", [](jlcxx::SingletonType<SpaceInfo<Space>>) { return std::string(Space::name()); });
@@ -124,7 +133,8 @@ void define_memory_spaces_functions(jlcxx::Module& mod)
         return jlcxx::julia_type<Kokkos::DefaultHostExecutionSpace::memory_space>()->super->super;
     });
     mod.method("__shared_memory_space", [](){
-#if KOKKOS_VERSION_CMP(>=, 4, 0, 0)
+#if KOKKOS_VERSION_CMP(>=, 4, 0, 0) && !defined(KOKKOS_ENABLE_OPENMPTARGET)
+        // TODO: in v4.2.00, `Kokkos::has_shared_space` is true for OpenMPTarget, yet `Kokkos::SharedSpace` is undefined
         if constexpr (Kokkos::has_shared_space) {
             return jlcxx::julia_type<Kokkos::SharedSpace>()->super->super;
         } else
@@ -134,7 +144,8 @@ void define_memory_spaces_functions(jlcxx::Module& mod)
         }
     });
     mod.method("__shared_host_pinned_space", [](){
-#if KOKKOS_VERSION_CMP(>=, 4, 0, 0)
+#if KOKKOS_VERSION_CMP(>=, 4, 0, 0) && !defined(KOKKOS_ENABLE_OPENMPTARGET)
+        // TODO: in v4.2.00, idem
         if constexpr (Kokkos::has_shared_host_pinned_space) {
             return jlcxx::julia_type<Kokkos::SharedHostPinnedSpace>()->super->super;
         } else

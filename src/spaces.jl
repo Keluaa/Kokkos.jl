@@ -69,27 +69,43 @@ Abstract super-type of all memory spaces.
 
 Sub-types:
  - `HostSpace`
+ - `OpenACCSpace`
+ - `OpenMPTargetSpace`
  - `CudaSpace`
  - `CudaHostPinnedSpace`
  - `CudaUVMSpace`
  - `HIPSpace`
  - `HIPHostPinnedSpace`
  - `HIPManagedSpace`
+ - `SYCLDeviceUSMSpace`
+ - `SYCLSharedUSMSpace`
+ - `SYCLHostUSMSpace`
 
 Sub-types work the same as for [`ExecutionSpace`](@ref). They can be enabled by enabling their
 respective backend.
 """
 abstract type MemorySpace           <: Space       end
 abstract type HostSpace             <: MemorySpace end
+abstract type OpenACCSpace          <: MemorySpace end
+abstract type OpenMPTargetSpace     <: MemorySpace end
 abstract type CudaSpace             <: MemorySpace end
 abstract type CudaHostPinnedSpace   <: MemorySpace end
 abstract type CudaUVMSpace          <: MemorySpace end
 abstract type HIPSpace              <: MemorySpace end
 abstract type HIPHostPinnedSpace    <: MemorySpace end
 abstract type HIPManagedSpace       <: MemorySpace end
+abstract type SYCLDeviceUSMSpace    <: MemorySpace end
+abstract type SYCLSharedUSMSpace    <: MemorySpace end
+abstract type SYCLHostUSMSpace      <: MemorySpace end
 
 
-const ALL_MEM_SPACES = [HostSpace, CudaSpace, CudaHostPinnedSpace, CudaUVMSpace, HIPSpace, HIPHostPinnedSpace, HIPManagedSpace]
+const ALL_MEM_SPACES = [
+    HostSpace,
+    OpenACCSpace, OpenMPTargetSpace,
+    CudaSpace, CudaHostPinnedSpace, CudaUVMSpace,
+    HIPSpace, HIPHostPinnedSpace, HIPManagedSpace,
+    SYCLDeviceUSMSpace, SYCLSharedUSMSpace, SYCLHostUSMSpace
+]
 
 
 # Defined in 'spaces.cpp', in 'post_register_space'
@@ -210,8 +226,10 @@ impl_space_type(::Type{S}) where {S <: Space} = error("space $S is not enabled")
 
 # Space constructors
 for S_type in (Serial, OpenMP, OpenACC, OpenMPTarget, Threads, Cuda, HIP, HPX, SYCL,
-               HostSpace, CudaSpace, CudaHostPinnedSpace, CudaUVMSpace,
-               HIPSpace, HIPHostPinnedSpace, HIPManagedSpace)
+               HostSpace, OpenACCSpace, OpenMPTargetSpace,
+               CudaSpace, CudaHostPinnedSpace, CudaUVMSpace,
+               HIPSpace, HIPHostPinnedSpace, HIPManagedSpace,
+               SYCLDeviceUSMSpace, SYCLSharedUSMSpace, SYCLHostUSMSpace)
     @eval (::Type{$S_type})() = impl_space_type($S_type)()
 end
 
@@ -219,12 +237,13 @@ end
 # Defined in 'spaces.cpp', in 'register_space'
 """
     fence(exec_space::ExecutionSpace)
+    fence(exec_space::ExecutionSpace, label::String)
 
 Wait for all asynchronous tasks operating on this execution space instance to complete.
 
-Equivalent to [`exec_space.fence()`](https://kokkos.github.io/kokkos-core-wiki/API/core/execution_spaces.html#functionality).
+Equivalent to [`exec_space.fence(label)`](https://kokkos.github.io/kokkos-core-wiki/API/core/execution_spaces.html#functionality).
 """
-function fence(::ExecutionSpace) end
+function fence end
 
 
 # Defined in 'spaces.cpp', in 'register_space'

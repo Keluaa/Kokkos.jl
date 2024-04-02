@@ -24,7 +24,7 @@ skip_shared_mem = Kokkos.KOKKOS_VERSION < v"4.0.0"
 end
 
 
-@test Kokkos.execution_space(TEST_MEM_SPACE_HOST) === (TEST_OPENMP ? Kokkos.OpenMP : TEST_BACKEND_HOST)
+@test Kokkos.execution_space(TEST_MEM_SPACE_HOST) === (TEST_DEVICE_IS_HOST ? TEST_BACKEND_DEVICE : TEST_BACKEND_HOST)
 @test Kokkos.memory_space(TEST_BACKEND_HOST) === TEST_MEM_SPACE_HOST
 @test Kokkos.memory_space(TEST_BACKEND_DEVICE) === TEST_MAIN_MEM_SPACE_DEVICE
 
@@ -66,7 +66,7 @@ serial = Kokkos.Serial()
 
 host_space = Kokkos.HostSpace()
 @test Kokkos.main_space_type(host_space) === Kokkos.HostSpace
-@test Kokkos.execution_space(host_space) === (TEST_OPENMP ? Kokkos.OpenMP : TEST_BACKEND_HOST)
+@test Kokkos.execution_space(host_space) === (TEST_DEVICE_IS_HOST ? TEST_BACKEND_DEVICE : TEST_BACKEND_HOST)
 @test Kokkos.accessible(host_space)
 @test Kokkos.enabled(host_space)
 
