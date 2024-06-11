@@ -31,7 +31,7 @@ KokkosMPI = "MPI"
 [compat]
 AMDGPU = "0.8"
 CUDA = "4.1, 5"
-CxxWrap = "0.14, 0.15"
+CxxWrap = "0.14, 0.15, 0.16"
 FileWatching = "1"
 LibGit2 = "1"
 Libdl = "1"
