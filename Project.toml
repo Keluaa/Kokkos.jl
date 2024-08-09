@@ -29,7 +29,7 @@ KokkosCUDA = "CUDA"
 KokkosMPI = "MPI"
 
 [compat]
-AMDGPU = "0.8"
+AMDGPU = "0.8, 1"
 CUDA = "4.1, 5"
 CxxWrap = "0.14, 0.15"
 FileWatching = "1"
